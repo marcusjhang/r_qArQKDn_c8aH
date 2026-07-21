@@ -9,10 +9,12 @@ import UserMenu from './UserMenu';
 export default function TopBar({
   subtitle,
   userEmail,
+  nav,
   children
 }: {
   subtitle: string;
   userEmail?: string | null;
+  nav?: { href: string; label: string };
   children?: React.ReactNode;
 }) {
   return (
@@ -20,7 +22,7 @@ export default function TopBar({
       <header className="topbar">
         <Brand subtitle={subtitle} />
         <div className="spacer" />
-        <UserMenu email={userEmail} />
+        <UserMenu email={userEmail} nav={nav} />
       </header>
       {children && <div className="subnav">{children}</div>}
     </>

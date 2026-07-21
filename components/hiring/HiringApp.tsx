@@ -6,7 +6,6 @@
 // over it so pipeline context stays on screen.
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { isTerminal } from '@/lib/hiring/helpers';
 import { useHiringStore } from '@/lib/hiring/store';
 import type { HiringState } from '@/lib/hiring/types';
@@ -67,7 +66,11 @@ export default function HiringApp({
 
   return (
     <div className="ht-root">
-      <TopBar subtitle="Pipeline Tracker" userEmail={userEmail}>
+      <TopBar
+        subtitle="Pipeline Tracker"
+        userEmail={userEmail}
+        nav={{ href: '/settings', label: '⚙ Settings' }}
+      >
         <JobTabs
           jobs={state.jobs}
           activeJob={activeJob}
@@ -79,10 +82,6 @@ export default function HiringApp({
         <button className="btn primary" onClick={() => setCreatingJob(true)}>
           ＋ New job
         </button>
-        <div className="spacer" />
-        <Link className="btn" href="/settings">
-          ⚙ Settings
-        </Link>
       </TopBar>
 
       <div className="toolbar">

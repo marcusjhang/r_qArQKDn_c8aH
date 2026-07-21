@@ -5,7 +5,6 @@
 // from the page (the @/app path isn't aliased).
 
 import { useState, useTransition } from 'react';
-import Link from 'next/link';
 import TopBar from '@/components/hiring/TopBar';
 import ThemeToggle from './ThemeToggle';
 import '@/components/hiring/hiring.css';
@@ -61,11 +60,11 @@ export default function SettingsView({
 
   return (
     <div className="ht-root">
-      <TopBar subtitle="Settings" userEmail={userEmail}>
-        <Link className="btn" href="/">
-          ← Dashboard
-        </Link>
-      </TopBar>
+      <TopBar
+        subtitle="Settings"
+        userEmail={userEmail}
+        nav={{ href: '/', label: 'Dashboard' }}
+      />
 
       <div className="settings-wrap">
         <section className="settings-panel">
