@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { stageDeletable } from './helpers';
+import { stageDeletable, validateStageName } from './helpers';
 import * as api from './actions';
 import type { HiringState, RatingValue, Status } from './types';
 
@@ -236,15 +236,8 @@ export function useHiringStore(initial: HiringState): {
       const job = stateRef.current.jobs.find((j) => j.id === jobId);
       if (!job) return;
       const old = job.stages[index];
-      if (old === undefined || !trimmed || trimmed === old) return;
-      // Reject case-insensitive collision with another stage (matches server).
-      if (
-        job.stages.some(
-          (s, i) => i !== index && s.toLowerCase() === trimmed.toLowerCase()
-        )
-      ) {
-        return;
-      }
+      if (old === undefined || trimmed === old) return;
+      if (!validateStageName(job.stages, name, index).ok) return;
       setState((s) => ({
         ...s,
         jobs: s.jobs.map((j) =>
@@ -263,16 +256,10 @@ export function useHiringStore(initial: HiringState): {
 
   const addStage = useCallback(
     (jobId: number, name: string) => {
-      const trimmed = name.trim();
       const job = stateRef.current.jobs.find((j) => j.id === jobId);
       if (!job) return;
-      // Reject empties and case-insensitive duplicates (matches server).
-      if (
-        !trimmed ||
-        job.stages.some((s) => s.toLowerCase() === trimmed.toLowerCase())
-      ) {
-        return;
-      }
+      if (!validateStageName(job.stages, name).ok) return;
+      const trimmed = name.trim();
       setState((s) => ({
         ...s,
         jobs: s.jobs.map((j) => {

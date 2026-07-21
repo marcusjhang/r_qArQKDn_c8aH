@@ -2,6 +2,7 @@ import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import { compare } from 'bcryptjs';
 import { db, users } from '@/lib/db';
+import { normalizeEmail } from '@/lib/allowlist';
 import { eq } from 'drizzle-orm';
 
 declare module 'next-auth' {
@@ -34,7 +35,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const [user] = await db
           .select()
           .from(users)
-          .where(eq(users.email, credentials.email as string))
+          .where(eq(users.email, normalizeEmail(credentials.email as string)))
           .limit(1);
 
         if (!user) return null;

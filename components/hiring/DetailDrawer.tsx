@@ -247,6 +247,7 @@ export default function DetailDrawer({
                 <span className="label">Note</span>
                 <textarea
                   value={note}
+                  maxLength={2000}
                   onChange={(e) => setNote(e.target.value)}
                   placeholder="What stood out? Concerns?"
                 />

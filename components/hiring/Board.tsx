@@ -6,7 +6,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { RATINGS } from '@/lib/hiring/config';
-import { agg, founderById, isHiddenByDefault } from '@/lib/hiring/helpers';
+import {
+  agg,
+  founderById,
+  isHiddenByDefault,
+  validateStageName,
+  MAX_STAGE_NAME
+} from '@/lib/hiring/helpers';
 import { canDeleteStage, type HiringActions } from '@/lib/hiring/store';
 import type { Candidate, HiringState, Job } from '@/lib/hiring/types';
 
@@ -147,10 +153,8 @@ function Column({
   // Commit an inline rename; revert the DOM on empty / no-op / duplicate.
   function commitRename(el: HTMLElement) {
     const text = (el.textContent ?? '').trim();
-    const duplicate = job.stages.some(
-      (s, i) => i !== index && s.toLowerCase() === text.toLowerCase()
-    );
-    if (!text || text === stage || duplicate) {
+    // Revert on no-op or anything the shared validator rejects.
+    if (text === stage || !validateStageName(job.stages, text, index).ok) {
       el.textContent = stage;
       return;
     }
@@ -277,16 +281,12 @@ function AddStageGhost({
   }
 
   function submit() {
-    const trimmed = name.trim();
-    if (!trimmed) {
-      setError('Enter a stage name.');
+    const check = validateStageName(job.stages, name);
+    if (!check.ok) {
+      setError(check.reason ?? 'Invalid stage name.');
       return;
     }
-    if (job.stages.some((s) => s.toLowerCase() === trimmed.toLowerCase())) {
-      setError('That stage already exists.');
-      return;
-    }
-    onAdd(trimmed);
+    onAdd(name.trim());
     reset();
   }
 
@@ -304,6 +304,7 @@ function AddStageGhost({
         ref={inputRef}
         type="text"
         placeholder="Stage name"
+        maxLength={MAX_STAGE_NAME}
         value={name}
         onChange={(e) => {
           setName(e.target.value);

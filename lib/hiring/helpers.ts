@@ -26,6 +26,38 @@ export function agg(c: Candidate): number | null {
   return c.feedback.reduce((a, f) => a + f.rating, 0) / c.feedback.length;
 }
 
+/** Max length of a stage name (kept in sync with the DB/zod bound). */
+export const MAX_STAGE_NAME = 48;
+
+/**
+ * Single source of truth for stage-name rules (non-empty, length, and
+ * case-insensitive uniqueness). Shared by the board UI, the optimistic store,
+ * and the server action so the three layers can't disagree. Pass the index to
+ * ignore when renaming (so a stage doesn't collide with itself).
+ */
+export function validateStageName(
+  stages: string[],
+  name: string,
+  ignoreIndex = -1
+): { ok: boolean; reason?: string } {
+  const trimmed = name.trim();
+  if (!trimmed) return { ok: false, reason: 'Enter a stage name.' };
+  if (trimmed.length > MAX_STAGE_NAME) {
+    return {
+      ok: false,
+      reason: `Stage name must be ${MAX_STAGE_NAME} characters or fewer.`
+    };
+  }
+  if (
+    stages.some(
+      (s, i) => i !== ignoreIndex && s.toLowerCase() === trimmed.toLowerCase()
+    )
+  ) {
+    return { ok: false, reason: 'That stage already exists.' };
+  }
+  return { ok: true };
+}
+
 /**
  * Pure guard for deleting a stage: only allowed when the column is empty and
  * the job would keep at least two stages. Shared by the server action and the

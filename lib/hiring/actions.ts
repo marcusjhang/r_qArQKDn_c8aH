@@ -10,7 +10,7 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db, jobs, candidates, feedback } from '@/lib/db';
-import { stageDeletable } from './helpers';
+import { stageDeletable, validateStageName } from './helpers';
 import type { Status } from './types';
 import {
   zId,
@@ -125,11 +125,10 @@ export async function addFeedback(
 
 export async function addStage(jobIdRaw: number, nameRaw: string) {
   const jobId = zId.parse(jobIdRaw);
-  const name = zStageName.parse(nameRaw); // trims + non-empty
   const stages = await loadJobStages(jobId);
   if (!stages) return;
-  // Stages are keyed by name — reject case-insensitive duplicates.
-  if (stages.some((s) => s.toLowerCase() === name.toLowerCase())) return;
+  if (!validateStageName(stages, nameRaw).ok) return;
+  const name = nameRaw.trim();
   const next = [...stages];
   next.splice(next.length - 1, 0, name); // insert before the last stage
   await db.update(jobs).set({ stages: next }).where(eq(jobs.id, jobId));
@@ -143,15 +142,12 @@ export async function renameStage(
 ) {
   const jobId = zId.parse(jobIdRaw);
   const index = zIndex.parse(indexRaw);
-  const name = zStageName.parse(nameRaw);
   const stages = await loadJobStages(jobId);
   if (!stages) return;
   const old = stages[index];
+  const name = nameRaw.trim();
   if (old === undefined || name === old) return;
-  // Don't allow renaming onto another stage's name (case-insensitive).
-  if (stages.some((s, i) => i !== index && s.toLowerCase() === name.toLowerCase())) {
-    return;
-  }
+  if (!validateStageName(stages, nameRaw, index).ok) return;
   const next = [...stages];
   next[index] = name;
   // Re-point candidates in the renamed column, atomically with the array update.

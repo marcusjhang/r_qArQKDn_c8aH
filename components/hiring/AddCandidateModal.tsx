@@ -40,6 +40,7 @@ export default function AddCandidateModal({
           <input
             type="text"
             autoFocus
+            maxLength={120}
             value={name}
             onChange={(e) => {
               setName(e.target.value);
