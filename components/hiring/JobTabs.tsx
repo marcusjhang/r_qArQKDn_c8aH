@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import { MAX_FAVORITES } from '@/lib/hiring/helpers';
 import type { Job } from '@/lib/hiring/types';
 
-const INLINE_CAP = 4;
+const INLINE_CAP = 3;
 
 export default function JobTabs({
   jobs,

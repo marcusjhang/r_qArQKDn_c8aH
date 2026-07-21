@@ -1031,7 +1031,7 @@
 .ht-root .jobmenu {
   position: absolute;
   top: 100%;
-  right: 0;
+  left: 0;
   margin-top: 6px;
   min-width: 260px;
   max-height: 320px;
