@@ -13,6 +13,13 @@ const SEED_ALLOWED_EMAILS = [
   'marcusajh0802@gmail.com'
 ];
 
+// Login accounts created on seed. Override the shared password via SEED_PASSWORD.
+const SEED_PASSWORD = process.env.SEED_PASSWORD ?? 'password';
+const SEED_ACCOUNTS = [
+  { email: 'admin@admin.com', name: 'Admin', role: 'admin' as const },
+  { email: 'marcusajh0802@gmail.com', name: 'Marcus Ang', role: 'admin' as const }
+];
+
 async function main() {
   if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL is not set');
@@ -21,28 +28,29 @@ async function main() {
   const client = postgres(process.env.DATABASE_URL);
   const db = drizzle(client);
 
-  // Seed the admin login account (admin@admin.com / password)
-  const passwordHash = await hash('password', 12);
-  const [existingAdmin] = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, 'admin@admin.com'))
-    .limit(1);
-
-  if (existingAdmin) {
-    await db
-      .update(users)
-      .set({ passwordHash, role: 'admin' })
-      .where(eq(users.email, 'admin@admin.com'));
-    console.log('Updated admin user password.');
-  } else {
-    await db.insert(users).values({
-      name: 'Admin',
-      email: 'admin@admin.com',
-      passwordHash,
-      role: 'admin'
-    });
-    console.log('Seeded admin user (admin@admin.com / password).');
+  // Seed login accounts (idempotent: create, or reset password/role if present).
+  const passwordHash = await hash(SEED_PASSWORD, 12);
+  for (const acc of SEED_ACCOUNTS) {
+    const [existing] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, acc.email))
+      .limit(1);
+    if (existing) {
+      await db
+        .update(users)
+        .set({ passwordHash, role: acc.role, name: acc.name })
+        .where(eq(users.email, acc.email));
+      console.log(`Updated login account ${acc.email}.`);
+    } else {
+      await db.insert(users).values({
+        name: acc.name,
+        email: acc.email,
+        passwordHash,
+        role: acc.role
+      });
+      console.log(`Seeded login account ${acc.email}.`);
+    }
   }
 
   // Seed the signup allowlist (idempotent via the unique email constraint).
