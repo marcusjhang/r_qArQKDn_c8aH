@@ -6,6 +6,7 @@
 // over it so pipeline context stays on screen.
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { isTerminal } from '@/lib/hiring/helpers';
 import { useHiringStore } from '@/lib/hiring/store';
 import type { HiringState } from '@/lib/hiring/types';
@@ -13,8 +14,7 @@ import Board from './Board';
 import DetailDrawer from './DetailDrawer';
 import AddCandidateModal from './AddCandidateModal';
 import NewJobModal from './NewJobModal';
-import UserMenu from './UserMenu';
-import Brand from './Brand';
+import TopBar from './TopBar';
 import './hiring.css';
 
 export default function HiringApp({
@@ -59,9 +59,7 @@ export default function HiringApp({
 
   return (
     <div className="ht-root">
-      <header className="topbar">
-        <Brand subtitle="Pipeline Tracker" />
-        <div className="spacer" />
+      <TopBar subtitle="Pipeline Tracker" userEmail={userEmail}>
         <nav className="jobtabs" aria-label="Jobs">
           {state.jobs.map((j) => (
             <button
@@ -77,8 +75,11 @@ export default function HiringApp({
         <button className="btn primary" onClick={() => setCreatingJob(true)}>
           ＋ New job
         </button>
-        <UserMenu email={userEmail} />
-      </header>
+        <div className="spacer" />
+        <Link className="btn" href="/settings">
+          ⚙ Settings
+        </Link>
+      </TopBar>
 
       <div className="toolbar">
         <div>

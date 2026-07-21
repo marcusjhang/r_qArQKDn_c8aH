@@ -6,8 +6,7 @@
 
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
-import UserMenu from '@/components/hiring/UserMenu';
-import Brand from '@/components/hiring/Brand';
+import TopBar from '@/components/hiring/TopBar';
 import ThemeToggle from './ThemeToggle';
 import '@/components/hiring/hiring.css';
 
@@ -62,16 +61,11 @@ export default function SettingsView({
 
   return (
     <div className="ht-root">
-      <header className="topbar">
-        <div className="settings-head">
-          <Brand subtitle="Settings" />
-          <Link className="btn" href="/">
-            ← Back
-          </Link>
-        </div>
-        <div className="spacer" />
-        <UserMenu email={userEmail} />
-      </header>
+      <TopBar subtitle="Settings" userEmail={userEmail}>
+        <Link className="btn" href="/">
+          ← Dashboard
+        </Link>
+      </TopBar>
 
       <div className="settings-wrap">
         <section className="settings-panel">

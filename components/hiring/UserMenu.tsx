@@ -8,7 +8,6 @@
 // (localhost behind the preview proxy), which the browser can't reach.
 
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 
 export default function UserMenu({ email }: { email?: string | null }) {
@@ -51,15 +50,6 @@ export default function UserMenu({ email }: { email?: string | null }) {
       </button>
       {open && (
         <div className="usermenu-menu" role="menu">
-          <Link
-            className="usermenu-item"
-            role="menuitem"
-            href="/settings"
-            onClick={() => setOpen(false)}
-          >
-            Settings
-          </Link>
-          <div className="usermenu-sep" />
           <button
             className="usermenu-item danger"
             role="menuitem"
