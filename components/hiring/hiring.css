@@ -1024,6 +1024,8 @@
 }
 .ht-root .jobmenu-wrap {
   position: relative;
+  /* Render the dropdown before the inline tabs (order: New job · ▾ · tabs). */
+  order: -1;
 }
 .ht-root .jobmenu-trigger {
   color: var(--text-muted);

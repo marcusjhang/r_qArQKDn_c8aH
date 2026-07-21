@@ -71,6 +71,10 @@ export default function HiringApp({
         userEmail={userEmail}
         nav={{ href: '/settings', label: '⚙ Settings' }}
       >
+        <div className="spacer" />
+        <button className="btn primary" onClick={() => setCreatingJob(true)}>
+          ＋ New job
+        </button>
         <JobTabs
           jobs={state.jobs}
           activeJob={activeJob}
@@ -79,9 +83,6 @@ export default function HiringApp({
           onToggleStar={actions.setJobStarred}
           onDelete={actions.deleteJob}
         />
-        <button className="btn primary" onClick={() => setCreatingJob(true)}>
-          ＋ New job
-        </button>
       </TopBar>
 
       <div className="toolbar">
