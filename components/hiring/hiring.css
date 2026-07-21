@@ -1133,3 +1133,21 @@
 .ht-root .jobmenu-cancel:hover {
   background: var(--surface-2);
 }
+
+/* Borderless text-style link (e.g. the settings "← Dashboard" back link) */
+.ht-root .linkbtn {
+  border: none;
+  background: transparent;
+  color: var(--text);
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+.ht-root .linkbtn:hover {
+  background: var(--surface-2);
+}
