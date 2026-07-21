@@ -14,6 +14,7 @@ import DetailDrawer from './DetailDrawer';
 import AddCandidateModal from './AddCandidateModal';
 import NewJobModal from './NewJobModal';
 import UserMenu from './UserMenu';
+import Brand from './Brand';
 import './hiring.css';
 
 export default function HiringApp({
@@ -59,9 +60,7 @@ export default function HiringApp({
   return (
     <div className="ht-root">
       <header className="topbar">
-        <div className="brand">
-          <span className="logo" /> Hiring <small>Pipeline Tracker</small>
-        </div>
+        <Brand subtitle="Pipeline Tracker" />
         <div className="spacer" />
         <nav className="jobtabs" aria-label="Jobs">
           {state.jobs.map((j) => (

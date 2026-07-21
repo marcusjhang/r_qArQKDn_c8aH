@@ -7,6 +7,7 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import UserMenu from '@/components/hiring/UserMenu';
+import Brand from '@/components/hiring/Brand';
 import ThemeToggle from './ThemeToggle';
 import '@/components/hiring/hiring.css';
 
@@ -62,9 +63,7 @@ export default function SettingsView({
   return (
     <div className="ht-root">
       <header className="topbar">
-        <div className="brand">
-          <span className="logo" /> Hiring <small>Settings</small>
-        </div>
+        <Brand subtitle="Settings" />
         <div className="spacer" />
         <Link className="btn" href="/">
           ← Board
