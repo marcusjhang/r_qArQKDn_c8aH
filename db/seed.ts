@@ -8,6 +8,7 @@ import { hash } from 'bcryptjs';
 const SEED_PRODUCTS = [
   {
     name: 'Sample Product',
+    imageUrl: 'https://placehold.co/400x400?text=Sample+Product',
     status: 'active' as const,
     price: '49.00',
     stock: 100,
@@ -15,6 +16,7 @@ const SEED_PRODUCTS = [
   },
   {
     name: 'Another Product',
+    imageUrl: 'https://placehold.co/400x400?text=Another+Product',
     status: 'active' as const,
     price: '99.00',
     stock: 50,

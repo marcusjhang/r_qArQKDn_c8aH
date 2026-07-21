@@ -1,9 +1,9 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'Next.js + Postgres Starter',
+  title: 'Lightsprint Hiring — Pipeline Tracker',
   description:
-    'A full-stack Next.js starter with Postgres, Auth.js, and Drizzle ORM. Built for Lightsprint.'
+    'Board-first hiring pipeline tracker: per-job Kanban, per-interviewer feedback, and stage transitions for a small founding team.'
 };
 
 export default function RootLayout({
