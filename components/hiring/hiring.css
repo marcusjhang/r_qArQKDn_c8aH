@@ -668,3 +668,132 @@
     transition: none;
   }
 }
+
+/* Disabled buttons — clearly inert, never a dead-looking active button */
+.ht-root .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ht-root .btn:disabled:hover {
+  background: var(--surface);
+  filter: none;
+}
+.ht-root .btn.primary:disabled:hover {
+  background: var(--primary);
+}
+
+/* Modal (add candidate) */
+.ht-root .modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(440px, calc(100% - 32px));
+  max-height: calc(100% - 48px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.ht-root .modal-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.ht-root .modal-head h2 {
+  margin: 0;
+  font-size: 16px;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.ht-root .modal-body {
+  padding: var(--space-4);
+  overflow-y: auto;
+}
+.ht-root .modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.ht-root .modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+.ht-root .form-error {
+  font-size: 12px;
+  color: var(--sno-fg);
+}
+
+/* Stage options dropdown */
+.ht-root .column {
+  position: relative;
+}
+.ht-root .column.menu-open {
+  z-index: 5;
+}
+.ht-root .col-menu-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+.ht-root .stage-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  min-width: 150px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 4px;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+}
+.ht-root .stage-menu-item {
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 7px 10px;
+  border-radius: 5px;
+  font-size: 12.5px;
+  color: var(--text);
+}
+.ht-root .stage-menu-item:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+.ht-root .stage-menu-item:disabled {
+  color: var(--text-muted);
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.ht-root .stage-menu-item.danger {
+  color: var(--rej-fg);
+}
+.ht-root .stage-menu-item.danger:hover:not(:disabled) {
+  background: var(--rej-bg);
+}
+
+/* Inline add-stage form */
+.ht-root .add-stage-form {
+  flex: 0 0 200px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ht-root .add-stage-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}

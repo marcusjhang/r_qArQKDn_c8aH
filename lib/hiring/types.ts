@@ -1,9 +1,17 @@
-// Core domain types for the Hiring Pipeline Tracker.
-// Kept free of any framework/DB imports so the model stays portable.
+// UI/domain types for the Hiring Pipeline Tracker.
+//
+// These are DERIVED from the Drizzle schema (the single source of truth) — no
+// field types are authored here, so they cannot drift from the database. Only
+// `import type` is used, so the schema (and its drizzle/postgres runtime deps)
+// never enter the client bundle.
 
-export type RatingValue = 1 | 2 | 3 | 4;
+import type {
+  SelectJob,
+  SelectCandidate,
+  SelectFeedback
+} from '@/lib/schema';
 
-export type Status = 'active' | 'onhold' | 'rejected' | 'hired';
+export type { Status, RatingValue } from './primitives';
 
 export interface Founder {
   id: string;
@@ -11,36 +19,21 @@ export interface Founder {
   initials: string;
 }
 
-export interface Feedback {
-  /** Feedback row id. */
-  id: number;
-  /** Founder id of the interviewer who left this entry. */
-  by: string;
-  /** 4-point verdict rating (1 = Strong No … 4 = Strong Yes). */
-  v: RatingValue;
-  note: string;
-}
+/** One interviewer's entry, trimmed to the fields the UI shows. */
+export type Feedback = Pick<
+  SelectFeedback,
+  'id' | 'byFounder' | 'rating' | 'note'
+>;
 
-export interface Candidate {
-  id: number;
-  /** Job id the candidate belongs to. */
-  job: number;
-  name: string;
-  /** Current stage name (must be one of the owning job's stages). */
-  stage: string;
-  /** Owner founder id — the single accountable person. */
-  owner: string;
-  source: string;
-  status: Status;
+/** A candidate plus its embedded feedback (assembled by the relational query). */
+export type Candidate = Pick<
+  SelectCandidate,
+  'id' | 'jobId' | 'name' | 'stage' | 'owner' | 'source' | 'status'
+> & {
   feedback: Feedback[];
-}
+};
 
-export interface Job {
-  id: number;
-  title: string;
-  /** Ordered, per-job stage list. Fully editable at runtime. */
-  stages: string[];
-}
+export type Job = Pick<SelectJob, 'id' | 'title' | 'stages'>;
 
 /** The full board payload the server hands to the client. */
 export interface HiringState {

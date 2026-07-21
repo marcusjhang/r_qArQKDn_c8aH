@@ -37,11 +37,13 @@ export default function DetailDrawer({
   const [fbWho, setFbWho] = useState<string>(FOUNDERS[0].id);
   const [draftV, setDraftV] = useState<RatingValue | null>(null);
   const [note, setNote] = useState('');
+  const [fbError, setFbError] = useState('');
 
   useEffect(() => {
     setFbWho(FOUNDERS[0].id);
     setDraftV(null);
     setNote('');
+    setFbError('');
   }, [openId]);
 
   // Close on Escape while open.
@@ -57,16 +59,33 @@ export default function DetailDrawer({
   function addFeedback() {
     if (!view) return;
     if (!draftV) {
-      window.alert('Pick a rating first.');
+      setFbError('Pick a rating first.');
       return;
     }
-    actions.addFeedback(view.id, { by: fbWho, v: draftV, note: note.trim() });
+    actions.addFeedback(view.id, {
+      byFounder: fbWho,
+      rating: draftV,
+      note: note.trim()
+    });
     setDraftV(null);
     setNote('');
+    setFbError('');
   }
 
-  const job = view ? state.jobs.find((j) => j.id === view.job) : undefined;
+  const job = view ? state.jobs.find((j) => j.id === view.jobId) : undefined;
   const a = view ? agg(view) : null;
+
+  // Stage position drives which footer actions exist (no dead-end buttons).
+  const stageIdx = job && view ? job.stages.indexOf(view.stage) : -1;
+  const canMoveBack = stageIdx > 0;
+  const canAdvance = stageIdx >= 0 && stageIdx < (job?.stages.length ?? 0) - 1;
+
+  // Moving a candidate's stage returns you to the board so the move is visible.
+  function moveAndClose(dir: 1 | -1) {
+    if (!view) return;
+    actions.advance(view.id, dir);
+    onClose();
+  }
 
   return (
     <>
@@ -173,8 +192,8 @@ export default function DetailDrawer({
               ) : (
                 <div className="feedback">
                   {view.feedback.map((f, i) => {
-                    const r = RATINGS[f.v];
-                    const fo = founderById(f.by);
+                    const r = RATINGS[f.rating];
+                    const fo = founderById(f.byFounder);
                     return (
                       <div className="fb-entry" key={i}>
                         <div className="fb-top">
@@ -214,7 +233,10 @@ export default function DetailDrawer({
                       key={v}
                       className={`rp ${RATINGS[v].cls}`}
                       aria-pressed={draftV === v}
-                      onClick={() => setDraftV(v)}
+                      onClick={() => {
+                        setDraftV(v);
+                        setFbError('');
+                      }}
                     >
                       {RATINGS[v].label}
                     </button>
@@ -229,6 +251,7 @@ export default function DetailDrawer({
                   placeholder="What stood out? Concerns?"
                 />
               </div>
+              {fbError && <div className="form-error">{fbError}</div>}
               <button className="btn primary" onClick={addFeedback}>
                 Add feedback
               </button>
@@ -240,18 +263,16 @@ export default function DetailDrawer({
           <div className="stage-now">
             Stage: <b>{view?.stage ?? '—'}</b>
           </div>
-          <button
-            className="btn"
-            onClick={() => view && actions.advance(view.id, -1)}
-          >
-            ← Back
-          </button>
-          <button
-            className="btn primary"
-            onClick={() => view && actions.advance(view.id, 1)}
-          >
-            Advance stage →
-          </button>
+          {canMoveBack && (
+            <button className="btn" onClick={() => moveAndClose(-1)}>
+              ← Move back
+            </button>
+          )}
+          {canAdvance && (
+            <button className="btn primary" onClick={() => moveAndClose(1)}>
+              Advance stage →
+            </button>
+          )}
         </div>
       </aside>
     </>

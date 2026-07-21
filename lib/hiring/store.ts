@@ -6,7 +6,6 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { FOUNDERS } from './config';
 import { stageDeletable } from './helpers';
 import * as api from './actions';
 import type { HiringState, RatingValue, Status } from './types';
@@ -21,13 +20,18 @@ export function canDeleteStage(
   if (!job) return { ok: false };
   const stage = job.stages[index];
   const hasCandidates = state.candidates.some(
-    (c) => c.job === jobId && c.stage === stage
+    (c) => c.jobId === jobId && c.stage === stage
   );
   return stageDeletable(job.stages, hasCandidates);
 }
 
 export interface HiringActions {
-  addCandidate: (jobId: number, name: string, source: string) => void;
+  addCandidate: (
+    jobId: number,
+    name: string,
+    source: string,
+    owner: string
+  ) => void;
   moveTo: (id: number, stage: string) => void;
   advance: (id: number, dir: 1 | -1) => void;
   setOwner: (id: number, owner: string) => void;
@@ -35,7 +39,7 @@ export interface HiringActions {
   setStatus: (id: number, status: Status) => void;
   addFeedback: (
     id: number,
-    entry: { by: string; v: RatingValue; note: string }
+    entry: { byFounder: string; rating: RatingValue; note: string }
   ) => void;
   renameStage: (jobId: number, index: number, name: string) => void;
   addStage: (jobId: number, name: string) => void;
@@ -55,11 +59,24 @@ export function useHiringStore(initial: HiringState): {
   // Always-current snapshot for handlers that need to read before writing.
   const stateRef = useRef(state);
   stateRef.current = state;
+  // Set just before a router.refresh() we requested, so the effect below only
+  // adopts server state on an explicit resync — never clobbering an in-flight
+  // optimistic change during the automatic post-action refresh.
+  const wantResync = useRef(false);
 
-  // Resync when the server sends fresh props (i.e. after router.refresh()).
+  // Adopt fresh server props only when we explicitly asked to resync (error
+  // recovery). Optimistic local state is otherwise authoritative.
   useEffect(() => {
-    setState(initial);
+    if (wantResync.current) {
+      wantResync.current = false;
+      setState(initial);
+    }
   }, [initial]);
+
+  const resync = useCallback(() => {
+    wantResync.current = true;
+    router.refresh();
+  }, [router]);
 
   const persist = useCallback(
     (fn: () => Promise<unknown>) => {
@@ -67,15 +84,15 @@ export function useHiringStore(initial: HiringState): {
         try {
           await fn();
         } catch {
-          router.refresh();
+          resync();
         }
       });
     },
-    [router]
+    [resync]
   );
 
   const addCandidate = useCallback(
-    (jobId: number, name: string, source: string) => {
+    (jobId: number, name: string, source: string, owner: string) => {
       const temp = tempId.current--;
       setState((s) => {
         const job = s.jobs.find((j) => j.id === jobId);
@@ -86,10 +103,10 @@ export function useHiringStore(initial: HiringState): {
             ...s.candidates,
             {
               id: temp,
-              job: jobId,
+              jobId,
               name,
               stage: job.stages[0],
-              owner: FOUNDERS[0].id,
+              owner,
               source,
               status: 'active',
               feedback: []
@@ -99,7 +116,7 @@ export function useHiringStore(initial: HiringState): {
       });
       startTransition(async () => {
         try {
-          const realId = await api.addCandidate(jobId, name, source);
+          const realId = await api.addCandidate(jobId, name, source, owner);
           if (realId != null) {
             setState((s) => ({
               ...s,
@@ -109,11 +126,11 @@ export function useHiringStore(initial: HiringState): {
             }));
           }
         } catch {
-          router.refresh();
+          resync();
         }
       });
     },
-    [router]
+    [resync]
   );
 
   const moveTo = useCallback(
@@ -138,7 +155,7 @@ export function useHiringStore(initial: HiringState): {
       const s = stateRef.current;
       const c = s.candidates.find((x) => x.id === id);
       if (!c) return;
-      const job = s.jobs.find((j) => j.id === c.job);
+      const job = s.jobs.find((j) => j.id === c.jobId);
       if (!job) return;
       const cur = job.stages.indexOf(c.stage);
       const nextIdx = Math.min(job.stages.length - 1, Math.max(0, cur + dir));
@@ -180,7 +197,7 @@ export function useHiringStore(initial: HiringState): {
         ...s,
         candidates: s.candidates.map((c) => {
           if (c.id !== id) return c;
-          const job = s.jobs.find((j) => j.id === c.job);
+          const job = s.jobs.find((j) => j.id === c.jobId);
           const stage =
             status === 'hired' &&
             c.stage !== 'Hired' &&
@@ -196,7 +213,7 @@ export function useHiringStore(initial: HiringState): {
   );
 
   const addFeedback = useCallback(
-    (id: number, entry: { by: string; v: RatingValue; note: string }) => {
+    (id: number, entry: { byFounder: string; rating: RatingValue; note: string }) => {
       const temp = tempId.current--;
       setState((s) => ({
         ...s,
@@ -206,47 +223,66 @@ export function useHiringStore(initial: HiringState): {
             : c
         )
       }));
-      persist(() => api.addFeedback(id, entry.by, entry.v, entry.note));
+      persist(() =>
+        api.addFeedback(id, entry.byFounder, entry.rating, entry.note)
+      );
     },
     [persist]
   );
 
   const renameStage = useCallback(
     (jobId: number, index: number, name: string) => {
-      setState((s) => {
-        const job = s.jobs.find((j) => j.id === jobId);
-        if (!job) return s;
-        const old = job.stages[index];
-        if (!name || name === old) return s;
-        return {
-          ...s,
-          jobs: s.jobs.map((j) =>
-            j.id === jobId
-              ? { ...j, stages: j.stages.map((st, i) => (i === index ? name : st)) }
-              : j
-          ),
-          candidates: s.candidates.map((c) =>
-            c.job === jobId && c.stage === old ? { ...c, stage: name } : c
-          )
-        };
-      });
-      persist(() => api.renameStage(jobId, index, name));
+      const trimmed = name.trim();
+      const job = stateRef.current.jobs.find((j) => j.id === jobId);
+      if (!job) return;
+      const old = job.stages[index];
+      if (old === undefined || !trimmed || trimmed === old) return;
+      // Reject case-insensitive collision with another stage (matches server).
+      if (
+        job.stages.some(
+          (s, i) => i !== index && s.toLowerCase() === trimmed.toLowerCase()
+        )
+      ) {
+        return;
+      }
+      setState((s) => ({
+        ...s,
+        jobs: s.jobs.map((j) =>
+          j.id === jobId
+            ? { ...j, stages: j.stages.map((st, i) => (i === index ? trimmed : st)) }
+            : j
+        ),
+        candidates: s.candidates.map((c) =>
+          c.jobId === jobId && c.stage === old ? { ...c, stage: trimmed } : c
+        )
+      }));
+      persist(() => api.renameStage(jobId, index, trimmed));
     },
     [persist]
   );
 
   const addStage = useCallback(
     (jobId: number, name: string) => {
+      const trimmed = name.trim();
+      const job = stateRef.current.jobs.find((j) => j.id === jobId);
+      if (!job) return;
+      // Reject empties and case-insensitive duplicates (matches server).
+      if (
+        !trimmed ||
+        job.stages.some((s) => s.toLowerCase() === trimmed.toLowerCase())
+      ) {
+        return;
+      }
       setState((s) => ({
         ...s,
         jobs: s.jobs.map((j) => {
           if (j.id !== jobId) return j;
           const stages = [...j.stages];
-          stages.splice(stages.length - 1, 0, name);
+          stages.splice(stages.length - 1, 0, trimmed);
           return { ...j, stages };
         })
       }));
-      persist(() => api.addStage(jobId, name));
+      persist(() => api.addStage(jobId, trimmed));
     },
     [persist]
   );

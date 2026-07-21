@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { count, eq, ilike } from 'drizzle-orm';
 import postgres from 'postgres';
 import { products, type SelectProduct } from './schema';
+import * as schema from './schema';
 
 export { users, type SelectUser, products, type SelectProduct, statusEnum, insertProductSchema } from './schema';
 export {
@@ -16,7 +17,8 @@ export {
   type SelectFeedback
 } from './schema';
 
-export const db = drizzle(postgres(process.env.DATABASE_URL!));
+// Pass the schema (incl. relations) so the db.query relational API is available.
+export const db = drizzle(postgres(process.env.DATABASE_URL!), { schema });
 
 export async function getProducts(
   search: string,

@@ -6,12 +6,12 @@
 // over it so pipeline context stays on screen.
 
 import { useState } from 'react';
-import { SOURCES } from '@/lib/hiring/config';
 import { isTerminal } from '@/lib/hiring/helpers';
 import { useHiringStore } from '@/lib/hiring/store';
 import type { HiringState } from '@/lib/hiring/types';
 import Board from './Board';
 import DetailDrawer from './DetailDrawer';
+import AddCandidateModal from './AddCandidateModal';
 import './hiring.css';
 
 export default function HiringApp({ initial }: { initial: HiringState }) {
@@ -19,11 +19,12 @@ export default function HiringApp({ initial }: { initial: HiringState }) {
   const [activeJob, setActiveJob] = useState<number>(state.jobs[0]?.id ?? 0);
   const [showTerminal, setShowTerminal] = useState(false);
   const [openId, setOpenId] = useState<number | null>(null);
+  const [addingCandidate, setAddingCandidate] = useState(false);
 
   const job = state.jobs.find((j) => j.id === activeJob) ?? state.jobs[0];
 
   function liveCount(jobId: number) {
-    return state.candidates.filter((c) => c.job === jobId && !isTerminal(c))
+    return state.candidates.filter((c) => c.jobId === jobId && !isTerminal(c))
       .length;
   }
 
@@ -32,18 +33,10 @@ export default function HiringApp({ initial }: { initial: HiringState }) {
     setOpenId(null);
   }
 
-  function quickAddCandidate() {
-    if (!job) return;
-    const name = window.prompt('Candidate name:');
-    if (!name || !name.trim()) return;
-    const source =
-      window.prompt(`Source (${SOURCES.join(', ')}):`, 'LinkedIn') || 'LinkedIn';
-    actions.addCandidate(job.id, name.trim(), source.trim());
-  }
 
   const live = job ? liveCount(job.id) : 0;
   const total = job
-    ? state.candidates.filter((c) => c.job === job.id).length
+    ? state.candidates.filter((c) => c.jobId === job.id).length
     : 0;
   const hidden = total - live;
   const meta =
@@ -86,7 +79,11 @@ export default function HiringApp({ initial }: { initial: HiringState }) {
           />{' '}
           Show hired &amp; rejected
         </label>
-        <button className="btn primary" onClick={quickAddCandidate}>
+        <button
+          className="btn primary"
+          onClick={() => setAddingCandidate(true)}
+          disabled={!job}
+        >
           ＋ Add candidate
         </button>
       </div>
@@ -105,6 +102,16 @@ export default function HiringApp({ initial }: { initial: HiringState }) {
         openId={openId}
         onClose={() => setOpenId(null)}
       />
+
+      {addingCandidate && job && (
+        <AddCandidateModal
+          jobTitle={job.title}
+          onClose={() => setAddingCandidate(false)}
+          onAdd={(name, source, owner) =>
+            actions.addCandidate(job.id, name, source, owner)
+          }
+        />
+      )}
     </div>
   );
 }

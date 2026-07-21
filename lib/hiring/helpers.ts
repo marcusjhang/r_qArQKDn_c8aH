@@ -15,7 +15,7 @@ export function isTerminal(c: Candidate): boolean {
 /** Aggregate rating for a candidate, or null when there is no feedback yet. */
 export function agg(c: Candidate): number | null {
   if (!c.feedback.length) return null;
-  return c.feedback.reduce((a, f) => a + f.v, 0) / c.feedback.length;
+  return c.feedback.reduce((a, f) => a + f.rating, 0) / c.feedback.length;
 }
 
 /**

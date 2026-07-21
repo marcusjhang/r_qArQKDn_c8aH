@@ -4,6 +4,7 @@
 // (Decision 5), drag-and-drop stage transitions, inline stage editing
 // (Decision 1) and the terminal-state filter (Decision 3).
 
+import { useEffect, useRef, useState } from 'react';
 import { RATINGS } from '@/lib/hiring/config';
 import { agg, founderById, isTerminal } from '@/lib/hiring/helpers';
 import { canDeleteStage, type HiringActions } from '@/lib/hiring/store';
@@ -51,6 +52,58 @@ function CandidateCard({
   );
 }
 
+// Per-stage options dropdown (Decision 1) — replaces the old typed prompt.
+function StageMenu({
+  index,
+  stagesLen,
+  canDelete,
+  deleteReason,
+  onRename,
+  onMove,
+  onDelete
+}: {
+  index: number;
+  stagesLen: number;
+  canDelete: boolean;
+  deleteReason?: string;
+  onRename: () => void;
+  onMove: (dir: 1 | -1) => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="stage-menu" role="menu">
+      <button className="stage-menu-item" role="menuitem" onClick={onRename}>
+        Rename
+      </button>
+      <button
+        className="stage-menu-item"
+        role="menuitem"
+        disabled={index === 0}
+        onClick={() => onMove(-1)}
+      >
+        Move left
+      </button>
+      <button
+        className="stage-menu-item"
+        role="menuitem"
+        disabled={index === stagesLen - 1}
+        onClick={() => onMove(1)}
+      >
+        Move right
+      </button>
+      <button
+        className="stage-menu-item danger"
+        role="menuitem"
+        disabled={!canDelete}
+        title={canDelete ? undefined : deleteReason}
+        onClick={onDelete}
+      >
+        Delete stage
+      </button>
+    </div>
+  );
+}
+
 function Column({
   job,
   stage,
@@ -68,37 +121,58 @@ function Column({
   state: HiringState;
   onOpen: (id: number) => void;
 }) {
-  function commitRename(text: string) {
-    actions.renameStage(job.id, index, text.trim() || stage);
+  const titleRef = useRef<HTMLDivElement>(null);
+  const menuWrapRef = useRef<HTMLDivElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Close the dropdown on outside click / Escape.
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onDoc(e: MouseEvent) {
+      if (menuWrapRef.current && !menuWrapRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMenuOpen(false);
+    }
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
+
+  // Commit an inline rename; revert the DOM on empty / no-op / duplicate.
+  function commitRename(el: HTMLElement) {
+    const text = (el.textContent ?? '').trim();
+    const duplicate = job.stages.some(
+      (s, i) => i !== index && s.toLowerCase() === text.toLowerCase()
+    );
+    if (!text || text === stage || duplicate) {
+      el.textContent = stage;
+      return;
+    }
+    actions.renameStage(job.id, index, text);
   }
 
-  function openStageMenu() {
-    const act = window.prompt(
-      `Stage "${stage}" — type: rename, left, right, or delete`,
-      'rename'
-    );
-    if (!act) return;
-    const a = act.trim().toLowerCase();
-    if (a === 'delete') {
-      const guard = canDeleteStage(state, job.id, index);
-      if (!guard.ok) {
-        window.alert(guard.reason ?? 'This stage cannot be deleted.');
-        return;
-      }
-      actions.deleteStage(job.id, index);
-    } else if (a === 'left') {
-      actions.reorderStage(job.id, index, -1);
-    } else if (a === 'right') {
-      actions.reorderStage(job.id, index, 1);
-    } else if (a === 'rename') {
-      const n = window.prompt('Rename stage:', stage);
-      if (n) actions.renameStage(job.id, index, n.trim());
-    }
+  function startRename() {
+    const el = titleRef.current;
+    if (!el) return;
+    el.focus();
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
   }
+
+  const del = canDeleteStage(state, job.id, index);
 
   return (
     <div
-      className="column"
+      className={`column${menuOpen ? ' menu-open' : ''}`}
       data-stage={stage}
       onDragOver={(e) => {
         e.preventDefault();
@@ -115,28 +189,56 @@ function Column({
       <div className="col-head">
         <div
           className="col-title"
+          ref={titleRef}
           contentEditable
           suppressContentEditableWarning
           spellCheck={false}
           title="Click to rename this stage"
-          onBlur={(e) => commitRename(e.currentTarget.textContent ?? '')}
+          onBlur={(e) => commitRename(e.currentTarget)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
-              (e.currentTarget as HTMLElement).blur();
+              e.currentTarget.blur();
+            } else if (e.key === 'Escape') {
+              e.currentTarget.textContent = stage;
+              e.currentTarget.blur();
             }
           }}
         >
           {stage}
         </div>
         <span className="col-count">{cards.length}</span>
-        <button
-          className="col-menu"
-          title="Stage options"
-          onClick={openStageMenu}
-        >
-          ⋯
-        </button>
+        <div className="col-menu-wrap" ref={menuWrapRef}>
+          <button
+            className="col-menu"
+            title="Stage options"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((o) => !o)}
+          >
+            ⋯
+          </button>
+          {menuOpen && (
+            <StageMenu
+              index={index}
+              stagesLen={job.stages.length}
+              canDelete={del.ok}
+              deleteReason={del.reason}
+              onRename={() => {
+                setMenuOpen(false);
+                startRename();
+              }}
+              onMove={(dir) => {
+                setMenuOpen(false);
+                actions.reorderStage(job.id, index, dir);
+              }}
+              onDelete={() => {
+                setMenuOpen(false);
+                actions.deleteStage(job.id, index);
+              }}
+            />
+          )}
+        </div>
       </div>
       <div className="col-body">
         {cards.length === 0 ? (
@@ -146,6 +248,84 @@ function Column({
             <CandidateCard key={c.id} candidate={c} onOpen={onOpen} />
           ))
         )}
+      </div>
+    </div>
+  );
+}
+
+// Inline "add stage" — a text input with a live duplicate guard.
+function AddStageGhost({
+  job,
+  onAdd
+}: {
+  job: Job;
+  onAdd: (name: string) => void;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState('');
+  const [error, setError] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (adding) inputRef.current?.focus();
+  }, [adding]);
+
+  function reset() {
+    setName('');
+    setError('');
+    setAdding(false);
+  }
+
+  function submit() {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setError('Enter a stage name.');
+      return;
+    }
+    if (job.stages.some((s) => s.toLowerCase() === trimmed.toLowerCase())) {
+      setError('That stage already exists.');
+      return;
+    }
+    onAdd(trimmed);
+    reset();
+  }
+
+  if (!adding) {
+    return (
+      <button className="add-stage" onClick={() => setAdding(true)}>
+        ＋ Add stage
+      </button>
+    );
+  }
+
+  return (
+    <div className="add-stage-form">
+      <input
+        ref={inputRef}
+        type="text"
+        placeholder="Stage name"
+        value={name}
+        onChange={(e) => {
+          setName(e.target.value);
+          setError('');
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            submit();
+          } else if (e.key === 'Escape') {
+            reset();
+          }
+        }}
+      />
+      {error && <div className="form-error">{error}</div>}
+      <div className="add-stage-actions">
+        <button type="button" className="btn" onClick={reset}>
+          Cancel
+        </button>
+        <button type="button" className="btn primary" onClick={submit}>
+          Add
+        </button>
       </div>
     </div>
   );
@@ -167,16 +347,7 @@ export default function Board({
   const job = state.jobs.find((j) => j.id === activeJob);
   if (!job) return null;
 
-  function addStage() {
-    const name = window.prompt(
-      'New stage name (added to this job only):',
-      'Team & Culture'
-    );
-    if (!name || !name.trim()) return;
-    actions.addStage(job!.id, name.trim());
-  }
-
-  const jobCandidates = state.candidates.filter((c) => c.job === job.id);
+  const jobCandidates = state.candidates.filter((c) => c.jobId === job.id);
 
   return (
     <div className="board-scroll">
@@ -198,9 +369,10 @@ export default function Board({
             />
           );
         })}
-        <button className="add-stage" onClick={addStage}>
-          ＋ Add stage
-        </button>
+        <AddStageGhost
+          job={job}
+          onAdd={(name) => actions.addStage(job.id, name)}
+        />
       </div>
     </div>
   );
