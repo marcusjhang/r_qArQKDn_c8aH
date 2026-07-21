@@ -41,9 +41,10 @@ bun run dev
 
 ## Accounts
 
-The seed creates one admin login: **`admin@admin.com` / `password`**. Change
-this before any non-demo use. You can also create accounts via **Sign up** on
-`/login`. Any signed-in user can use the board.
+The seed creates one login: **`marcusajh0802@gmail.com` / `password`** (override
+the password with `SEED_PASSWORD`). Change it before any non-demo use. New
+accounts are created via **Sign up** on `/login`, restricted to the email
+allowlist managed on `/settings`. Any signed-in user can use the board.
 
 ## Scripts
 

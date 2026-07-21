@@ -16,7 +16,6 @@ const SEED_ALLOWED_EMAILS = [
 // Login accounts created on seed. Override the shared password via SEED_PASSWORD.
 const SEED_PASSWORD = process.env.SEED_PASSWORD ?? 'password';
 const SEED_ACCOUNTS = [
-  { email: 'admin@admin.com', name: 'Admin', role: 'admin' as const },
   { email: 'marcusajh0802@gmail.com', name: 'Marcus Ang', role: 'admin' as const }
 ];
 
