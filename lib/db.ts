@@ -6,6 +6,15 @@ import postgres from 'postgres';
 import { products, type SelectProduct } from './schema';
 
 export { users, type SelectUser, products, type SelectProduct, statusEnum, insertProductSchema } from './schema';
+export {
+  jobs,
+  candidates,
+  feedback,
+  candidateStatusEnum,
+  type SelectJob,
+  type SelectCandidate,
+  type SelectFeedback
+} from './schema';
 
 export const db = drizzle(postgres(process.env.DATABASE_URL!));
 

@@ -160,7 +160,7 @@ export default function Board({
 }: {
   state: HiringState;
   actions: HiringActions;
-  activeJob: string;
+  activeJob: number;
   showTerminal: boolean;
   onOpen: (id: number) => void;
 }) {

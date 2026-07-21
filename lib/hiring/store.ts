@@ -1,39 +1,20 @@
 'use client';
 
-// In-memory store for the Hiring Pipeline Tracker with optional localStorage
-// persistence. Seeds on boot when nothing is stored, so the app comes up
-// populated with zero setup and no backend.
+// Client store for the board. State is seeded from the server (getBoardData)
+// and every mutation is applied optimistically, then persisted via a server
+// action. On a failed write we router.refresh() to resync from the database.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { FOUNDERS } from './config';
-import { seedState } from './seed';
-import type {
-  Candidate,
-  Feedback,
-  HiringState,
-  Job,
-  Status
-} from './types';
+import { stageDeletable } from './helpers';
+import * as api from './actions';
+import type { HiringState, RatingValue, Status } from './types';
 
-const STORAGE_KEY = 'ht.state.v1';
-
-function loadPersisted(): HiringState | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as HiringState;
-    if (!parsed?.jobs?.length || !Array.isArray(parsed.candidates)) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-/** Pure guard: a stage can be deleted only when empty and not the last two. */
+/** Pure guard used by the board's column menu before calling deleteStage. */
 export function canDeleteStage(
   state: HiringState,
-  jobId: string,
+  jobId: number,
   index: number
 ): { ok: boolean; reason?: string } {
   const job = state.jobs.find((j) => j.id === jobId);
@@ -42,203 +23,267 @@ export function canDeleteStage(
   const hasCandidates = state.candidates.some(
     (c) => c.job === jobId && c.stage === stage
   );
-  if (hasCandidates) {
-    return {
-      ok: false,
-      reason: 'Move its candidates out first — the column still holds people.'
-    };
-  }
-  if (job.stages.length <= 2) {
-    return { ok: false, reason: 'A pipeline needs at least two stages.' };
-  }
-  return { ok: true };
+  return stageDeletable(job.stages, hasCandidates);
 }
 
 export interface HiringActions {
-  addCandidate: (jobId: string, name: string, source: string) => void;
+  addCandidate: (jobId: number, name: string, source: string) => void;
   moveTo: (id: number, stage: string) => void;
   advance: (id: number, dir: 1 | -1) => void;
   setOwner: (id: number, owner: string) => void;
   setSource: (id: number, source: string) => void;
   setStatus: (id: number, status: Status) => void;
-  addFeedback: (id: number, entry: Feedback) => void;
-  renameStage: (jobId: string, index: number, name: string) => void;
-  addStage: (jobId: string, name: string) => void;
-  reorderStage: (jobId: string, index: number, dir: 1 | -1) => void;
-  deleteStage: (jobId: string, index: number) => void;
+  addFeedback: (
+    id: number,
+    entry: { by: string; v: RatingValue; note: string }
+  ) => void;
+  renameStage: (jobId: number, index: number, name: string) => void;
+  addStage: (jobId: number, name: string) => void;
+  reorderStage: (jobId: number, index: number, dir: 1 | -1) => void;
+  deleteStage: (jobId: number, index: number) => void;
 }
 
-function mapJob(state: HiringState, jobId: string, fn: (j: Job) => Job): HiringState {
-  return { ...state, jobs: state.jobs.map((j) => (j.id === jobId ? fn(j) : j)) };
-}
+export function useHiringStore(initial: HiringState): {
+  state: HiringState;
+  actions: HiringActions;
+} {
+  const [state, setState] = useState<HiringState>(initial);
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  // Negative ids for optimistic rows until the server hands back a real one.
+  const tempId = useRef(-1);
+  // Always-current snapshot for handlers that need to read before writing.
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
-function mapCandidate(
-  state: HiringState,
-  id: number,
-  fn: (c: Candidate) => Candidate
-): HiringState {
-  return {
-    ...state,
-    candidates: state.candidates.map((c) => (c.id === id ? fn(c) : c))
-  };
-}
-
-export function useHiringStore(): { state: HiringState; actions: HiringActions } {
-  const [state, setState] = useState<HiringState>(seedState);
-
-  // Hydrate from localStorage after mount (keeps SSR output deterministic).
+  // Resync when the server sends fresh props (i.e. after router.refresh()).
   useEffect(() => {
-    const persisted = loadPersisted();
-    if (persisted) setState(persisted);
-  }, []);
+    setState(initial);
+  }, [initial]);
 
-  // Persist on every change.
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {
-      /* ignore quota / private-mode errors */
-    }
-  }, [state]);
+  const persist = useCallback(
+    (fn: () => Promise<unknown>) => {
+      startTransition(async () => {
+        try {
+          await fn();
+        } catch {
+          router.refresh();
+        }
+      });
+    },
+    [router]
+  );
 
   const addCandidate = useCallback(
-    (jobId: string, name: string, source: string) => {
+    (jobId: number, name: string, source: string) => {
+      const temp = tempId.current--;
       setState((s) => {
         const job = s.jobs.find((j) => j.id === jobId);
         if (!job) return s;
-        const candidate: Candidate = {
-          id: s.nextId,
-          job: jobId,
-          name,
-          stage: job.stages[0],
-          owner: FOUNDERS[0].id,
-          source,
-          status: 'active',
-          feedback: []
-        };
         return {
           ...s,
-          candidates: [...s.candidates, candidate],
-          nextId: s.nextId + 1
+          candidates: [
+            ...s.candidates,
+            {
+              id: temp,
+              job: jobId,
+              name,
+              stage: job.stages[0],
+              owner: FOUNDERS[0].id,
+              source,
+              status: 'active',
+              feedback: []
+            }
+          ]
         };
       });
+      startTransition(async () => {
+        try {
+          const realId = await api.addCandidate(jobId, name, source);
+          if (realId != null) {
+            setState((s) => ({
+              ...s,
+              candidates: s.candidates.map((c) =>
+                c.id === temp ? { ...c, id: realId } : c
+              )
+            }));
+          }
+        } catch {
+          router.refresh();
+        }
+      });
     },
-    []
+    [router]
   );
 
-  const moveTo = useCallback((id: number, stage: string) => {
-    setState((s) =>
-      mapCandidate(s, id, (c) => {
-        let status = c.status;
-        if (stage === 'Hired') status = 'hired';
-        else if (c.status === 'hired') status = 'active';
-        return { ...c, stage, status };
-      })
-    );
-  }, []);
+  const moveTo = useCallback(
+    (id: number, stage: string) => {
+      setState((s) => ({
+        ...s,
+        candidates: s.candidates.map((c) => {
+          if (c.id !== id) return c;
+          let status: Status = c.status;
+          if (stage === 'Hired') status = 'hired';
+          else if (c.status === 'hired') status = 'active';
+          return { ...c, stage, status };
+        })
+      }));
+      persist(() => api.moveStage(id, stage));
+    },
+    [persist]
+  );
 
-  const advance = useCallback((id: number, dir: 1 | -1) => {
-    setState((s) => {
+  const advance = useCallback(
+    (id: number, dir: 1 | -1) => {
+      const s = stateRef.current;
       const c = s.candidates.find((x) => x.id === id);
-      if (!c) return s;
+      if (!c) return;
       const job = s.jobs.find((j) => j.id === c.job);
-      if (!job) return s;
+      if (!job) return;
       const cur = job.stages.indexOf(c.stage);
-      const next = Math.min(job.stages.length - 1, Math.max(0, cur + dir));
-      const stage = job.stages[next];
-      return mapCandidate(s, id, (x) => {
-        let status = x.status;
-        if (stage === 'Hired') status = 'hired';
-        else if (x.status === 'hired') status = 'active';
-        return { ...x, stage, status };
-      });
-    });
-  }, []);
+      const nextIdx = Math.min(job.stages.length - 1, Math.max(0, cur + dir));
+      const stage = job.stages[nextIdx];
+      if (stage !== c.stage) moveTo(id, stage);
+    },
+    [moveTo]
+  );
 
-  const setOwner = useCallback((id: number, owner: string) => {
-    setState((s) => mapCandidate(s, id, (c) => ({ ...c, owner })));
-  }, []);
-
-  const setSource = useCallback((id: number, source: string) => {
-    setState((s) => mapCandidate(s, id, (c) => ({ ...c, source })));
-  }, []);
-
-  const setStatus = useCallback((id: number, status: Status) => {
-    setState((s) =>
-      mapCandidate(s, id, (c) => {
-        const job = s.jobs.find((j) => j.id === c.job);
-        // Setting status to Hired moves the card into the Hired stage if one exists.
-        const stage =
-          status === 'hired' &&
-          c.stage !== 'Hired' &&
-          job?.stages.includes('Hired')
-            ? 'Hired'
-            : c.stage;
-        return { ...c, status, stage };
-      })
-    );
-  }, []);
-
-  const addFeedback = useCallback((id: number, entry: Feedback) => {
-    setState((s) =>
-      mapCandidate(s, id, (c) => ({ ...c, feedback: [...c.feedback, entry] }))
-    );
-  }, []);
-
-  const renameStage = useCallback((jobId: string, index: number, name: string) => {
-    setState((s) => {
-      const job = s.jobs.find((j) => j.id === jobId);
-      if (!job) return s;
-      const old = job.stages[index];
-      if (!name || name === old) return s;
-      const next = mapJob(s, jobId, (j) => {
-        const stages = [...j.stages];
-        stages[index] = name;
-        return { ...j, stages };
-      });
-      // Keep candidates in the renamed column pointing at the new name.
-      return {
-        ...next,
-        candidates: next.candidates.map((c) =>
-          c.job === jobId && c.stage === old ? { ...c, stage: name } : c
+  const setOwner = useCallback(
+    (id: number, owner: string) => {
+      setState((s) => ({
+        ...s,
+        candidates: s.candidates.map((c) =>
+          c.id === id ? { ...c, owner } : c
         )
-      };
-    });
-  }, []);
+      }));
+      persist(() => api.setOwner(id, owner));
+    },
+    [persist]
+  );
 
-  const addStage = useCallback((jobId: string, name: string) => {
-    setState((s) =>
-      mapJob(s, jobId, (j) => {
-        const stages = [...j.stages];
-        stages.splice(stages.length - 1, 0, name); // insert before the last stage
-        return { ...j, stages };
-      })
-    );
-  }, []);
+  const setSource = useCallback(
+    (id: number, source: string) => {
+      setState((s) => ({
+        ...s,
+        candidates: s.candidates.map((c) =>
+          c.id === id ? { ...c, source } : c
+        )
+      }));
+      persist(() => api.setSource(id, source));
+    },
+    [persist]
+  );
 
-  const reorderStage = useCallback((jobId: string, index: number, dir: 1 | -1) => {
-    setState((s) =>
-      mapJob(s, jobId, (j) => {
-        const target = index + dir;
-        if (target < 0 || target >= j.stages.length) return j;
-        const stages = [...j.stages];
-        [stages[index], stages[target]] = [stages[target], stages[index]];
-        return { ...j, stages };
-      })
-    );
-  }, []);
+  const setStatus = useCallback(
+    (id: number, status: Status) => {
+      setState((s) => ({
+        ...s,
+        candidates: s.candidates.map((c) => {
+          if (c.id !== id) return c;
+          const job = s.jobs.find((j) => j.id === c.job);
+          const stage =
+            status === 'hired' &&
+            c.stage !== 'Hired' &&
+            job?.stages.includes('Hired')
+              ? 'Hired'
+              : c.stage;
+          return { ...c, status, stage };
+        })
+      }));
+      persist(() => api.setStatus(id, status));
+    },
+    [persist]
+  );
 
-  const deleteStage = useCallback((jobId: string, index: number) => {
-    setState((s) => {
-      if (!canDeleteStage(s, jobId, index).ok) return s;
-      return mapJob(s, jobId, (j) => {
-        const stages = [...j.stages];
-        stages.splice(index, 1);
-        return { ...j, stages };
+  const addFeedback = useCallback(
+    (id: number, entry: { by: string; v: RatingValue; note: string }) => {
+      const temp = tempId.current--;
+      setState((s) => ({
+        ...s,
+        candidates: s.candidates.map((c) =>
+          c.id === id
+            ? { ...c, feedback: [...c.feedback, { id: temp, ...entry }] }
+            : c
+        )
+      }));
+      persist(() => api.addFeedback(id, entry.by, entry.v, entry.note));
+    },
+    [persist]
+  );
+
+  const renameStage = useCallback(
+    (jobId: number, index: number, name: string) => {
+      setState((s) => {
+        const job = s.jobs.find((j) => j.id === jobId);
+        if (!job) return s;
+        const old = job.stages[index];
+        if (!name || name === old) return s;
+        return {
+          ...s,
+          jobs: s.jobs.map((j) =>
+            j.id === jobId
+              ? { ...j, stages: j.stages.map((st, i) => (i === index ? name : st)) }
+              : j
+          ),
+          candidates: s.candidates.map((c) =>
+            c.job === jobId && c.stage === old ? { ...c, stage: name } : c
+          )
+        };
       });
-    });
-  }, []);
+      persist(() => api.renameStage(jobId, index, name));
+    },
+    [persist]
+  );
+
+  const addStage = useCallback(
+    (jobId: number, name: string) => {
+      setState((s) => ({
+        ...s,
+        jobs: s.jobs.map((j) => {
+          if (j.id !== jobId) return j;
+          const stages = [...j.stages];
+          stages.splice(stages.length - 1, 0, name);
+          return { ...j, stages };
+        })
+      }));
+      persist(() => api.addStage(jobId, name));
+    },
+    [persist]
+  );
+
+  const reorderStage = useCallback(
+    (jobId: number, index: number, dir: 1 | -1) => {
+      setState((s) => ({
+        ...s,
+        jobs: s.jobs.map((j) => {
+          if (j.id !== jobId) return j;
+          const target = index + dir;
+          if (target < 0 || target >= j.stages.length) return j;
+          const stages = [...j.stages];
+          [stages[index], stages[target]] = [stages[target], stages[index]];
+          return { ...j, stages };
+        })
+      }));
+      persist(() => api.reorderStage(jobId, index, dir));
+    },
+    [persist]
+  );
+
+  const deleteStage = useCallback(
+    (jobId: number, index: number) => {
+      if (!canDeleteStage(stateRef.current, jobId, index).ok) return;
+      setState((s) => ({
+        ...s,
+        jobs: s.jobs.map((j) =>
+          j.id === jobId
+            ? { ...j, stages: j.stages.filter((_, i) => i !== index) }
+            : j
+        )
+      }));
+      persist(() => api.deleteStage(jobId, index));
+    },
+    [persist]
+  );
 
   const actions: HiringActions = {
     addCandidate,

@@ -1,5 +1,9 @@
 import HiringApp from '@/components/hiring/HiringApp';
+import { getBoardData } from '@/lib/hiring/queries';
 
-export default function Page() {
-  return <HiringApp />;
+export const dynamic = 'force-dynamic';
+
+export default async function Page() {
+  const initial = await getBoardData();
+  return <HiringApp initial={initial} />;
 }

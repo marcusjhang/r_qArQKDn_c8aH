@@ -12,6 +12,8 @@ export interface Founder {
 }
 
 export interface Feedback {
+  /** Feedback row id. */
+  id: number;
   /** Founder id of the interviewer who left this entry. */
   by: string;
   /** 4-point verdict rating (1 = Strong No … 4 = Strong Yes). */
@@ -22,7 +24,7 @@ export interface Feedback {
 export interface Candidate {
   id: number;
   /** Job id the candidate belongs to. */
-  job: string;
+  job: number;
   name: string;
   /** Current stage name (must be one of the owning job's stages). */
   stage: string;
@@ -34,15 +36,14 @@ export interface Candidate {
 }
 
 export interface Job {
-  id: string;
+  id: number;
   title: string;
   /** Ordered, per-job stage list. Fully editable at runtime. */
   stages: string[];
 }
 
+/** The full board payload the server hands to the client. */
 export interface HiringState {
   jobs: Job[];
   candidates: Candidate[];
-  /** Next candidate id to hand out on quick-add. */
-  nextId: number;
 }

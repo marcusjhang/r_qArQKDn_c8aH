@@ -17,3 +17,24 @@ export function agg(c: Candidate): number | null {
   if (!c.feedback.length) return null;
   return c.feedback.reduce((a, f) => a + f.v, 0) / c.feedback.length;
 }
+
+/**
+ * Pure guard for deleting a stage: only allowed when the column is empty and
+ * the job would keep at least two stages. Shared by the server action and the
+ * client's optimistic pre-check.
+ */
+export function stageDeletable(
+  stages: string[],
+  columnHasCandidates: boolean
+): { ok: boolean; reason?: string } {
+  if (columnHasCandidates) {
+    return {
+      ok: false,
+      reason: 'Move its candidates out first — the column still holds people.'
+    };
+  }
+  if (stages.length <= 2) {
+    return { ok: false, reason: 'A pipeline needs at least two stages.' };
+  }
+  return { ok: true };
+}

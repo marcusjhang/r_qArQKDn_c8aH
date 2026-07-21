@@ -9,24 +9,25 @@ import { useState } from 'react';
 import { SOURCES } from '@/lib/hiring/config';
 import { isTerminal } from '@/lib/hiring/helpers';
 import { useHiringStore } from '@/lib/hiring/store';
+import type { HiringState } from '@/lib/hiring/types';
 import Board from './Board';
 import DetailDrawer from './DetailDrawer';
 import './hiring.css';
 
-export default function HiringApp() {
-  const { state, actions } = useHiringStore();
-  const [activeJob, setActiveJob] = useState(state.jobs[0]?.id ?? '');
+export default function HiringApp({ initial }: { initial: HiringState }) {
+  const { state, actions } = useHiringStore(initial);
+  const [activeJob, setActiveJob] = useState<number>(state.jobs[0]?.id ?? 0);
   const [showTerminal, setShowTerminal] = useState(false);
   const [openId, setOpenId] = useState<number | null>(null);
 
   const job = state.jobs.find((j) => j.id === activeJob) ?? state.jobs[0];
 
-  function liveCount(jobId: string) {
+  function liveCount(jobId: number) {
     return state.candidates.filter((c) => c.job === jobId && !isTerminal(c))
       .length;
   }
 
-  function selectJob(jobId: string) {
+  function selectJob(jobId: number) {
     setActiveJob(jobId);
     setOpenId(null);
   }
