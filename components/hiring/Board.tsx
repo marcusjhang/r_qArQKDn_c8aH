@@ -6,7 +6,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { RATINGS } from '@/lib/hiring/config';
-import { agg, founderById, isTerminal } from '@/lib/hiring/helpers';
+import { agg, founderById, isHiddenByDefault } from '@/lib/hiring/helpers';
 import { canDeleteStage, type HiringActions } from '@/lib/hiring/store';
 import type { Candidate, HiringState, Job } from '@/lib/hiring/types';
 
@@ -335,13 +335,13 @@ export default function Board({
   state,
   actions,
   activeJob,
-  showTerminal,
+  showRejected,
   onOpen
 }: {
   state: HiringState;
   actions: HiringActions;
   activeJob: number;
-  showTerminal: boolean;
+  showRejected: boolean;
   onOpen: (id: number) => void;
 }) {
   const job = state.jobs.find((j) => j.id === activeJob);
@@ -354,7 +354,7 @@ export default function Board({
       <div className="board">
         {job.stages.map((stage, index) => {
           const cards = jobCandidates.filter(
-            (c) => c.stage === stage && (showTerminal || !isTerminal(c))
+            (c) => c.stage === stage && (showRejected || !isHiddenByDefault(c))
           );
           return (
             <Column

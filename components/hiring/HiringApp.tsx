@@ -25,7 +25,7 @@ export default function HiringApp({
 }) {
   const { state, actions } = useHiringStore(initial);
   const [activeJob, setActiveJob] = useState<number>(state.jobs[0]?.id ?? 0);
-  const [showTerminal, setShowTerminal] = useState(false);
+  const [showRejected, setShowRejected] = useState(false);
   const [openId, setOpenId] = useState<number | null>(null);
   const [addingCandidate, setAddingCandidate] = useState(false);
 
@@ -42,14 +42,18 @@ export default function HiringApp({
   }
 
 
+  const jobCands = job
+    ? state.candidates.filter((c) => c.jobId === job.id)
+    : [];
   const live = job ? liveCount(job.id) : 0;
-  const total = job
-    ? state.candidates.filter((c) => c.jobId === job.id).length
-    : 0;
-  const hidden = total - live;
+  const hiredCount = jobCands.filter((c) => c.status === 'hired').length;
+  const rejectedCount = jobCands.filter((c) => c.status === 'rejected').length;
   const meta =
     `${live} active candidate${live === 1 ? '' : 's'}` +
-    (hidden && !showTerminal ? ` · ${hidden} hidden (hired/rejected)` : '');
+    (hiredCount ? ` · ${hiredCount} hired` : '') +
+    (rejectedCount && !showRejected
+      ? ` · ${rejectedCount} rejected hidden`
+      : '');
 
   return (
     <div className="ht-root">
@@ -86,10 +90,10 @@ export default function HiringApp({
         <label className="toggle">
           <input
             type="checkbox"
-            checked={showTerminal}
-            onChange={(e) => setShowTerminal(e.target.checked)}
+            checked={showRejected}
+            onChange={(e) => setShowRejected(e.target.checked)}
           />{' '}
-          Show hired &amp; rejected
+          Show rejected
         </label>
         <button
           className="btn primary"
@@ -104,7 +108,7 @@ export default function HiringApp({
         state={state}
         actions={actions}
         activeJob={activeJob}
-        showTerminal={showTerminal}
+        showRejected={showRejected}
         onOpen={setOpenId}
       />
 
