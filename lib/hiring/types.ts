@@ -33,7 +33,7 @@ export type Candidate = Pick<
   feedback: Feedback[];
 };
 
-export type Job = Pick<SelectJob, 'id' | 'title' | 'stages'>;
+export type Job = Pick<SelectJob, 'id' | 'title' | 'stages' | 'starred'>;
 
 /** The full board payload the server hands to the client. */
 export interface HiringState {

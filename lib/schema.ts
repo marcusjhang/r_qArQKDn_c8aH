@@ -6,6 +6,7 @@ import {
   pgEnum,
   serial,
   varchar,
+  boolean,
   check
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
@@ -49,6 +50,8 @@ export const jobs = pgTable('jobs', {
   // stays inspectable/queryable in SQL.
   stages: text('stages').array().notNull(),
   position: integer('position').notNull().default(0),
+  // Starred jobs are pinned as inline tabs (shown outside the jobs dropdown).
+  starred: boolean('starred').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 

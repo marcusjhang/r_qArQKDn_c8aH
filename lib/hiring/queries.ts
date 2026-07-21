@@ -11,7 +11,7 @@ import type { HiringState } from './types';
 export async function getBoardData(): Promise<HiringState> {
   const [jobs, candidates] = await Promise.all([
     db.query.jobs.findMany({
-      columns: { id: true, title: true, stages: true },
+      columns: { id: true, title: true, stages: true, starred: true },
       orderBy: (j, { asc }) => [asc(j.position), asc(j.id)]
     }),
     db.query.candidates.findMany({

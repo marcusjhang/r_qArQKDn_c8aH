@@ -29,6 +29,8 @@ export function canDeleteStage(
 export interface HiringActions {
   /** Create a job (with default stages); onReady fires with the new job id. */
   createJob: (title: string, onReady: (id: number) => void) => void;
+  setJobStarred: (jobId: number, starred: boolean) => void;
+  deleteJob: (jobId: number) => void;
   addCandidate: (
     jobId: number,
     name: string,
@@ -103,7 +105,7 @@ export function useHiringStore(initial: HiringState): {
         ...s,
         jobs: [
           ...s.jobs,
-          { id: temp, title: trimmed, stages: [...DEFAULT_STAGES] }
+          { id: temp, title: trimmed, stages: [...DEFAULT_STAGES], starred: false }
         ]
       }));
       onReady(temp); // switch to the optimistic job immediately
@@ -123,6 +125,29 @@ export function useHiringStore(initial: HiringState): {
       });
     },
     [resync]
+  );
+
+  const setJobStarred = useCallback(
+    (jobId: number, starred: boolean) => {
+      setState((s) => ({
+        ...s,
+        jobs: s.jobs.map((j) => (j.id === jobId ? { ...j, starred } : j))
+      }));
+      persist(() => api.setJobStarred(jobId, starred));
+    },
+    [persist]
+  );
+
+  const deleteJob = useCallback(
+    (jobId: number) => {
+      setState((s) => ({
+        ...s,
+        jobs: s.jobs.filter((j) => j.id !== jobId),
+        candidates: s.candidates.filter((c) => c.jobId !== jobId)
+      }));
+      persist(() => api.deleteJob(jobId));
+    },
+    [persist]
   );
 
   const addCandidate = useCallback(
@@ -344,6 +369,8 @@ export function useHiringStore(initial: HiringState): {
 
   const actions: HiringActions = {
     createJob,
+    setJobStarred,
+    deleteJob,
     addCandidate,
     moveTo,
     advance,

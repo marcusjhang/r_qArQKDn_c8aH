@@ -79,6 +79,19 @@ export async function addCandidate(
   return row?.id ?? null;
 }
 
+export async function setJobStarred(jobIdRaw: number, starred: boolean) {
+  const jobId = zId.parse(jobIdRaw);
+  await db.update(jobs).set({ starred: !!starred }).where(eq(jobs.id, jobId));
+  revalidatePath('/');
+}
+
+/** Delete a job; its candidates and feedback cascade via the FKs. */
+export async function deleteJob(jobIdRaw: number) {
+  const jobId = zId.parse(jobIdRaw);
+  await db.delete(jobs).where(eq(jobs.id, jobId));
+  revalidatePath('/');
+}
+
 export async function moveStage(idRaw: number, stageRaw: string) {
   const id = zId.parse(idRaw);
   const stage = zStageName.parse(stageRaw);

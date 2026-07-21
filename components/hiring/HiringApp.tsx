@@ -5,7 +5,7 @@
 // slide-over. Board-first: the board is the home screen and the drawer opens
 // over it so pipeline context stays on screen.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { isTerminal } from '@/lib/hiring/helpers';
 import { useHiringStore } from '@/lib/hiring/store';
@@ -14,6 +14,7 @@ import Board from './Board';
 import DetailDrawer from './DetailDrawer';
 import AddCandidateModal from './AddCandidateModal';
 import NewJobModal from './NewJobModal';
+import JobTabs from './JobTabs';
 import TopBar from './TopBar';
 import './hiring.css';
 
@@ -30,6 +31,13 @@ export default function HiringApp({
   const [openId, setOpenId] = useState<number | null>(null);
   const [addingCandidate, setAddingCandidate] = useState(false);
   const [creatingJob, setCreatingJob] = useState(false);
+
+  // Keep a valid active job — e.g. after deleting the active job, fall back.
+  useEffect(() => {
+    if (state.jobs.length && !state.jobs.some((j) => j.id === activeJob)) {
+      setActiveJob(state.jobs[0].id);
+    }
+  }, [state.jobs, activeJob]);
 
   const job = state.jobs.find((j) => j.id === activeJob) ?? state.jobs[0];
 
@@ -60,18 +68,14 @@ export default function HiringApp({
   return (
     <div className="ht-root">
       <TopBar subtitle="Pipeline Tracker" userEmail={userEmail}>
-        <nav className="jobtabs" aria-label="Jobs">
-          {state.jobs.map((j) => (
-            <button
-              key={j.id}
-              className="jobtab"
-              aria-selected={j.id === activeJob}
-              onClick={() => selectJob(j.id)}
-            >
-              {j.title} <span className="count">{liveCount(j.id)}</span>
-            </button>
-          ))}
-        </nav>
+        <JobTabs
+          jobs={state.jobs}
+          activeJob={activeJob}
+          liveCount={liveCount}
+          onSelect={selectJob}
+          onToggleStar={actions.setJobStarred}
+          onDelete={actions.deleteJob}
+        />
         <button className="btn primary" onClick={() => setCreatingJob(true)}>
           ＋ New job
         </button>
