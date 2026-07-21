@@ -5,6 +5,7 @@
 // (pin as a tab) and delete jobs. The active job is always kept visible.
 
 import { useEffect, useRef, useState } from 'react';
+import { MAX_FAVORITES } from '@/lib/hiring/helpers';
 import type { Job } from '@/lib/hiring/types';
 
 const INLINE_CAP = 4;
@@ -58,6 +59,7 @@ export default function JobTabs({
   }
   const inlineIds = new Set(inline.map((j) => j.id));
   const overflow = sorted.filter((j) => !inlineIds.has(j.id));
+  const favCount = jobs.filter((j) => j.starred).length;
 
   return (
     <div className="jobtabs" ref={ref}>
@@ -94,7 +96,14 @@ export default function JobTabs({
                 <button
                   className="jobmenu-star"
                   aria-pressed={j.starred}
-                  title={j.starred ? 'Unstar' : 'Star (pin as a tab)'}
+                  disabled={!j.starred && favCount >= MAX_FAVORITES}
+                  title={
+                    j.starred
+                      ? 'Unfavorite'
+                      : favCount >= MAX_FAVORITES
+                        ? `You can favorite up to ${MAX_FAVORITES} jobs`
+                        : 'Favorite (pin as a tab)'
+                  }
                   onClick={() => onToggleStar(j.id, !j.starred)}
                 >
                   {j.starred ? '★' : '☆'}

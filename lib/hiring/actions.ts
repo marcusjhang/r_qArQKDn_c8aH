@@ -7,10 +7,10 @@
 // the optimistic change. (The whole app is gated by the auth middleware, so a
 // caller here is already an authenticated user.)
 
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, ne, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db, jobs, candidates, feedback } from '@/lib/db';
-import { stageDeletable, validateStageName } from './helpers';
+import { stageDeletable, validateStageName, MAX_FAVORITES } from './helpers';
 import { DEFAULT_STAGES } from './config';
 import type { Status } from './types';
 import {
@@ -81,6 +81,14 @@ export async function addCandidate(
 
 export async function setJobStarred(jobIdRaw: number, starred: boolean) {
   const jobId = zId.parse(jobIdRaw);
+  if (starred) {
+    // Enforce the favorites cap (count other starred jobs).
+    const [{ n }] = await db
+      .select({ n: sql<number>`count(*)` })
+      .from(jobs)
+      .where(and(eq(jobs.starred, true), ne(jobs.id, jobId)));
+    if (Number(n) >= MAX_FAVORITES) return;
+  }
   await db.update(jobs).set({ starred: !!starred }).where(eq(jobs.id, jobId));
   revalidatePath('/');
 }

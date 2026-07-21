@@ -29,6 +29,9 @@ export function agg(c: Candidate): number | null {
 /** Max length of a stage name (kept in sync with the DB/zod bound). */
 export const MAX_STAGE_NAME = 48;
 
+/** At most this many jobs can be favorited (pinned as inline tabs). */
+export const MAX_FAVORITES = 3;
+
 /**
  * Single source of truth for stage-name rules (non-empty, length, and
  * case-insensitive uniqueness). Shared by the board UI, the optimistic store,

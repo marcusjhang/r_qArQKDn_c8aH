@@ -1151,3 +1151,8 @@
 .ht-root .linkbtn:hover {
   background: var(--surface-2);
 }
+
+.ht-root .jobmenu-star:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

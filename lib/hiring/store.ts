@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { stageDeletable, validateStageName } from './helpers';
+import { stageDeletable, validateStageName, MAX_FAVORITES } from './helpers';
 import { DEFAULT_STAGES } from './config';
 import * as api from './actions';
 import type { HiringState, RatingValue, Status } from './types';
@@ -129,6 +129,14 @@ export function useHiringStore(initial: HiringState): {
 
   const setJobStarred = useCallback(
     (jobId: number, starred: boolean) => {
+      // Enforce the favorites cap (matches the server guard).
+      if (
+        starred &&
+        stateRef.current.jobs.filter((j) => j.starred && j.id !== jobId)
+          .length >= MAX_FAVORITES
+      ) {
+        return;
+      }
       setState((s) => ({
         ...s,
         jobs: s.jobs.map((j) => (j.id === jobId ? { ...j, starred } : j))
