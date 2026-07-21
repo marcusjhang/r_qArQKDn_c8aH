@@ -29,6 +29,7 @@ export interface SeedCandidate {
   owner: string;
   source: string;
   status: Status;
+  starred?: boolean;
   feedback: SeedFeedback[];
 }
 
@@ -47,6 +48,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     owner: 'bo',
     source: 'LinkedIn',
     status: 'active',
+    starred: true,
     feedback: [
       { by: 'bc', v: 3, note: 'Solid CS fundamentals, clean take-home.' },
       { by: 'hl', v: 4, note: 'Excellent systems design — would move fast.' }
@@ -68,6 +70,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     owner: 'hl',
     source: 'YC',
     status: 'active',
+    starred: true,
     feedback: [
       { by: 'bo', v: 4, note: 'Sharp, great product instincts.' },
       { by: 'bc', v: 3, note: 'Strong, minor gaps in distributed systems.' }

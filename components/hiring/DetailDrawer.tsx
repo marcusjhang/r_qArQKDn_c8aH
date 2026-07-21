@@ -101,6 +101,16 @@ export default function DetailDrawer({
         aria-modal="true"
       >
         <div className="drawer-head">
+          <button
+            className="drawer-star"
+            aria-pressed={view?.starred ?? false}
+            title={view?.starred ? 'Unstar candidate' : 'Star candidate'}
+            onClick={() =>
+              view && actions.setCandidateStarred(view.id, !view.starred)
+            }
+          >
+            {view?.starred ? '★' : '☆'}
+          </button>
           <div className="who">
             <h2>{view?.name ?? '—'}</h2>
             <div className="sub">

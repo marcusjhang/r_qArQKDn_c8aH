@@ -93,6 +93,19 @@ export async function setJobStarred(jobIdRaw: number, starred: boolean) {
   revalidatePath('/');
 }
 
+/**
+ * Star / unstar a candidate. A purely visual highlight (starred candidates
+ * float to the top of their column), so there's no favorites cap like jobs.
+ */
+export async function setCandidateStarred(idRaw: number, starred: boolean) {
+  const id = zId.parse(idRaw);
+  await db
+    .update(candidates)
+    .set({ starred: !!starred })
+    .where(eq(candidates.id, id));
+  revalidatePath('/');
+}
+
 /** Delete a job; its candidates and feedback cascade via the FKs. */
 export async function deleteJob(jobIdRaw: number) {
   const jobId = zId.parse(jobIdRaw);

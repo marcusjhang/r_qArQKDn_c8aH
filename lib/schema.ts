@@ -66,6 +66,9 @@ export const candidates = pgTable('candidates', {
   owner: text('owner').notNull(),
   source: text('source').notNull(),
   status: candidateStatusEnum('status').notNull().default('active'),
+  // Starred candidates float to the top of their column as highlighted
+  // standouts (unbounded — unlike starred jobs, they don't pin as tabs).
+  starred: boolean('starred').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 

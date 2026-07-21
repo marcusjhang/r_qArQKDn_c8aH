@@ -29,15 +29,17 @@ function RatingChip({ candidate }: { candidate: Candidate }) {
 
 function CandidateCard({
   candidate,
-  onOpen
+  onOpen,
+  onToggleStar
 }: {
   candidate: Candidate;
   onOpen: (id: number) => void;
+  onToggleStar: (id: number, starred: boolean) => void;
 }) {
   const owner = founderById(candidate.owner);
   return (
     <div
-      className="card"
+      className={`card${candidate.starred ? ' starred' : ''}`}
       draggable
       onDragStart={(e) =>
         e.dataTransfer.setData('text/plain', String(candidate.id))
@@ -45,6 +47,17 @@ function CandidateCard({
       onClick={() => onOpen(candidate.id)}
     >
       <div className="card-top">
+        <button
+          className="card-star"
+          aria-pressed={candidate.starred}
+          title={candidate.starred ? 'Unstar candidate' : 'Star candidate'}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleStar(candidate.id, !candidate.starred);
+          }}
+        >
+          {candidate.starred ? '★' : '☆'}
+        </button>
         <span className="card-name">{candidate.name}</span>
         <span className="avatar" title={owner.name}>
           {owner.initials}
@@ -249,7 +262,12 @@ function Column({
           <div className="empty-hint">Drop here</div>
         ) : (
           cards.map((c) => (
-            <CandidateCard key={c.id} candidate={c} onOpen={onOpen} />
+            <CandidateCard
+              key={c.id}
+              candidate={c}
+              onOpen={onOpen}
+              onToggleStar={actions.setCandidateStarred}
+            />
           ))
         )}
       </div>
@@ -354,9 +372,13 @@ export default function Board({
     <div className="board-scroll">
       <div className="board">
         {job.stages.map((stage, index) => {
-          const cards = jobCandidates.filter(
-            (c) => c.stage === stage && (showRejected || !isHiddenByDefault(c))
-          );
+          const cards = jobCandidates
+            .filter(
+              (c) => c.stage === stage && (showRejected || !isHiddenByDefault(c))
+            )
+            // Starred candidates float to the top of the column (stable sort
+            // preserves the existing creation order within each group).
+            .sort((a, b) => Number(b.starred) - Number(a.starred));
           return (
             <Column
               key={`${stage}-${index}`}

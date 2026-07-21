@@ -324,10 +324,33 @@
 .ht-root .card-name {
   font-weight: 600;
   font-size: 13.5px;
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* Candidate star toggle (card + drawer share the visual treatment). */
+.ht-root .card-star {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+}
+.ht-root .card-star[aria-pressed='true'] {
+  color: var(--primary);
+}
+.ht-root .card-star:hover {
+  color: var(--primary);
+}
+/* Starred candidate cards carry a subtle accent so standouts pop. */
+.ht-root .card.starred {
+  border-color: var(--primary-border);
+  background: var(--primary-weak);
 }
 .ht-root .avatar {
   flex: 0 0 auto;
@@ -474,6 +497,22 @@
 .ht-root .close:hover {
   background: var(--border);
   color: var(--text);
+}
+.ht-root .drawer-star {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 20px;
+  line-height: 1;
+  padding: 2px;
+  cursor: pointer;
+}
+.ht-root .drawer-star[aria-pressed='true'] {
+  color: var(--primary);
+}
+.ht-root .drawer-star:hover {
+  color: var(--primary);
 }
 .ht-root .drawer-body {
   overflow-y: auto;
