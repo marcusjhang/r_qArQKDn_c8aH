@@ -1,7 +1,6 @@
 import {
   pgTable,
   text,
-  numeric,
   integer,
   timestamp,
   pgEnum,
@@ -10,9 +9,9 @@ import {
   check
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
-import { createInsertSchema } from 'drizzle-zod';
 import { STATUSES, type RatingValue } from './hiring/primitives';
 
+// Auth accounts (used by lib/auth.ts to gate the app).
 export const roleEnum = pgEnum('role', ['user', 'admin']);
 
 export const users = pgTable('users', {
@@ -25,21 +24,6 @@ export const users = pgTable('users', {
 });
 
 export type SelectUser = typeof users.$inferSelect;
-
-export const statusEnum = pgEnum('status', ['active', 'inactive', 'archived']);
-
-export const products = pgTable('products', {
-  id: serial('id').primaryKey(),
-  imageUrl: text('image_url').notNull(),
-  name: text('name').notNull(),
-  status: statusEnum('status').notNull(),
-  price: numeric('price', { precision: 10, scale: 2 }).notNull(),
-  stock: integer('stock').notNull(),
-  availableAt: timestamp('available_at').notNull()
-});
-
-export type SelectProduct = typeof products.$inferSelect;
-export const insertProductSchema = createInsertSchema(products);
 
 /* ---------- Hiring Pipeline Tracker ---------- */
 

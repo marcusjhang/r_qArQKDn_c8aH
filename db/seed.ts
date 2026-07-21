@@ -1,29 +1,10 @@
 import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { products, users, jobs, candidates, feedback } from '../lib/schema';
+import { users, jobs, candidates, feedback } from '../lib/schema';
 import { count, eq } from 'drizzle-orm';
 import { hash } from 'bcryptjs';
 import { SEED_JOBS, SEED_CANDIDATES } from '../lib/hiring/seed';
-
-const SEED_PRODUCTS = [
-  {
-    name: 'Sample Product',
-    imageUrl: 'https://placehold.co/400x400?text=Sample+Product',
-    status: 'active' as const,
-    price: '49.00',
-    stock: 100,
-    availableAt: new Date()
-  },
-  {
-    name: 'Another Product',
-    imageUrl: 'https://placehold.co/400x400?text=Another+Product',
-    status: 'active' as const,
-    price: '99.00',
-    stock: 50,
-    availableAt: new Date()
-  }
-];
 
 async function main() {
   if (!process.env.DATABASE_URL) {
@@ -33,19 +14,7 @@ async function main() {
   const client = postgres(process.env.DATABASE_URL);
   const db = drizzle(client);
 
-  // Seed products
-  const [{ value }] = await db.select({ value: count() }).from(products);
-  if (value > 0) {
-    console.log(
-      `Skipping seed: products table already has ${value} rows.`
-    );
-  } else {
-    console.log('Seeding products...');
-    await db.insert(products).values(SEED_PRODUCTS);
-    console.log(`Seeded ${SEED_PRODUCTS.length} products.`);
-  }
-
-  // Seed admin user (admin@admin.com / password)
+  // Seed the admin login account (admin@admin.com / password)
   const passwordHash = await hash('password', 12);
   const [existingAdmin] = await db
     .select()

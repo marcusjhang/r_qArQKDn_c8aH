@@ -16,11 +16,19 @@ bun run db:seed      # seed data
 bun run db:generate  # generate migration after schema change
 ```
 
-## Admin panel
+## Auth
 
-- Route: `/admin`
-- Credentials: `admin@admin.com` / `password`
-- Protected by role check in `app/admin/layout.tsx`
+- The whole app is gated behind login — enforced by the `authorized` callback in
+  `lib/auth.ts` (middleware runs on every route; only `/login` is public).
+- Seeded login: `admin@admin.com` / `password` (change before non-demo use).
+- Sign up via `/login` → `POST /api/register`.
+
+## App
+
+- Hiring pipeline tracker at `/`. UI in `components/hiring/`, domain/config/store
+  in `lib/hiring/`. Types are derived from the Drizzle schema (`lib/schema.ts`);
+  reads go through `lib/hiring/queries.ts`, writes through the zod-validated
+  server actions in `lib/hiring/actions.ts`.
 
 ## Stack
 

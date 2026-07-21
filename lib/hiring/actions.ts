@@ -4,8 +4,8 @@
 // input at runtime (zod, from ./schemas), mutates Postgres, then revalidates
 // `/`. Mirrors the store's mutation surface one-to-one so the client can call
 // them optimistically. A parse failure throws → the store's resync() reverts
-// the optimistic change. (Board access is public per the v1 decision; to gate
-// it, add a requireUser() check, mirroring requireAdmin() in app/admin/actions.ts.)
+// the optimistic change. (The whole app is gated by the auth middleware, so a
+// caller here is already an authenticated user.)
 
 import { and, eq, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
