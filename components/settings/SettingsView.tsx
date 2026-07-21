@@ -73,7 +73,9 @@ export default function SettingsView({
           <div className="setting-row">
             <div>
               <div className="label-strong">Appearance</div>
-              <p className="settings-sub">Light or dark theme for this browser.</p>
+              <p className="settings-sub">
+                Light, dark, or match your system — for this browser.
+              </p>
             </div>
             <ThemeToggle />
           </div>

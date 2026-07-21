@@ -34,13 +34,16 @@ export default function ThemeToggle() {
     setTheme(stored);
   }, []);
 
-  // While following the system, keep the DOM class in sync with OS changes.
+  // While following the system, track OS light/dark changes live. The class is
+  // already correct on load (no-flash script) and on selection (apply), so we
+  // only need to react to *subsequent* OS changes here — applying on mount
+  // would clobber an explicit light/dark choice, since `theme` is still the
+  // placeholder default until the effect above resolves it.
   useEffect(() => {
     if (theme !== 'system') return;
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const sync = () =>
       document.documentElement.classList.toggle('dark', mq.matches);
-    sync();
     mq.addEventListener('change', sync);
     return () => mq.removeEventListener('change', sync);
   }, [theme]);
