@@ -99,6 +99,19 @@
   flex: 1 1 0;
   min-width: 0;
 }
+.ht-root .usermenu {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.ht-root .usermenu-email {
+  font-size: 12px;
+  color: var(--text-muted);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* Jobs switcher */
 .ht-root .jobtabs {

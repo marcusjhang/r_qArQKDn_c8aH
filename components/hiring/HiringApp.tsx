@@ -12,9 +12,16 @@ import type { HiringState } from '@/lib/hiring/types';
 import Board from './Board';
 import DetailDrawer from './DetailDrawer';
 import AddCandidateModal from './AddCandidateModal';
+import UserMenu from './UserMenu';
 import './hiring.css';
 
-export default function HiringApp({ initial }: { initial: HiringState }) {
+export default function HiringApp({
+  initial,
+  userEmail
+}: {
+  initial: HiringState;
+  userEmail?: string | null;
+}) {
   const { state, actions } = useHiringStore(initial);
   const [activeJob, setActiveJob] = useState<number>(state.jobs[0]?.id ?? 0);
   const [showTerminal, setShowTerminal] = useState(false);
@@ -63,6 +70,7 @@ export default function HiringApp({ initial }: { initial: HiringState }) {
             </button>
           ))}
         </nav>
+        <UserMenu email={userEmail} />
       </header>
 
       <div className="toolbar">

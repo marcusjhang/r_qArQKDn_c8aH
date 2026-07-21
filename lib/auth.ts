@@ -56,6 +56,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   session: { strategy: 'jwt' },
   callbacks: {
+    // Runs in middleware for every matched route (see middleware.ts). Gates the
+    // whole app behind login: only the sign-in page is public. Returning false
+    // redirects to pages.signIn ('/login') with a callbackUrl back to the route.
+    authorized({ auth, request }) {
+      if (request.nextUrl.pathname === '/login') return true;
+      return !!auth?.user;
+    },
     jwt({ token, user }) {
       if (user) {
         token.role = user.role;
