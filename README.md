@@ -1,6 +1,8 @@
-# Next.js + PostgreSQL Starter
+# Lightsprint Hiring — Pipeline Tracker
 
-A full-stack Next.js 15 starter with email/password authentication, PostgreSQL via Drizzle ORM, and an admin dashboard.
+A board-first hiring pipeline tracker for a small founding team: per-job Kanban
+boards with configurable stages, one owner per candidate, per-interviewer
+feedback, and an orthogonal status. The whole app is gated behind login.
 
 ## Stack
 
@@ -9,61 +11,64 @@ A full-stack Next.js 15 starter with email/password authentication, PostgreSQL v
 - **Auth** - [Auth.js](https://authjs.dev) with email/password credentials
 - **Database** - [PostgreSQL](https://www.postgresql.org/) via [Neon](https://neon.tech)
 - **ORM** - [Drizzle](https://orm.drizzle.team)
-- **Styling** - [Tailwind CSS](https://tailwindcss.com)
-- **Components** - [Shadcn UI](https://ui.shadcn.com/)
+- **Styling** - [Tailwind CSS](https://tailwindcss.com) (the board uses its own scoped stylesheet)
 
 ## Getting Started
 
 ### Lightsprint-managed repos
 
-If you created this repo through Lightsprint, `DATABASE_URL` and `AUTH_SECRET` are already configured in your sandbox environment. Run database setup and start developing:
+`DATABASE_URL` and `AUTH_SECRET` are already configured in your sandbox. Run
+database setup and start developing:
 
 ```bash
-npm run db:setup   # Runs migrations + seeds sample data
-npm run dev
+bun run db:setup   # Runs migrations + seeds the sample pipeline + admin login
+bun run dev
 ```
 
 ### Local development
 
-1. Create a PostgreSQL database (e.g. on [Neon](https://neon.tech))
-
-2. Copy `.env.example` to `.env` and fill in your values:
-
-```bash
-cp .env.example .env
-```
-
-3. Install dependencies, set up the database, and start the dev server:
+1. Create a PostgreSQL database (e.g. on [Neon](https://neon.tech)).
+2. Copy `.env.example` to `.env` and fill in your values (`cp .env.example .env`).
+3. Install, set up the database, and run the dev server:
 
 ```bash
-npm install
-npm run db:setup   # Runs migrations + seeds sample data
-npm run dev
+bun install
+bun run db:setup
+bun run dev
 ```
 
-4. Open http://localhost:3000 and create an account.
+4. Open http://localhost:3000 and sign in (see Accounts below).
+
+## Accounts
+
+The seed creates one login: **`marcusajh0802@gmail.com` / `password`** (override
+the password with `SEED_PASSWORD`). Change it before any non-demo use. New
+accounts are created via **Sign up** on `/login`, restricted to the email
+allowlist managed on `/settings`. Any signed-in user can use the board.
 
 ## Scripts
 
 | Script | Description |
 |--------|-------------|
-| `npm run dev` | Start the dev server (Turbopack) |
-| `npm run build` | Production build |
-| `npm run start` | Run production server |
-| `npm run db:generate` | Generate a new Drizzle migration from schema changes |
-| `npm run db:migrate` | Apply pending migrations |
-| `npm run db:seed` | Seed sample product data (idempotent — skips if data exists) |
-| `npm run db:setup` | Run migrations + seed in one step |
+| `bun run dev` | Start the dev server (Turbopack) |
+| `bun run build` | Production build |
+| `bun run start` | Run production server |
+| `bun run db:generate` | Generate a new Drizzle migration from schema changes |
+| `bun run db:migrate` | Apply pending migrations |
+| `bun run db:seed` | Seed the admin login + sample pipeline (idempotent) |
+| `bun run db:setup` | Run migrations + seed in one step |
 
 ## Database Schema
 
-Schema is defined in `lib/schema.ts` using Drizzle ORM. Migrations live in `drizzle/`.
+Schema is in `lib/schema.ts`; migrations live in `drizzle/`.
 
 **Tables:**
-- `users` — email/password accounts
-- `products` — sample product catalog with status, price, stock
+- `users` — email/password accounts (auth only)
+- `jobs` — a role with its own ordered `stages` (text[])
+- `candidates` — one per applicant, references a job; has owner, source, status
+- `feedback` — one row per interviewer entry (rating 1–4 + note)
 
-To modify the schema, edit `lib/schema.ts` then run `npm run db:generate` to create a migration.
+To modify the schema, edit `lib/schema.ts` then run `bun run db:generate`.
 
 ## Environment Variables
 

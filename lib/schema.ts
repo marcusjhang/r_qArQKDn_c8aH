@@ -1,15 +1,18 @@
 import {
   pgTable,
   text,
-  numeric,
   integer,
   timestamp,
   pgEnum,
   serial,
-  varchar
+  varchar,
+  boolean,
+  check
 } from 'drizzle-orm/pg-core';
-import { createInsertSchema } from 'drizzle-zod';
+import { relations, sql } from 'drizzle-orm';
+import { STATUSES, type RatingValue } from './hiring/primitives';
 
+// Auth accounts (used by lib/auth.ts to gate the app).
 export const roleEnum = pgEnum('role', ['user', 'admin']);
 
 export const users = pgTable('users', {
@@ -23,17 +26,87 @@ export const users = pgTable('users', {
 
 export type SelectUser = typeof users.$inferSelect;
 
-export const statusEnum = pgEnum('status', ['active', 'inactive', 'archived']);
-
-export const products = pgTable('products', {
+// Emails permitted to sign up (enforced in /api/register, managed in /settings).
+export const allowedEmails = pgTable('allowed_emails', {
   id: serial('id').primaryKey(),
-  imageUrl: text('image_url').notNull(),
-  name: text('name').notNull(),
-  status: statusEnum('status').notNull(),
-  price: numeric('price', { precision: 10, scale: 2 }).notNull(),
-  stock: integer('stock').notNull(),
-  availableAt: timestamp('available_at').notNull()
+  email: text('email').notNull().unique(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
-export type SelectProduct = typeof products.$inferSelect;
-export const insertProductSchema = createInsertSchema(products);
+export type SelectAllowedEmail = typeof allowedEmails.$inferSelect;
+
+/* ---------- Hiring Pipeline Tracker ---------- */
+
+// Orthogonal candidate status (Decision 3), built from the single-sourced
+// STATUSES tuple so the DB enum and the TS Status type can never diverge.
+export const candidateStatusEnum = pgEnum('candidate_status', STATUSES);
+
+// A job owns its own ordered, per-job stage list (Decision 1), stored as an
+// ordered JSON array of stage names so candidates can key off the stage name.
+export const jobs = pgTable('jobs', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  // Native text[] (not jsonb) — a real array, so it round-trips cleanly and
+  // stays inspectable/queryable in SQL.
+  stages: text('stages').array().notNull(),
+  position: integer('position').notNull().default(0),
+  // Starred jobs are pinned as inline tabs (shown outside the jobs dropdown).
+  starred: boolean('starred').notNull().default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const candidates = pgTable('candidates', {
+  id: serial('id').primaryKey(),
+  jobId: integer('job_id')
+    .notNull()
+    .references(() => jobs.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  stage: text('stage').notNull(),
+  // Founder id from the FOUNDERS config — the single accountable owner.
+  owner: text('owner').notNull(),
+  source: text('source').notNull(),
+  status: candidateStatusEnum('status').notNull().default('active'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// One entry per interviewer (Decision 7).
+export const feedback = pgTable(
+  'feedback',
+  {
+    id: serial('id').primaryKey(),
+    candidateId: integer('candidate_id')
+      .notNull()
+      .references(() => candidates.id, { onDelete: 'cascade' }),
+    // Founder id of the interviewer.
+    byFounder: text('by_founder').notNull(),
+    // 4-point verdict rating (1 = Strong No … 4 = Strong Yes). $type pins the
+    // column to RatingValue; the CHECK below backs that at the DB level.
+    rating: integer('rating').$type<RatingValue>().notNull(),
+    note: text('note').notNull().default(''),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+  },
+  (t) => ({
+    ratingRange: check('rating_range', sql`${t.rating} between 1 and 4`)
+  })
+);
+
+export type SelectJob = typeof jobs.$inferSelect;
+export type SelectCandidate = typeof candidates.$inferSelect;
+export type SelectFeedback = typeof feedback.$inferSelect;
+
+/* ---------- Relations (enable the db.query relational API) ---------- */
+export const jobsRelations = relations(jobs, ({ many }) => ({
+  candidates: many(candidates)
+}));
+
+export const candidatesRelations = relations(candidates, ({ one, many }) => ({
+  job: one(jobs, { fields: [candidates.jobId], references: [jobs.id] }),
+  feedback: many(feedback)
+}));
+
+export const feedbackRelations = relations(feedback, ({ one }) => ({
+  candidate: one(candidates, {
+    fields: [feedback.candidateId],
+    references: [candidates.id]
+  })
+}));

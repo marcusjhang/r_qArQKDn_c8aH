@@ -15,6 +15,41 @@
       "when": 1778932025644,
       "tag": "0001_tiny_supreme_intelligence",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784612336413,
+      "tag": "0002_worthless_terrax",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784617012008,
+      "tag": "0003_rating_check",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784620445364,
+      "tag": "0004_amused_rumiko_fujikawa",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784620901321,
+      "tag": "0005_talented_turbo",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784627035441,
+      "tag": "0006_natural_maria_hill",
+      "breakpoints": true
     }
   ]
 }

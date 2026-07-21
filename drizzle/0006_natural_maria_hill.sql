@@ -1,0 +1,1 @@
+ALTER TABLE "jobs" ADD COLUMN "starred" boolean DEFAULT false NOT NULL;
