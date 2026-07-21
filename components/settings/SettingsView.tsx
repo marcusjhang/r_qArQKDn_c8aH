@@ -63,10 +63,12 @@ export default function SettingsView({
   return (
     <div className="ht-root">
       <header className="topbar">
-        <Brand subtitle="Settings" />
-        <Link className="btn" href="/">
-          ← Back
-        </Link>
+        <div className="settings-head">
+          <Brand subtitle="Settings" />
+          <Link className="btn" href="/">
+            ← Back
+          </Link>
+        </div>
         <div className="spacer" />
         <UserMenu email={userEmail} />
       </header>
