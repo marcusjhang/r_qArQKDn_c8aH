@@ -23,6 +23,7 @@ export const zOwner = z.enum(founderIds);
 export const zSource = z.enum(sourceNames);
 export const zName = z.string().trim().min(1).max(120);
 export const zStageName = z.string().trim().min(1).max(48);
+export const zJobTitle = z.string().trim().min(1).max(80);
 export const zNote = z.string().max(2000);
 export const zRating = z
   .number()

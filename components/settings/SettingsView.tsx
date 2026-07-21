@@ -7,6 +7,7 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import UserMenu from '@/components/hiring/UserMenu';
+import ThemeToggle from './ThemeToggle';
 import '@/components/hiring/hiring.css';
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -62,7 +63,7 @@ export default function SettingsView({
     <div className="ht-root">
       <header className="topbar">
         <div className="brand">
-          <span className="logo" /> Lightsprint Hiring <small>Settings</small>
+          <span className="logo" /> Hiring <small>Settings</small>
         </div>
         <div className="spacer" />
         <Link className="btn" href="/">
@@ -73,7 +74,19 @@ export default function SettingsView({
 
       <div className="settings-wrap">
         <section className="settings-panel">
+          <p className="settings-section-title">General</p>
+          <div className="setting-row">
+            <div>
+              <div className="label-strong">Appearance</div>
+              <p className="settings-sub">Light or dark theme for this browser.</p>
+            </div>
+            <ThemeToggle />
+          </div>
+        </section>
+
+        <section className="settings-panel">
           <div>
+            <p className="settings-section-title">Allowlist</p>
             <h1 className="settings-title">Signup allowlist</h1>
             <p className="settings-sub">
               Only these email addresses can create an account. Everyone else is

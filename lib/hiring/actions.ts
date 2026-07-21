@@ -11,6 +11,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db, jobs, candidates, feedback } from '@/lib/db';
 import { stageDeletable, validateStageName } from './helpers';
+import { DEFAULT_STAGES } from './config';
 import type { Status } from './types';
 import {
   zId,
@@ -20,6 +21,7 @@ import {
   zOwner,
   zSource,
   zStageName,
+  zJobTitle,
   candidateInsertSchema,
   feedbackInsertSchema
 } from './schemas';
@@ -31,6 +33,27 @@ async function loadJobStages(jobId: number): Promise<string[] | null> {
     .where(eq(jobs.id, jobId))
     .limit(1);
   return j?.stages ?? null;
+}
+
+/**
+ * Create a new job with the compulsory default stages. Returns the new id so
+ * the client can reconcile its optimistic job and switch the board to it.
+ */
+export async function createJob(titleRaw: string): Promise<number | null> {
+  const title = zJobTitle.parse(titleRaw);
+  const [{ maxPos }] = await db
+    .select({ maxPos: sql<number>`coalesce(max(${jobs.position}), -1)` })
+    .from(jobs);
+  const [row] = await db
+    .insert(jobs)
+    .values({
+      title,
+      stages: [...DEFAULT_STAGES],
+      position: Number(maxPos) + 1
+    })
+    .returning({ id: jobs.id });
+  revalidatePath('/');
+  return row?.id ?? null;
 }
 
 /** Returns the new candidate's id so the client can reconcile its optimistic row. */

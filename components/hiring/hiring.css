@@ -14,9 +14,9 @@
   --border-strong: #d1d6dc;
   --text: #1f2733;
   --text-muted: #6b7280;
-  --primary: #4f46e5;
-  --primary-weak: #eef2ff;
-  --primary-border: #c7d2fe;
+  --primary: #f28c1b;
+  --primary-weak: #fef1e1;
+  --primary-border: #f6c98c;
   --radius: 10px;
   --radius-sm: 7px;
   --radius-pill: 999px;
@@ -45,12 +45,13 @@
 
   container-type: inline-size;
   container-name: plan-preview;
-  display: block;
+  display: flex;
+  flex-direction: column;
   position: relative;
   width: 100%;
   max-width: 1400px;
-  min-height: 100vh;
   margin-inline: auto;
+  height: 100dvh;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
@@ -87,7 +88,7 @@
   width: 22px;
   height: 22px;
   border-radius: 6px;
-  background: linear-gradient(135deg, var(--primary), #7c74f0);
+  background: linear-gradient(135deg, var(--primary), #ffb74a);
   display: inline-block;
 }
 .ht-root .brand small {
@@ -144,7 +145,7 @@
   font-weight: 600;
 }
 .ht-root .jobtab[aria-selected='true'] .count {
-  background: #fff;
+  background: var(--surface);
   color: var(--primary);
 }
 
@@ -209,7 +210,9 @@
 
 /* Board */
 .ht-root .board-scroll {
-  overflow-x: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
   padding: var(--space-2) var(--space-4) var(--space-5);
 }
 .ht-root .board {
@@ -254,12 +257,12 @@
 .ht-root .col-title:focus {
   outline: none;
   border-color: var(--primary-border);
-  background: #fff;
+  background: var(--surface);
 }
 .ht-root .col-count {
   font-size: 11px;
   color: var(--text-muted);
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   padding: 0 7px;
@@ -274,7 +277,7 @@
   border-radius: 5px;
 }
 .ht-root .col-menu:hover {
-  background: #fff;
+  background: var(--surface);
   color: var(--text);
 }
 .ht-root .col-body {
@@ -814,10 +817,16 @@
 
 /* Settings page */
 .ht-root .settings-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
   padding: var(--space-5) var(--space-4);
   max-width: 640px;
   margin-inline: auto;
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }
 .ht-root .settings-panel {
   background: var(--surface);
@@ -873,4 +882,120 @@
   font-size: 12.5px;
   color: var(--text-muted);
   font-style: italic;
+}
+
+/* ---------- Dark theme (toggled via <html class="dark"> from Settings) ---------- */
+.dark .ht-root {
+  --bg: #0f1115;
+  --surface: #171a20;
+  --surface-2: #1e222a;
+  --border: #2a2f39;
+  --border-strong: #3a414d;
+  --text: #e7eaef;
+  --text-muted: #9aa3b2;
+  --primary: #f7a03a;
+  --primary-weak: #3a2a12;
+  --primary-border: #6d4e22;
+  --shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  --shadow-drawer: -12px 0 32px rgba(0, 0, 0, 0.55);
+  --syes-fg: #79e0a6; --syes-bg: #123123;
+  --yes-fg: #7fd0a0; --yes-bg: #122a1d;
+  --no-fg: #f0b46a; --no-bg: #33260f;
+  --sno-fg: #f19a92; --sno-bg: #361b19;
+  --hold-fg: #e6c06a; --hold-bg: #31260f;
+  --rej-fg: #f19a92; --rej-bg: #361b19;
+  --hired-fg: #79e0a6; --hired-bg: #123123;
+}
+
+/* ---------- Account dropdown (topbar) ---------- */
+.ht-root .usermenu {
+  position: relative;
+}
+.ht-root .usermenu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 220px;
+}
+.ht-root .usermenu-trigger .caret {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.ht-root .usermenu-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  min-width: 180px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 4px;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+}
+.ht-root .usermenu-item {
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 5px;
+  font-size: 13px;
+  color: var(--text);
+  text-decoration: none;
+  display: block;
+}
+.ht-root .usermenu-item:hover {
+  background: var(--surface-2);
+}
+.ht-root .usermenu-item.danger {
+  color: var(--sno-fg);
+}
+.ht-root .usermenu-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 2px;
+}
+
+/* ---------- Settings sections ---------- */
+.ht-root .settings-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin: 0 0 var(--space-2);
+}
+.ht-root .theme-toggle {
+  display: inline-flex;
+  gap: 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+}
+.ht-root .theme-opt {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-pill);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.ht-root .theme-opt[aria-pressed='true'] {
+  background: var(--primary);
+  color: #fff;
+}
+.ht-root .setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.ht-root .setting-row .label-strong {
+  font-size: 13px;
+  font-weight: 600;
 }

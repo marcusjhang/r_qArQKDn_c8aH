@@ -1,31 +1,74 @@
 'use client';
 
-// Signed-in identity + sign-out for the board top bar.
+// Account dropdown in the top bar: shows the signed-in email; opens a menu with
+// Settings and a red Sign out.
 //
-// We sign out with redirect:false and then navigate ourselves to a RELATIVE
-// /login. next-auth's built-in redirect would build an ABSOLUTE url from the
-// server's internal host (localhost behind the preview proxy), which the
-// browser can't reach ("localhost refused to connect"). A relative navigation
-// resolves against the current origin, so it works in dev, preview, and prod.
+// Sign out uses redirect:false + a relative navigation because next-auth's
+// built-in redirect builds an absolute URL from the server's internal host
+// (localhost behind the preview proxy), which the browser can't reach.
 
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 
 export default function UserMenu({ email }: { email?: string | null }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
   async function handleSignOut() {
     await signOut({ redirect: false });
     window.location.href = '/login';
   }
 
   return (
-    <div className="usermenu">
-      {email && (
-        <span className="usermenu-email" title={email}>
-          {email}
+    <div className="usermenu" ref={ref}>
+      <button
+        className="btn usermenu-trigger"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="usermenu-email" title={email ?? undefined}>
+          {email ?? 'Account'}
         </span>
-      )}
-      <button className="btn" onClick={handleSignOut}>
-        Sign out
+        <span className="caret">▾</span>
       </button>
+      {open && (
+        <div className="usermenu-menu" role="menu">
+          <Link
+            className="usermenu-item"
+            role="menuitem"
+            href="/settings"
+            onClick={() => setOpen(false)}
+          >
+            Settings
+          </Link>
+          <div className="usermenu-sep" />
+          <button
+            className="usermenu-item danger"
+            role="menuitem"
+            onClick={handleSignOut}
+          >
+            Sign out
+          </button>
+        </div>
+      )}
     </div>
   );
 }

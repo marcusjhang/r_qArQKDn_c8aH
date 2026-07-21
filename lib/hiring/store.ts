@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { stageDeletable, validateStageName } from './helpers';
+import { DEFAULT_STAGES } from './config';
 import * as api from './actions';
 import type { HiringState, RatingValue, Status } from './types';
 
@@ -26,6 +27,8 @@ export function canDeleteStage(
 }
 
 export interface HiringActions {
+  /** Create a job (with default stages); onReady fires with the new job id. */
+  createJob: (title: string, onReady: (id: number) => void) => void;
   addCandidate: (
     jobId: number,
     name: string,
@@ -83,6 +86,37 @@ export function useHiringStore(initial: HiringState): {
       startTransition(async () => {
         try {
           await fn();
+        } catch {
+          resync();
+        }
+      });
+    },
+    [resync]
+  );
+
+  const createJob = useCallback(
+    (title: string, onReady: (id: number) => void) => {
+      const trimmed = title.trim();
+      if (!trimmed) return;
+      const temp = tempId.current--;
+      setState((s) => ({
+        ...s,
+        jobs: [
+          ...s.jobs,
+          { id: temp, title: trimmed, stages: [...DEFAULT_STAGES] }
+        ]
+      }));
+      onReady(temp); // switch to the optimistic job immediately
+      startTransition(async () => {
+        try {
+          const realId = await api.createJob(trimmed);
+          if (realId != null) {
+            setState((s) => ({
+              ...s,
+              jobs: s.jobs.map((j) => (j.id === temp ? { ...j, id: realId } : j))
+            }));
+            onReady(realId); // re-point the board at the persisted id
+          }
         } catch {
           resync();
         }
@@ -309,6 +343,7 @@ export function useHiringStore(initial: HiringState): {
   );
 
   const actions: HiringActions = {
+    createJob,
     addCandidate,
     moveTo,
     advance,

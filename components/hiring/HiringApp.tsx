@@ -6,13 +6,13 @@
 // over it so pipeline context stays on screen.
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { isTerminal } from '@/lib/hiring/helpers';
 import { useHiringStore } from '@/lib/hiring/store';
 import type { HiringState } from '@/lib/hiring/types';
 import Board from './Board';
 import DetailDrawer from './DetailDrawer';
 import AddCandidateModal from './AddCandidateModal';
+import NewJobModal from './NewJobModal';
 import UserMenu from './UserMenu';
 import './hiring.css';
 
@@ -28,6 +28,7 @@ export default function HiringApp({
   const [showRejected, setShowRejected] = useState(false);
   const [openId, setOpenId] = useState<number | null>(null);
   const [addingCandidate, setAddingCandidate] = useState(false);
+  const [creatingJob, setCreatingJob] = useState(false);
 
   const job = state.jobs.find((j) => j.id === activeJob) ?? state.jobs[0];
 
@@ -59,8 +60,7 @@ export default function HiringApp({
     <div className="ht-root">
       <header className="topbar">
         <div className="brand">
-          <span className="logo" /> Lightsprint Hiring{' '}
-          <small>Pipeline Tracker</small>
+          <span className="logo" /> Hiring <small>Pipeline Tracker</small>
         </div>
         <div className="spacer" />
         <nav className="jobtabs" aria-label="Jobs">
@@ -75,9 +75,9 @@ export default function HiringApp({
             </button>
           ))}
         </nav>
-        <Link className="btn" href="/settings">
-          ⚙ Settings
-        </Link>
+        <button className="btn primary" onClick={() => setCreatingJob(true)}>
+          ＋ New job
+        </button>
         <UserMenu email={userEmail} />
       </header>
 
@@ -125,6 +125,15 @@ export default function HiringApp({
           onClose={() => setAddingCandidate(false)}
           onAdd={(name, source, owner) =>
             actions.addCandidate(job.id, name, source, owner)
+          }
+        />
+      )}
+
+      {creatingJob && (
+        <NewJobModal
+          onClose={() => setCreatingJob(false)}
+          onCreate={(title) =>
+            actions.createJob(title, (id) => setActiveJob(id))
           }
         />
       )}
