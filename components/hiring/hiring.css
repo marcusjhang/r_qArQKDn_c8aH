@@ -1011,6 +1011,10 @@
   padding: var(--space-3) var(--space-4);
   flex-wrap: wrap;
 }
+.ht-root .subnav .spacer {
+  flex: 1 1 0;
+  min-width: 0;
+}
 
 /* Jobs dropdown (select / star / delete) + starred-tab marker */
 .ht-root .tab-star {
@@ -1027,7 +1031,7 @@
 .ht-root .jobmenu {
   position: absolute;
   top: 100%;
-  left: 0;
+  right: 0;
   margin-top: 6px;
   min-width: 260px;
   max-height: 320px;
