@@ -64,10 +64,10 @@ export default function SettingsView({
     <div className="ht-root">
       <header className="topbar">
         <Brand subtitle="Settings" />
-        <div className="spacer" />
         <Link className="btn" href="/">
-          ← Board
+          ← Back
         </Link>
+        <div className="spacer" />
         <UserMenu email={userEmail} />
       </header>
 
