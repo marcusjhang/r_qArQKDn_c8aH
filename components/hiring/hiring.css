@@ -220,6 +220,10 @@
   gap: var(--space-3);
   align-items: flex-start;
   min-height: 60px;
+  /* Trailing space that survives to the end of horizontal scroll (a scroll
+     container's own padding-right is dropped there), so "＋ Add stage" isn't
+     flush against the edge. */
+  padding-right: var(--space-4);
 }
 .ht-root .column {
   flex: 0 0 240px;
