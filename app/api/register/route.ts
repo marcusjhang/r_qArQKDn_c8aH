@@ -2,6 +2,7 @@ import { hash } from 'bcryptjs';
 import { db, users } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
+import { isEmailAllowed } from '@/lib/allowlist';
 
 export async function POST(request: Request) {
   try {
@@ -18,6 +19,17 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'Password must be at least 8 characters' },
         { status: 400 }
+      );
+    }
+
+    // Signups are restricted to the allowlist (managed in /settings).
+    if (!(await isEmailAllowed(email))) {
+      return NextResponse.json(
+        {
+          error:
+            'This email is not allowed to sign up. Ask an admin to add it in Settings.'
+        },
+        { status: 403 }
       );
     }
 

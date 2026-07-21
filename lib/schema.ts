@@ -25,6 +25,15 @@ export const users = pgTable('users', {
 
 export type SelectUser = typeof users.$inferSelect;
 
+// Emails permitted to sign up (enforced in /api/register, managed in /settings).
+export const allowedEmails = pgTable('allowed_emails', {
+  id: serial('id').primaryKey(),
+  email: text('email').notNull().unique(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export type SelectAllowedEmail = typeof allowedEmails.$inferSelect;
+
 /* ---------- Hiring Pipeline Tracker ---------- */
 
 // Orthogonal candidate status (Decision 3), built from the single-sourced

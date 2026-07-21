@@ -1,10 +1,17 @@
 import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { users, jobs, candidates, feedback } from '../lib/schema';
+import { users, jobs, candidates, feedback, allowedEmails } from '../lib/schema';
 import { count, eq } from 'drizzle-orm';
 import { hash } from 'bcryptjs';
 import { SEED_JOBS, SEED_CANDIDATES } from '../lib/hiring/seed';
+
+const SEED_ALLOWED_EMAILS = [
+  'benchan@lightsprint.ai',
+  'benong@lightsprint.ai',
+  'henghonglee@lightsprint.ai',
+  'marcusajh0802@gmail.com'
+];
 
 async function main() {
   if (!process.env.DATABASE_URL) {
@@ -37,6 +44,12 @@ async function main() {
     });
     console.log('Seeded admin user (admin@admin.com / password).');
   }
+
+  // Seed the signup allowlist (idempotent via the unique email constraint).
+  for (const email of SEED_ALLOWED_EMAILS) {
+    await db.insert(allowedEmails).values({ email }).onConflictDoNothing();
+  }
+  console.log(`Ensured ${SEED_ALLOWED_EMAILS.length} allowlisted emails.`);
 
   // Seed the hiring pipeline (jobs → candidates → feedback), idempotently.
   const [{ value: jobCount }] = await db

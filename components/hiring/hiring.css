@@ -180,6 +180,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  text-decoration: none;
 }
 .ht-root .btn:hover {
   background: var(--surface-2);
@@ -809,4 +810,67 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
+}
+
+/* Settings page */
+.ht-root .settings-wrap {
+  padding: var(--space-5) var(--space-4);
+  max-width: 640px;
+  margin-inline: auto;
+  width: 100%;
+}
+.ht-root .settings-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.ht-root .settings-title {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 700;
+}
+.ht-root .settings-sub {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.ht-root .settings-add {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.ht-root .email-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ht-root .email-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  background: var(--surface);
+}
+.ht-root .email-addr {
+  font-size: 13px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ht-root .email-empty {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  font-style: italic;
 }

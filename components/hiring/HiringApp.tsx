@@ -6,6 +6,7 @@
 // over it so pipeline context stays on screen.
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { isTerminal } from '@/lib/hiring/helpers';
 import { useHiringStore } from '@/lib/hiring/store';
 import type { HiringState } from '@/lib/hiring/types';
@@ -70,6 +71,9 @@ export default function HiringApp({
             </button>
           ))}
         </nav>
+        <Link className="btn" href="/settings">
+          ⚙ Settings
+        </Link>
         <UserMenu email={userEmail} />
       </header>
 
