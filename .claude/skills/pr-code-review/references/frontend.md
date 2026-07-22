@@ -128,21 +128,22 @@ from './actions'`) — that's fine — but never import DB/Drizzle/postgres into
 ## Copy & microcopy
 
 User-facing strings added or changed in the diff (button labels, headings,
-placeholders, empty/error/toast messages, tooltips) are in scope — review the
+placeholders, empty/error/toast messages, tooltips) are in scope. Review the
 literal text, not just the markup around it.
 
 - **Keep it short.** Prefer the shortest string that still reads clearly. Flag
-  an overly long label or message — a button that reads like a sentence, a toast
+  an overly long label or message: a button that reads like a sentence, a toast
   that runs on, a heading padded with filler. Trim to the essential words.
 - **Don't explain.** UI copy names the action or state; it does not justify,
   narrate, or teach. Flag strings that explain *why* or walk the user through
-  reasoning ("We do this because…", "This will…") instead of just stating the
-  thing. Move any genuinely needed guidance to docs/help, not the control label.
+  reasoning ("We do this because...", "This will...") instead of just stating
+  the thing. Move any genuinely needed guidance to docs/help, not the control
+  label.
 - **No em-dashes.** Do not use the em-dash (`—`) in user-facing copy. Flag any
   added string containing one and rewrite with a period, comma, or colon, or by
   splitting the sentence.
-- **Icons over emoji.** Prefer a `lucide-react` icon over an emoji in the UI —
-  it inherits `currentColor`, sizes with the text, and renders consistently
+- **Icons over emoji.** Prefer a `lucide-react` icon over an emoji in the UI. An
+  icon inherits `currentColor`, sizes with the text, and renders consistently
   across platforms (see `components/hiring/ProfileLinks.tsx`, which imports
   `Github` / `Linkedin` from `lucide-react`). Flag emoji added to labels,
   headings, buttons, or messages and suggest the matching lucide icon; keep
