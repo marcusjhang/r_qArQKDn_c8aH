@@ -11,8 +11,8 @@
   - `DATABASE_URL` — Postgres connection string (**required**).
   - `AUTH_SECRET` — Auth.js signing/encryption secret (**required**). Generate
     with `openssl rand -base64 32`.
-  - `SEED_PASSWORD` — shared password for the seeded accounts (**optional**;
-    defaults to `password` — see below).
+  - `SEED_PASSWORD` — password for the seeded accounts (**no default**;
+    required to seed the real `@lightsprint.ai` accounts — see below).
 - Lightsprint-managed repos receive `DATABASE_URL` and `AUTH_SECRET`
   automatically; no manual setup is needed for those.
 
@@ -31,14 +31,27 @@ committed (intentionally or not), treat it as compromised and **rotate it**:
 To purge a value from history entirely, use `git filter-repo` (or BFG) and
 force-push — but rotation is the primary defense; assume the old value is public.
 
-## Default seed credentials
+## Seed credentials (fail-closed, no default)
 
-`bun run db:seed` creates the seeded accounts, all sharing a password that comes
-from `SEED_PASSWORD`, falling back to the well-known default `password`. This is
-a demo convenience only.
+`bun run db:seed` creates the seeded login accounts. There is **no hardcoded
+default password** — the seed will never set a well-known password like
+`password`. How each new account's password is chosen:
 
-**Before any non-demo use:** set a strong `SEED_PASSWORD` (or change the seeded
-accounts' passwords after seeding). Do not deploy with the default in place.
+- **`SEED_PASSWORD` set** — every newly-inserted account uses it.
+- **`SEED_PASSWORD` unset** — the seed **fails closed for the real
+  `@lightsprint.ai` accounts**: it throws with a message telling you to set
+  `SEED_PASSWORD`, so those accounts are never created with a guessable
+  password. Demo (non-`@lightsprint.ai`) accounts instead get a **random
+  per-account password**, printed to the console **once** at seed time — save
+  it then; it is not stored in plaintext or recoverable later.
+
+The seed is **non-destructive on re-run**: it only sets a password when it
+*inserts* a new account. An account that already exists keeps its current
+password (only its display name is refreshed), so re-seeding never clobbers a
+password a user has changed.
+
+**Before any non-demo use:** set a strong `SEED_PASSWORD`. Do not rely on the
+random demo passwords for anything but throwaway local data.
 
 ## Authentication model
 

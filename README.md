@@ -42,8 +42,11 @@ bun run dev
 ## Accounts
 
 The seed creates four logins — `marcusajh0802@gmail.com`, `benong@lightsprint.ai`,
-`benchan@lightsprint.ai`, and `henghonglee@lightsprint.ai` — all with the password
-**`password`** (override with `SEED_PASSWORD`). Change it before any non-demo use.
+`benchan@lightsprint.ai`, and `henghonglee@lightsprint.ai`. There is **no default
+password**: set **`SEED_PASSWORD`** to seed them all with that value (required for
+the `@lightsprint.ai` accounts — the seed fails closed if it is unset). Demo
+accounts left unset get a random password printed once at seed time. Re-seeding
+never resets an existing account's password. See [SECURITY.md](./SECURITY.md).
 New accounts are created via **Sign up** on `/login`, restricted to the email
 allowlist managed on `/members`. Any signed-in user can use the board.
 

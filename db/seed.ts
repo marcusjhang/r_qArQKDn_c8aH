@@ -12,6 +12,7 @@ import {
 } from '../lib/schema';
 import { count, eq } from 'drizzle-orm';
 import { hash } from 'bcryptjs';
+import { randomBytes } from 'node:crypto';
 import {
   SEED_JOBS,
   SEED_CANDIDATES,
@@ -26,9 +27,8 @@ const SEED_ALLOWED_EMAILS = [
   'marcusajh0802@gmail.com'
 ];
 
-// Login accounts created on seed. Override the shared password via SEED_PASSWORD.
-// One account per allowlisted user; all share the same seeded password.
-const SEED_PASSWORD = process.env.SEED_PASSWORD ?? 'password';
+// Login accounts created on seed. See resolvePassword below for how each
+// account's password is chosen — there is deliberately NO hardcoded default.
 // Names are stored as discrete first/last parts (editable from /settings); the
 // display name and avatar initials (first word + last word) are derived from
 // them — e.g. "Ben Ong" → BO, "Heng Hong Lee" → HL.
@@ -39,6 +39,37 @@ const SEED_ACCOUNTS = [
   { email: 'henghonglee@lightsprint.ai', firstName: 'Heng Hong', lastName: 'Lee' }
 ];
 
+// Real, named company accounts. These must never be seeded with a guessable or
+// logged password, so seeding them requires SEED_PASSWORD to be set explicitly.
+const REAL_ACCOUNT_DOMAIN = '@lightsprint.ai';
+
+/**
+ * Choose the plaintext password for a newly-created seed account. Fail-closed,
+ * with no hardcoded default:
+ *   - If SEED_PASSWORD is set, every new account uses it.
+ *   - Otherwise, real @lightsprint.ai accounts throw (set SEED_PASSWORD), while
+ *     demo accounts get a random per-account password that is printed ONCE so
+ *     local/demo seeding still works without a shared literal.
+ * Only called when inserting a new account — existing accounts keep their
+ * current password (a re-seed must not clobber a password that was changed).
+ */
+function resolvePassword(email: string): { password: string; logged: boolean } {
+  const configured = process.env.SEED_PASSWORD;
+  if (configured) {
+    return { password: configured, logged: false };
+  }
+  if (email.toLowerCase().endsWith(REAL_ACCOUNT_DOMAIN)) {
+    throw new Error(
+      `SEED_PASSWORD is not set. Refusing to seed the real account ${email} ` +
+        `with a default password. Set SEED_PASSWORD to a strong value and re-run ` +
+        `(see SECURITY.md).`
+    );
+  }
+  // Demo account: generate a strong random password so seeding still works
+  // without a shared literal. Printed once below; not stored in plaintext.
+  return { password: randomBytes(18).toString('base64url'), logged: true };
+}
+
 async function main() {
   if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL is not set');
@@ -47,11 +78,13 @@ async function main() {
   const client = postgres(process.env.DATABASE_URL);
   const db = drizzle(client);
 
-  // Seed login accounts (idempotent: create, or reset password if present).
-  const passwordHash = await hash(SEED_PASSWORD, 12);
+  // Seed login accounts. Idempotent and non-destructive: a new account is
+  // inserted with a password chosen by resolvePassword; an existing account
+  // keeps its current password (never reset on re-seed) and only has its
+  // display name refreshed.
   for (const acc of SEED_ACCOUNTS) {
     const [existing] = await db
-      .select()
+      .select({ id: users.id })
       .from(users)
       .where(eq(users.email, acc.email))
       .limit(1);
@@ -59,20 +92,28 @@ async function main() {
       await db
         .update(users)
         .set({
-          passwordHash,
           firstName: acc.firstName,
           lastName: acc.lastName
         })
         .where(eq(users.email, acc.email));
-      console.log(`Updated login account ${acc.email}.`);
+      console.log(`Updated login account ${acc.email} (password preserved).`);
     } else {
+      const { password, logged } = resolvePassword(acc.email);
+      const passwordHash = await hash(password, 12);
       await db.insert(users).values({
         firstName: acc.firstName,
         lastName: acc.lastName,
         email: acc.email,
         passwordHash
       });
-      console.log(`Seeded login account ${acc.email}.`);
+      if (logged) {
+        console.log(
+          `Seeded login account ${acc.email} with generated password: ${password}\n` +
+            `  (shown once — save it now; set SEED_PASSWORD to choose your own)`
+        );
+      } else {
+        console.log(`Seeded login account ${acc.email}.`);
+      }
     }
   }
 

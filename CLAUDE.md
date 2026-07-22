@@ -28,7 +28,7 @@ bun run db:generate  # generate migration after schema change
 
 - The whole app is gated behind login — enforced by the `authorized` callback in
   `lib/auth.ts` (middleware runs on every route; only `/login` is public).
-- Seeded logins: four accounts (`marcusajh0802@gmail.com`, `benong@lightsprint.ai`, `benchan@lightsprint.ai`, `henghonglee@lightsprint.ai`), all with password `password` (override via `SEED_PASSWORD`; change before non-demo use).
+- Seeded logins: four accounts (`marcusajh0802@gmail.com`, `benong@lightsprint.ai`, `benchan@lightsprint.ai`, `henghonglee@lightsprint.ai`). Passwords are set from `SEED_PASSWORD` (no default): seeding the real `@lightsprint.ai` accounts requires it (fails closed if unset), while demo accounts get a random password printed once. Re-seeding never resets an existing account's password. See SECURITY.md.
 - Sign up via `/login` → `POST /api/register`, restricted to the allowlist managed in `/members`.
 
 ## App
