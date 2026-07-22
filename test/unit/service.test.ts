@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { getBoardData, type BoardReader } from '@/lib/hiring/queries';
+import { getBoard, hiringService, type BoardReader } from '@/lib/hiring/service';
 import type { Candidate, Job } from '@/lib/hiring/types';
 
-// Because getBoardData reads through an injected BoardReader (rather than the
-// db singleton), it can be exercised with in-memory rows — no database, no
+// Because getBoard reads through an injected BoardReader (rather than the db
+// singleton), it can be exercised with in-memory rows — no database, no
 // mocking of Drizzle's query builder.
-describe('getBoardData', () => {
+describe('getBoard', () => {
   const jobs: Job[] = [
     {
       id: 1,
@@ -34,7 +34,7 @@ describe('getBoardData', () => {
   };
 
   it('composes the reader results into a HiringState payload', async () => {
-    const state = await getBoardData(fakeReader);
+    const state = await getBoard(fakeReader);
     expect(state).toEqual({ jobs, candidates });
   });
 
@@ -50,7 +50,12 @@ describe('getBoardData', () => {
         return candidates;
       }
     };
-    await getBoardData(reader);
+    await getBoard(reader);
     expect(calls.sort()).toEqual(['candidates', 'jobs']);
+  });
+
+  it('is exposed on the hiringService facade', async () => {
+    const state = await hiringService.getBoard(fakeReader);
+    expect(state).toEqual({ jobs, candidates });
   });
 });
