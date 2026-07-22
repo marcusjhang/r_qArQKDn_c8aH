@@ -15,3 +15,17 @@ export type {
   Status,
   RatingValue
 } from './service';
+
+// Scheduling value-set types are single-sourced in primitives (client-safe).
+export type {
+  ScheduleStatus,
+  InterviewType,
+  InterviewStatus,
+  PanelRole,
+  PanelMemberStatus,
+  LocationKind,
+  BookingTokenStatus,
+  EmailKind,
+  EmailStatus,
+  NotificationKind
+} from './primitives';

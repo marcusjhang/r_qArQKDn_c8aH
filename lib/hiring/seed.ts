@@ -8,7 +8,13 @@
 // resolves each candidate's `job` slug to the generated serial id.
 
 import { DEFAULT_STAGES } from './config';
-import type { RatingValue, Status } from './types';
+import type {
+  InterviewType,
+  PanelRole,
+  RatingValue,
+  ScheduleStatus,
+  Status
+} from './types';
 
 export interface SeedJob {
   slug: string;
@@ -31,6 +37,14 @@ export interface SeedCandidate {
   status: Status;
   starred?: boolean;
   feedback: SeedFeedback[];
+  /** Whole days ago the candidate entered its current stage (stale warning). */
+  daysInStage?: number;
+  /** Touchpoint state. Omit to leave the candidate unscheduled. */
+  scheduleStatus?: ScheduleStatus;
+  /** Booked touchpoint relative to seed time, in days (negative = overdue). */
+  scheduledInDays?: number;
+  /** Days ago the touchpoint was marked completed (awaiting-decision nudge). */
+  completedDaysAgo?: number;
 }
 
 export const SEED_JOBS: SeedJob[] = [
@@ -49,6 +63,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     source: 'LinkedIn',
     status: 'active',
     starred: true,
+    daysInStage: 5,
     feedback: [
       { by: 'bc', v: 3, note: 'Solid CS fundamentals, clean take-home.' },
       { by: 'hl', v: 4, note: 'Excellent systems design — would move fast.' }
@@ -61,6 +76,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     owner: 'bc',
     source: 'Referral',
     status: 'active',
+    daysInStage: 4,
     feedback: []
   },
   {
@@ -71,6 +87,9 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     source: 'YC',
     status: 'active',
     starred: true,
+    daysInStage: 1,
+    scheduleStatus: 'scheduled',
+    scheduledInDays: 1,
     feedback: [
       { by: 'bo', v: 4, note: 'Sharp, great product instincts.' },
       { by: 'bc', v: 3, note: 'Strong, minor gaps in distributed systems.' }
@@ -138,6 +157,10 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     owner: 'hl',
     source: 'LinkedIn',
     status: 'active',
+    daysInStage: 4,
+    scheduleStatus: 'completed',
+    scheduledInDays: -4,
+    completedDaysAgo: 3,
     feedback: [
       { by: 'hl', v: 3, note: 'Strong portfolio, thoughtful about systems.' }
     ]
@@ -170,8 +193,60 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     owner: 'hl',
     source: 'LinkedIn',
     status: 'active',
+    daysInStage: 2,
+    scheduleStatus: 'scheduled',
+    scheduledInDays: -1,
     feedback: [
       { by: 'hl', v: 4, note: 'Rare combo of GTM + technical depth.' }
+    ]
+  }
+];
+
+/* ---------- Interview scheduling seed ---------- */
+
+export interface SeedInterview {
+  candidate: string; // candidate name
+  type: InterviewType;
+  status: 'scheduled' | 'completed';
+  /** Days from seed time (COMPANY_TZ), negative = past. */
+  startOffsetDays: number;
+  /** Local start hour (COMPANY_TZ). */
+  hour: number;
+  panel: { founderId: string; role: PanelRole }[];
+}
+
+// A few interviews wired to the seed candidates so the calendar and the
+// projected board chips line up out of the box. Ava is left unscheduled so the
+// drawer's live booking flow can be demoed.
+export const SEED_INTERVIEWS: SeedInterview[] = [
+  {
+    candidate: 'Priya Nair',
+    type: 'interview',
+    status: 'scheduled',
+    startOffsetDays: 1,
+    hour: 14,
+    panel: [
+      { founderId: 'bo', role: 'lead' },
+      { founderId: 'bc', role: 'interviewer' }
+    ]
+  },
+  {
+    candidate: 'Jack Reed',
+    type: 'interview',
+    status: 'scheduled',
+    startOffsetDays: -1,
+    hour: 11,
+    panel: [{ founderId: 'hl', role: 'lead' }]
+  },
+  {
+    candidate: 'Mia Torres',
+    type: 'interview',
+    status: 'completed',
+    startOffsetDays: -3,
+    hour: 15,
+    panel: [
+      { founderId: 'hl', role: 'lead' },
+      { founderId: 'bo', role: 'interviewer' }
     ]
   }
 ];

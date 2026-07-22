@@ -1,7 +1,19 @@
 // Pure, framework-free helpers over the hiring domain model.
 
-import { FOUNDERS } from './config';
-import type { Candidate, Founder, Job, RatingValue, Status } from './types';
+import {
+  FOUNDERS,
+  SCHEDULING_STAGES,
+  STALE_AFTER_DAYS,
+  AWAITING_DECISION_AFTER_DAYS
+} from './config';
+import type {
+  Candidate,
+  Founder,
+  Job,
+  NotificationKind,
+  RatingValue,
+  Status
+} from './types';
 
 export function founderById(id: string): Founder {
   return FOUNDERS.find((f) => f.id === id) ?? FOUNDERS[0];
@@ -347,4 +359,105 @@ export function partitionJobTabs(
   const overflow = sorted.filter((j) => !inlineIds.has(j.id));
   const favCount = jobs.filter((j) => j.starred).length;
   return { sorted, inline, overflow, favCount };
+}
+
+/* ---------- Needs-attention & touchpoint (scheduling) ---------- */
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Whole days a candidate has spent in its current stage, as of `now`. */
+export function daysInStage(c: Candidate, now: number): number {
+  const entered = new Date(c.stageEnteredAt).getTime();
+  return Math.max(0, Math.floor((now - entered) / DAY_MS));
+}
+
+/** Whole days since the touchpoint was marked completed, as of `now`. */
+export function daysSinceCompleted(c: Candidate, now: number): number | null {
+  if (!c.completedAt) return null;
+  return Math.max(0, Math.floor((now - new Date(c.completedAt).getTime()) / DAY_MS));
+}
+
+/**
+ * Only actively-progressing candidates get nudged. Rejected/hired are done and
+ * on-hold candidates are intentionally paused — none should nag.
+ */
+export function needsAttentionEligible(c: Candidate): boolean {
+  return c.status === 'active';
+}
+
+/** A candidate is stale when active and sat in its stage >= STALE_AFTER_DAYS. */
+export function isStale(c: Candidate, now: number): boolean {
+  if (!needsAttentionEligible(c)) return false;
+  return daysInStage(c, now) >= STALE_AFTER_DAYS;
+}
+
+/** True when a stage's next action is booking a live touchpoint. */
+export function stageNeedsScheduling(stage: string): boolean {
+  const s = stage.toLowerCase();
+  return SCHEDULING_STAGES.some((k) => s.includes(k.toLowerCase()));
+}
+
+/** The one actionable touchpoint reason for a scheduling stage, or null. */
+export function scheduleReason(c: Candidate, now: number): string | null {
+  if (!needsAttentionEligible(c)) return null;
+  if (!stageNeedsScheduling(c.stage)) return null;
+  if (c.scheduleStatus === 'completed') {
+    const d = daysSinceCompleted(c, now);
+    return d != null && d >= AWAITING_DECISION_AFTER_DAYS
+      ? 'Awaiting decision'
+      : null;
+  }
+  if (c.scheduleStatus === 'scheduled') {
+    if (c.scheduledAt && new Date(c.scheduledAt).getTime() < now) {
+      return 'Interview overdue';
+    }
+    return null;
+  }
+  return 'Needs scheduling';
+}
+
+/**
+ * Structured attention items (kind + human reason). Single source for the card
+ * chip, the drawer banner, and owner notifications. In a scheduling stage the
+ * touchpoint state is the signal; elsewhere it's pure time-in-stage.
+ */
+export function attentionItems(
+  c: Candidate,
+  now: number
+): { kind: NotificationKind; reason: string }[] {
+  if (!needsAttentionEligible(c)) return [];
+  if (stageNeedsScheduling(c.stage)) {
+    const r = scheduleReason(c, now);
+    if (!r) return [];
+    const kind: NotificationKind =
+      r === 'Needs scheduling'
+        ? 'needs_scheduling'
+        : r === 'Interview overdue'
+          ? 'interview_overdue'
+          : 'awaiting_decision';
+    return [{ kind, reason: r }];
+  }
+  if (isStale(c, now)) {
+    return [{ kind: 'stale', reason: `${daysInStage(c, now)}d in ${c.stage}` }];
+  }
+  return [];
+}
+
+/** Human-readable reasons a candidate needs attention (empty = healthy). */
+export function attentionReasons(c: Candidate, now: number): string[] {
+  return attentionItems(c, now).map((i) => i.reason);
+}
+
+/**
+ * Fields to clear when a candidate actually changes stage — the old touchpoint
+ * no longer applies and the "time in stage" clock restarts. Shared by the
+ * reducer's optimistic move and the server actions so they can't drift.
+ */
+export function resetTouchpointOnMove() {
+  return {
+    stageEnteredAt: new Date(),
+    scheduleStatus: null,
+    scheduledAt: null,
+    completedAt: null
+  } as const;
 }

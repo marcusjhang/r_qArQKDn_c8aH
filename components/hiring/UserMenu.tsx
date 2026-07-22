@@ -17,7 +17,7 @@ export default function UserMenu({
   nav
 }: {
   email?: string | null;
-  nav?: { href: string; label: string };
+  nav?: { href: string; label: string }[];
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -58,16 +58,19 @@ export default function UserMenu({
       </button>
       {open && (
         <div className="usermenu-menu" role="menu">
-          {nav && (
+          {nav && nav.length > 0 && (
             <>
-              <Link
-                className="usermenu-item"
-                role="menuitem"
-                href={nav.href}
-                onClick={() => setOpen(false)}
-              >
-                {nav.label}
-              </Link>
+              {nav.map((n) => (
+                <Link
+                  key={n.href}
+                  className="usermenu-item"
+                  role="menuitem"
+                  href={n.href}
+                  onClick={() => setOpen(false)}
+                >
+                  {n.label}
+                </Link>
+              ))}
               <div className="usermenu-sep" />
             </>
           )}

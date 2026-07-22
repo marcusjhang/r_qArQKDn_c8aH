@@ -27,6 +27,7 @@ export default function StageColumn({
   actions,
   state,
   dnd,
+  now,
   onOpen
 }: {
   job: Job;
@@ -36,6 +37,7 @@ export default function StageColumn({
   actions: HiringActions;
   state: HiringState;
   dnd: BoardDnd;
+  now: number | null;
   onOpen: (id: number) => void;
 }) {
   const menuWrapRef = useRef<HTMLDivElement>(null);
@@ -131,6 +133,7 @@ export default function StageColumn({
             <CandidateCard
               key={c.id}
               candidate={c}
+              now={now}
               dragProps={dnd.cardProps(c.id)}
               onOpen={onOpen}
               onToggleStar={actions.setCandidateStarred}

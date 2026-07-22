@@ -22,6 +22,7 @@ import {
   removeStage,
   placeInStage,
   placeWithStatus,
+  resetTouchpointOnMove,
   MAX_FAVORITES
 } from './helpers';
 import { DEFAULT_STAGES } from './config';
@@ -35,6 +36,8 @@ import {
   zSource,
   zStageName,
   zJobTitle,
+  zScheduleStatus,
+  zScheduledAt,
   candidateInsertSchema,
   feedbackInsertSchema
 } from './schemas';
@@ -139,7 +142,13 @@ export async function moveStage(idRaw: number, stageRaw: string) {
     .limit(1);
   if (!c) return;
   const placement = placeInStage(stage, c);
-  await db.update(candidates).set(placement).where(eq(candidates.id, id));
+  // A real stage change restarts the "time in stage" clock and drops the old
+  // touchpoint; a no-op move leaves them untouched.
+  const moved = placement.stage !== c.stage;
+  await db
+    .update(candidates)
+    .set({ ...placement, ...(moved ? resetTouchpointOnMove() : {}) })
+    .where(eq(candidates.id, id));
   revalidateTag(BOARD_TAGS.candidates);
 }
 
@@ -169,7 +178,52 @@ export async function setStatus(idRaw: number, statusRaw: Status) {
   // Setting status to Hired moves the card into the Hired stage if one exists.
   const stages = status === 'hired' ? await loadJobStages(c.jobId) : null;
   const placement = placeWithStatus(status, c, stages ?? []);
-  await db.update(candidates).set(placement).where(eq(candidates.id, id));
+  const moved = placement.stage !== c.stage;
+  await db
+    .update(candidates)
+    .set({ ...placement, ...(moved ? resetTouchpointOnMove() : {}) })
+    .where(eq(candidates.id, id));
+  revalidateTag(BOARD_TAGS.candidates);
+}
+
+/**
+ * Set the candidate's touchpoint state directly (manual control in the drawer,
+ * for candidates without a real interview). null clears it; 'scheduled' books a
+ * time (defaults to now); 'completed' stamps completedAt for the awaiting-
+ * decision nudge.
+ */
+export async function setSchedule(
+  idRaw: number,
+  statusRaw: string | null,
+  whenRaw: string | null
+) {
+  const id = zId.parse(idRaw);
+  const status = zScheduleStatus.parse(statusRaw);
+  const when = zScheduledAt.parse(whenRaw ?? null);
+  if (status === null) {
+    await db
+      .update(candidates)
+      .set({ scheduleStatus: null, scheduledAt: null, completedAt: null })
+      .where(eq(candidates.id, id));
+  } else if (status === 'scheduled') {
+    await db
+      .update(candidates)
+      .set({
+        scheduleStatus: 'scheduled',
+        scheduledAt: when ? new Date(when) : new Date(),
+        completedAt: null
+      })
+      .where(eq(candidates.id, id));
+  } else {
+    await db
+      .update(candidates)
+      .set({
+        scheduleStatus: 'completed',
+        completedAt: new Date(),
+        ...(when ? { scheduledAt: new Date(when) } : {})
+      })
+      .where(eq(candidates.id, id));
+  }
   revalidateTag(BOARD_TAGS.candidates);
 }
 

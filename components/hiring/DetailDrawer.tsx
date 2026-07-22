@@ -16,16 +16,19 @@ import DetailForm from './DetailForm';
 import FeedbackList from './FeedbackList';
 import AddFeedbackForm from './AddFeedbackForm';
 import DetailFooter from './DetailFooter';
+import SchedulingSection from './SchedulingSection';
 
 export default function DetailDrawer({
   state,
   actions,
   openId,
+  now,
   onClose
 }: {
   state: HiringState;
   actions: HiringActions;
   openId: number | null;
+  now: number | null;
   onClose: () => void;
 }) {
   const candidate =
@@ -80,6 +83,8 @@ export default function DetailDrawer({
 
         <div className="drawer-body">
           <DetailForm view={view} actions={actions} />
+
+          <SchedulingSection view={view} now={now} actions={actions} />
 
           <div className="feedback">
             <FeedbackList view={view} />

@@ -8,7 +8,14 @@ import 'server-only';
 import { z } from 'zod';
 import { createInsertSchema } from 'drizzle-zod';
 import { candidates, feedback } from '@/lib/schema/hiring';
-import { STATUSES, RATING_VALUES, type RatingValue } from './primitives';
+import {
+  STATUSES,
+  RATING_VALUES,
+  SCHEDULE_STATUSES,
+  INTERVIEW_TYPES,
+  PANEL_ROLES,
+  type RatingValue
+} from './primitives';
 import { FOUNDERS, SOURCES } from './config';
 
 const founderIds = FOUNDERS.map((f) => f.id) as [string, ...string[]];
@@ -45,3 +52,21 @@ export const feedbackInsertSchema = createInsertSchema(feedback, {
   rating: zRating,
   note: zNote
 }).pick({ byFounder: true, rating: true, note: true });
+
+/* Scheduling validators */
+export const zScheduleStatus = z.enum(SCHEDULE_STATUSES).nullable();
+export const zScheduledAt = z.string().datetime().nullable();
+export const zInterviewType = z.enum(INTERVIEW_TYPES);
+export const zIsoInstant = z.string().datetime();
+export const zWeekday = z.number().int().min(0).max(6);
+export const zMinute = z.number().int().min(0).max(1440);
+export const zPanelMember = z.object({
+  founderId: zOwner,
+  role: z.enum(PANEL_ROLES)
+});
+export const zPanel = z.array(zPanelMember).min(1).max(5);
+export const zAvailabilityWindow = z
+  .object({ weekday: zWeekday, startMinute: zMinute, endMinute: zMinute })
+  .refine((w) => w.startMinute < w.endMinute, {
+    message: 'startMinute must be before endMinute'
+  });

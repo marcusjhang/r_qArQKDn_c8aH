@@ -31,9 +31,9 @@ import type {
   SelectFeedback
 } from '@/lib/schema/hiring';
 import { BOARD_TAGS } from './cache';
-import type { RatingValue, Status } from './primitives';
+import type { RatingValue, ScheduleStatus, Status } from './primitives';
 
-export type { Status, RatingValue } from './primitives';
+export type { Status, RatingValue, ScheduleStatus } from './primitives';
 
 /** An owner / interviewer. Pure domain concept, not a database row. */
 export interface Founder {
@@ -60,6 +60,11 @@ export interface Candidate {
   source: string;
   status: Status;
   starred: boolean;
+  // Scheduling touchpoint (drives the board's "needs attention" chip).
+  stageEnteredAt: Date;
+  scheduleStatus: ScheduleStatus | null;
+  scheduledAt: Date | null;
+  completedAt: Date | null;
   feedback: Feedback[];
 }
 
@@ -133,7 +138,11 @@ const drizzleReader: BoardReader = {
           owner: true,
           source: true,
           status: true,
-          starred: true
+          starred: true,
+          stageEnteredAt: true,
+          scheduleStatus: true,
+          scheduledAt: true,
+          completedAt: true
         },
         with: {
           feedback: {

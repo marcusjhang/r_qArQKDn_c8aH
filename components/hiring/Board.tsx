@@ -22,12 +22,14 @@ export default function Board({
   actions,
   activeJob,
   showRejected,
+  now,
   onOpen
 }: {
   state: HiringState;
   actions: HiringActions;
   activeJob: number;
   showRejected: boolean;
+  now: number | null;
   onOpen: (id: number) => void;
 }) {
   const dnd = useBoardDnd(actions.moveTo);
@@ -49,6 +51,7 @@ export default function Board({
             actions={actions}
             state={state}
             dnd={dnd}
+            now={now}
             onOpen={onOpen}
           />
         ))}

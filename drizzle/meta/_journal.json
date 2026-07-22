@@ -71,6 +71,13 @@
       "when": 1784690239316,
       "tag": "0009_acoustic_vin_gonzales",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784694604581,
+      "tag": "0010_wonderful_madame_masque",
+      "breakpoints": true
     }
   ]
 }

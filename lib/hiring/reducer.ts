@@ -17,9 +17,16 @@ import {
   placeInStage,
   placeWithStatus,
   removeStage,
-  reorderStages
+  reorderStages,
+  resetTouchpointOnMove
 } from './helpers';
-import type { Candidate, HiringState, RatingValue, Status } from './types';
+import type {
+  Candidate,
+  HiringState,
+  RatingValue,
+  ScheduleStatus,
+  Status
+} from './types';
 
 export type HiringEvent =
   // Adopt a fresh server snapshot (error recovery after a failed write).
@@ -44,6 +51,12 @@ export type HiringEvent =
   | { type: 'setSource'; id: number; source: string }
   | { type: 'setStatus'; id: number; status: Status }
   | { type: 'setCandidateStarred'; id: number; starred: boolean }
+  | {
+      type: 'setSchedule';
+      id: number;
+      scheduleStatus: ScheduleStatus | null;
+      when: Date | null;
+    }
   | {
       type: 'addFeedback';
       id: number;
@@ -144,6 +157,10 @@ export function hiringReducer(
             source: event.source,
             status: 'active',
             starred: false,
+            stageEnteredAt: new Date(),
+            scheduleStatus: null,
+            scheduledAt: null,
+            completedAt: null,
             feedback: []
           }
         ]
@@ -159,10 +176,12 @@ export function hiringReducer(
     case 'moveStage':
       // placeInStage couples the (stage, status) pair — entering Hired marks
       // the candidate hired, leaving it clears a stale hired back to active.
-      return mapCandidate(state, event.id, (c) => ({
-        ...c,
-        ...placeInStage(event.stage, c)
-      }));
+      // A real move also restarts the stale clock and drops the touchpoint.
+      return mapCandidate(state, event.id, (c) => {
+        const placement = placeInStage(event.stage, c);
+        const moved = placement.stage !== c.stage;
+        return { ...c, ...placement, ...(moved ? resetTouchpointOnMove() : {}) };
+      });
 
     case 'setOwner':
       return mapCandidate(state, event.id, (c) => ({ ...c, owner: event.owner }));
@@ -176,7 +195,35 @@ export function hiringReducer(
     case 'setStatus':
       return mapCandidate(state, event.id, (c) => {
         const job = state.jobs.find((j) => j.id === c.jobId);
-        return { ...c, ...placeWithStatus(event.status, c, job?.stages ?? []) };
+        const placement = placeWithStatus(event.status, c, job?.stages ?? []);
+        const moved = placement.stage !== c.stage;
+        return { ...c, ...placement, ...(moved ? resetTouchpointOnMove() : {}) };
+      });
+
+    case 'setSchedule':
+      return mapCandidate(state, event.id, (c) => {
+        if (event.scheduleStatus === null) {
+          return {
+            ...c,
+            scheduleStatus: null,
+            scheduledAt: null,
+            completedAt: null
+          };
+        }
+        if (event.scheduleStatus === 'scheduled') {
+          return {
+            ...c,
+            scheduleStatus: 'scheduled',
+            scheduledAt: event.when ?? new Date(),
+            completedAt: null
+          };
+        }
+        return {
+          ...c,
+          scheduleStatus: 'completed',
+          completedAt: new Date(),
+          scheduledAt: event.when ?? c.scheduledAt
+        };
       });
 
     case 'setCandidateStarred':

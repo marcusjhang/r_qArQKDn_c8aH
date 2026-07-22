@@ -23,7 +23,7 @@ import {
 } from './helpers';
 import { hiringReducer } from './reducer';
 import * as api from './actions';
-import type { HiringState, RatingValue, Status } from './types';
+import type { HiringState, RatingValue, ScheduleStatus, Status } from './types';
 
 /** Pure guard used by the board's column menu before calling deleteStage. */
 export function canDeleteStage(
@@ -57,6 +57,15 @@ export interface HiringActions {
   setSource: (id: number, source: string) => void;
   setStatus: (id: number, status: Status) => void;
   setCandidateStarred: (id: number, starred: boolean) => void;
+  /** Manual touchpoint control (null clears / 'scheduled' / 'completed'). */
+  setSchedule: (
+    id: number,
+    status: ScheduleStatus | null,
+    when: Date | null
+  ) => void;
+  /** Force-adopt fresh server state after an out-of-store write (e.g. an
+   * interview scheduled server-side updates the candidate touchpoint). */
+  resync: () => void;
   addFeedback: (
     id: number,
     entry: { byFounder: string; rating: RatingValue; note: string }
@@ -237,6 +246,16 @@ export function useHiringStore(initial: HiringState): {
     [persist]
   );
 
+  const setSchedule = useCallback(
+    (id: number, status: ScheduleStatus | null, when: Date | null) => {
+      dispatch({ type: 'setSchedule', id, scheduleStatus: status, when });
+      persist(() =>
+        api.setSchedule(id, status, when ? when.toISOString() : null)
+      );
+    },
+    [persist]
+  );
+
   const addFeedback = useCallback(
     (id: number, entry: { byFounder: string; rating: RatingValue; note: string }) => {
       const temp = tempId.current--;
@@ -314,6 +333,8 @@ export function useHiringStore(initial: HiringState): {
     setSource,
     setStatus,
     setCandidateStarred,
+    setSchedule,
+    resync,
     addFeedback,
     renameStage,
     addStage,

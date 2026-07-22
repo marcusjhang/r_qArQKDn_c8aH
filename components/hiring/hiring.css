@@ -544,6 +544,7 @@
 }
 .ht-root select,
 .ht-root input[type='text'],
+.ht-root input[type='datetime-local'],
 .ht-root textarea {
   width: 100%;
   border: 1px solid var(--border-strong);
@@ -1213,4 +1214,646 @@
 }
 .dark .ht-root select {
   background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='16'%20height='16'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%239aa3b2'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpolyline%20points='6%209%2012%2015%2018%209'/%3E%3C/svg%3E");
+}
+
+/* ============================================================
+ * Interview scheduling, needs-attention & calendar (feature)
+ * ============================================================ */
+.ht-root {
+  --warn-fg: #b45309;
+  --warn-bg: #fdf1e3;
+  --warn-border: #f4c98a;
+}
+
+/* Needs-attention on cards */
+.ht-root .card.needs-attention {
+  border-color: var(--warn-border);
+  box-shadow: inset 3px 0 0 0 var(--warn-fg), 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+.ht-root .attention-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--warn-fg);
+  background: var(--warn-bg);
+  border-radius: var(--radius-sm, 7px);
+  padding: 3px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ht-root .attention-ico {
+  flex: 0 0 auto;
+}
+.ht-root .attention-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  font-weight: 600;
+  color: var(--warn-fg);
+  background: var(--warn-bg);
+  border-radius: 999px;
+  padding: 1px 9px;
+}
+
+/* Scheduling controls (drawer) */
+.ht-root .sched-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: var(--space-4, 16px);
+}
+.ht-root .sched-flag {
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--warn-fg);
+  background: var(--warn-bg);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+.ht-root .seg {
+  display: flex;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm, 7px);
+  overflow: hidden;
+  width: 100%;
+}
+.ht-root .seg-btn {
+  flex: 1 1 0;
+  padding: 7px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: none;
+  border-left: 1px solid var(--border);
+  cursor: pointer;
+}
+.ht-root .seg-btn:first-child {
+  border-left: none;
+}
+.ht-root .seg-btn.on {
+  background: var(--primary-weak);
+  color: var(--primary);
+}
+.ht-root .sched-input {
+  width: 100%;
+}
+.ht-root .sched-note {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.ht-root .sched-manual {
+  margin-top: var(--space-2, 8px);
+  padding-top: var(--space-3, 12px);
+  border-top: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Interview list (drawer) */
+.ht-root .iv-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ht-root .iv-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 7px);
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ht-root .iv-item.is-completed {
+  opacity: 0.7;
+}
+.ht-root .iv-item-when {
+  font-weight: 600;
+  font-size: 13px;
+}
+.ht-root .iv-item-meta {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.ht-root .iv-item-actions {
+  display: flex;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+/* Slot picker */
+.ht-root .slot-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+.ht-root .slot-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.ht-root .slot-days {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  max-height: 220px;
+  overflow: auto;
+}
+.ht-root .slot-day-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.ht-root .slot-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ht-root .slot-chip {
+  font-size: 12px;
+  padding: 5px 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm, 7px);
+  background: var(--surface);
+  cursor: pointer;
+}
+.ht-root .slot-chip.on {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.ht-root .slot-panel {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-3, 12px);
+}
+.ht-root .panel-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ht-root .panel-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 5px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  cursor: pointer;
+}
+.ht-root .panel-toggle.on {
+  background: var(--primary-weak);
+  border-color: var(--primary-border);
+  color: var(--primary);
+}
+.ht-root .panel-lead {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: var(--primary);
+  color: #fff;
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+
+/* Interview status pills + danger affordances */
+.ht-root .status-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+.ht-root .status-pill.st-scheduled {
+  background: var(--primary-weak);
+  color: var(--primary);
+}
+.ht-root .status-pill.st-completed {
+  background: var(--hired-bg, #e7f5ee);
+  color: var(--hired-fg, #146c43);
+}
+.ht-root .status-pill.st-cancelled,
+.ht-root .status-pill.st-no_show {
+  background: var(--rej-bg, #fbeae8);
+  color: var(--rej-fg, #c0362c);
+}
+.ht-root .btn.danger {
+  color: var(--rej-fg, #c0362c);
+  border-color: var(--rej-bg, #fbeae8);
+}
+.ht-root .linkbtn.danger {
+  color: var(--rej-fg, #c0362c);
+}
+
+/* Interviewer roster (scheduling only — not a role) */
+.ht-root .roster {
+  margin-bottom: var(--space-5, 24px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ht-root .roster-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ht-root .roster-state {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.ht-root .roster-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  max-width: 640px;
+}
+
+/* Notification bell */
+.ht-root .notif {
+  position: relative;
+  margin-right: var(--space-2, 8px);
+}
+.ht-root .notif-bell {
+  position: relative;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--radius-sm, 7px);
+  height: 34px;
+  min-width: 38px;
+  font-size: 16px;
+  cursor: pointer;
+}
+.ht-root .notif-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--rej-fg, #c0362c);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ht-root .notif-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 320px;
+  max-height: 420px;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 10px);
+  box-shadow: var(--shadow, 0 6px 20px rgba(16, 24, 40, 0.1));
+  z-index: 50;
+}
+.ht-root .notif-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 700;
+  font-size: 13px;
+}
+.ht-root .notif-empty {
+  padding: 20px 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+.ht-root .notif-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ht-root .notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--surface-2);
+  cursor: pointer;
+}
+.ht-root .notif-item.unread {
+  background: var(--primary-weak);
+}
+.ht-root .notif-ico {
+  flex: 0 0 auto;
+  font-size: 14px;
+}
+.ht-root .notif-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ht-root .notif-msg {
+  font-size: 12.5px;
+  color: var(--text);
+}
+.ht-root .notif-meta {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.ht-root .notif-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  margin-top: 4px;
+}
+
+/* Calendar (week/day/team grids + availability editor) */
+.ht-root .cal-toolbar {
+  flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  flex-wrap: wrap;
+}
+.ht-root .cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ht-root .cal-range {
+  font-weight: 600;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+.ht-root .cal-filter {
+  width: auto;
+  min-width: 150px;
+}
+.ht-root .cal-wrap {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: var(--space-4, 16px);
+}
+.ht-root .cal-grid {
+  display: flex;
+  gap: 8px;
+  min-width: 640px;
+}
+.ht-root .cal-axis {
+  flex: 0 0 56px;
+}
+.ht-root .cal-hour {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  text-align: right;
+  padding-right: 6px;
+  transform: translateY(-6px);
+}
+.ht-root .cal-days {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  gap: 8px;
+}
+.ht-root .cal-day {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ht-root .cal-day-head {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.ht-root .cal-day.is-today .cal-day-head {
+  color: var(--primary);
+}
+.ht-root .cal-day-body {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 7px);
+  background: var(--surface);
+  overflow: hidden;
+}
+.ht-root .cal-slotline {
+  border-top: 1px solid var(--surface-2);
+}
+.ht-root .cal-event {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-align: left;
+  overflow: hidden;
+  border: none;
+  border-left: 3px solid var(--iv, var(--primary));
+  border-radius: 5px;
+  padding: 3px 6px;
+  background: color-mix(in srgb, var(--iv, var(--primary)) 12%, #fff);
+  color: var(--text);
+  cursor: pointer;
+}
+.ht-root .cal-event.is-completed {
+  opacity: 0.62;
+}
+.ht-root .cal-event.is-no_show {
+  border-left-style: dashed;
+  opacity: 0.7;
+}
+.ht-root .cal-event-time {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.ht-root .cal-event-name {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ht-root .cal-event-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ht-root .cal-event.compact {
+  border-radius: 4px;
+  padding: 2px 5px;
+  margin-bottom: 3px;
+}
+.ht-root .cal-event-flag {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--warn-fg);
+}
+.ht-root .team-view {
+  overflow: auto;
+}
+.ht-root .team-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 640px;
+}
+.ht-root .team-table th,
+.ht-root .team-table td {
+  border: 1px solid var(--border);
+  padding: 8px;
+  vertical-align: top;
+  text-align: left;
+}
+.ht-root .team-table thead th {
+  background: var(--surface-2);
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.ht-root .team-row-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--surface);
+  white-space: nowrap;
+}
+.ht-root .team-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+.ht-root .team-cell {
+  min-width: 120px;
+}
+.ht-root .team-empty {
+  color: var(--text-muted);
+}
+.ht-root .avail-editor {
+  max-width: 760px;
+}
+.ht-root .avail-head {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3, 12px);
+  margin-bottom: var(--space-4, 16px);
+  flex-wrap: wrap;
+}
+.ht-root .avail-tz {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+.ht-root .avail-grid {
+  display: grid;
+  grid-template-columns: 70px repeat(var(--cols), 1fr);
+  gap: 3px;
+  user-select: none;
+}
+.ht-root .avail-col-head {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.ht-root .avail-hour {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+}
+.ht-root .avail-cell {
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  cursor: pointer;
+}
+.ht-root .avail-cell.on {
+  background: var(--primary-weak);
+  border-color: var(--primary-border);
+}
+.ht-root .avail-exceptions {
+  margin-top: var(--space-5, 24px);
+}
+.ht-root .ex-list {
+  list-style: none;
+  margin: 0 0 var(--space-3, 12px);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ht-root .ex-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.ht-root .ex-kind {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+.ht-root .ex-busy {
+  background: var(--rej-bg, #fbeae8);
+  color: var(--rej-fg, #c0362c);
+}
+.ht-root .ex-available {
+  background: var(--hired-bg, #e7f5ee);
+  color: var(--hired-fg, #146c43);
+}
+.ht-root .ex-when {
+  color: var(--text-muted);
+}
+.ht-root .ex-add {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.ht-root .ex-add input,
+.ht-root .ex-add select {
+  width: auto;
+}
+.ht-root .iv-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ht-root .iv-row {
+  display: flex;
+  gap: 10px;
+}
+.ht-root .iv-row .label {
+  flex: 0 0 110px;
+}
+.ht-root .iv-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: var(--space-2, 8px);
 }

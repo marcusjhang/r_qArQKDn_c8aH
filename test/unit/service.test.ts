@@ -24,6 +24,10 @@ describe('getBoard', () => {
       source: 'Referral',
       status: 'active',
       starred: false,
+      stageEnteredAt: new Date(0),
+      scheduleStatus: null,
+      scheduledAt: null,
+      completedAt: null,
       feedback: []
     }
   ];

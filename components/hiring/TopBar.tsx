@@ -5,6 +5,7 @@
 
 import Brand from './Brand';
 import UserMenu from './UserMenu';
+import NotificationBell from './NotificationBell';
 
 export default function TopBar({
   subtitle,
@@ -14,7 +15,7 @@ export default function TopBar({
 }: {
   subtitle: string;
   userEmail?: string | null;
-  nav?: { href: string; label: string };
+  nav?: { href: string; label: string }[];
   children?: React.ReactNode;
 }) {
   return (
@@ -22,6 +23,7 @@ export default function TopBar({
       <header className="topbar">
         <Brand subtitle={subtitle} />
         <div className="spacer" />
+        <NotificationBell />
         <UserMenu email={userEmail} nav={nav} />
       </header>
       {children && <div className="subnav">{children}</div>}

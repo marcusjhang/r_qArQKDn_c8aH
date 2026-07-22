@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import {
+  attentionReasons,
   formatJobMeta,
   jobStats,
   liveCount,
@@ -34,6 +35,15 @@ export default function HiringApp({
   const [openId, setOpenId] = useState<number | null>(null);
   const [addingCandidate, setAddingCandidate] = useState(false);
   const [creatingJob, setCreatingJob] = useState(false);
+  // Attention flags are time-relative → `now` is null through SSR + first paint
+  // (server and client agree: no badges), then a mount effect fills it in and
+  // ticks each minute. Avoids a hydration mismatch.
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    setNow(Date.now());
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
 
   // Keep a valid active job — e.g. after deleting the active job, fall back.
   useEffect(() => {
@@ -59,12 +69,22 @@ export default function HiringApp({
     showRejected
   );
 
+  const attentionCount =
+    now == null || !job
+      ? 0
+      : state.candidates.filter(
+          (c) => c.jobId === job.id && attentionReasons(c, now).length > 0
+        ).length;
+
   return (
     <div className="ht-root">
       <TopBar
         subtitle="Pipeline Tracker"
         userEmail={userEmail}
-        nav={{ href: '/settings', label: '⚙ Settings' }}
+        nav={[
+          { href: '/calendar', label: '📅 Calendar' },
+          { href: '/settings', label: '⚙ Settings' }
+        ]}
       >
         <button className="btn primary" onClick={() => setCreatingJob(true)}>
           ＋ New job
@@ -82,7 +102,17 @@ export default function HiringApp({
       <div className="toolbar">
         <div>
           <h1 className="jobtitle">{job?.title ?? '—'}</h1>
-          <div className="jobmeta">{meta}</div>
+          <div className="jobmeta">
+            {meta}
+            {attentionCount > 0 && (
+              <span
+                className="attention-count"
+                title="Candidates that need attention"
+              >
+                ⚠ {attentionCount} need attention
+              </span>
+            )}
+          </div>
         </div>
         <div className="spacer" />
         <label className="toggle">
@@ -107,6 +137,7 @@ export default function HiringApp({
         actions={actions}
         activeJob={activeJob}
         showRejected={showRejected}
+        now={now}
         onOpen={setOpenId}
       />
 
@@ -114,6 +145,7 @@ export default function HiringApp({
         state={state}
         actions={actions}
         openId={openId}
+        now={now}
         onClose={() => setOpenId(null)}
       />
 
