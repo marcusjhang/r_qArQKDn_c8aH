@@ -1857,3 +1857,12 @@
   gap: 8px;
   margin-top: var(--space-2, 8px);
 }
+
+/* Slot-picker panel header: label + suggest affordance */
+.ht-root .panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}

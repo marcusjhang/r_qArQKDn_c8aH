@@ -1,8 +1,9 @@
 'use client';
 
-// Drawer widget: pick an interview type, choose an available slot, review the
-// auto-suggested "fresh" panel (override by toggling interviewers), and book.
-// All data comes from scheduling server actions.
+// Drawer widget: pick an interview type, choose an available slot, then build
+// the panel — either tap interviewers manually or hit "Suggest panel" to fill
+// it from the rules-based fresh-panel picker. All data comes from scheduling
+// server actions.
 
 import { useEffect, useState } from 'react';
 import { FOUNDERS, INTERVIEW_DEFAULTS } from '@/lib/hiring/config';
@@ -30,6 +31,7 @@ export default function SlotPicker({
   const [picked, setPicked] = useState<string | null>(null);
   const [panelIds, setPanelIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
   const [error, setError] = useState('');
   const [interviewerIds, setInterviewerIds] = useState<string[]>([]);
 
@@ -62,11 +64,24 @@ export default function SlotPicker({
     };
   }, [candidateId, type]);
 
-  async function pick(iso: string) {
+  // Picking a slot no longer auto-suggests — the panel starts empty and the
+  // recruiter either taps interviewers or asks for a suggestion (below). A new
+  // slot clears any prior panel since availability differs per slot.
+  function pick(iso: string) {
     setPicked(iso);
+    setPanelIds([]);
     setError('');
-    const panel = await suggestPanelForSlot(candidateId, type, iso);
-    setPanelIds(panel.map((p) => p.founderId));
+  }
+
+  async function suggest() {
+    if (!picked) return;
+    setSuggesting(true);
+    try {
+      const panel = await suggestPanelForSlot(candidateId, type, picked);
+      setPanelIds(panel.map((p) => p.founderId));
+    } finally {
+      setSuggesting(false);
+    }
   }
 
   function togglePanel(id: string) {
@@ -162,7 +177,17 @@ export default function SlotPicker({
 
       {picked && (
         <div className="field slot-panel">
-          <span className="label">Panel (suggested — tap to adjust)</span>
+          <div className="panel-head">
+            <span className="label">Panel — tap to choose</span>
+            <button
+              type="button"
+              className="linkbtn"
+              disabled={suggesting}
+              onClick={suggest}
+            >
+              {suggesting ? 'Suggesting…' : '✨ Suggest panel'}
+            </button>
+          </div>
           <div className="panel-toggles">
             {FOUNDERS.filter((f) => interviewerIds.includes(f.id)).map((f) => {
               const on = panelIds.includes(f.id);
