@@ -28,7 +28,7 @@ export type Feedback = Pick<
 /** A candidate plus its embedded feedback (assembled by the relational query). */
 export type Candidate = Pick<
   SelectCandidate,
-  'id' | 'jobId' | 'name' | 'stage' | 'owner' | 'source' | 'status'
+  'id' | 'jobId' | 'name' | 'stage' | 'owner' | 'source' | 'status' | 'starred'
 > & {
   feedback: Feedback[];
 };

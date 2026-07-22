@@ -90,7 +90,8 @@ async function main() {
           stage: c.stage,
           owner: c.owner,
           source: c.source,
-          status: c.status
+          status: c.status,
+          starred: c.starred ?? false
         })
         .returning({ id: candidates.id });
       candidateCount++;

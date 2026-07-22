@@ -42,6 +42,7 @@ export interface HiringActions {
   setOwner: (id: number, owner: string) => void;
   setSource: (id: number, source: string) => void;
   setStatus: (id: number, status: Status) => void;
+  setCandidateStarred: (id: number, starred: boolean) => void;
   addFeedback: (
     id: number,
     entry: { byFounder: string; rating: RatingValue; note: string }
@@ -176,6 +177,7 @@ export function useHiringStore(initial: HiringState): {
               owner,
               source,
               status: 'active',
+              starred: false,
               feedback: []
             }
           ]
@@ -275,6 +277,19 @@ export function useHiringStore(initial: HiringState): {
         })
       }));
       persist(() => api.setStatus(id, status));
+    },
+    [persist]
+  );
+
+  const setCandidateStarred = useCallback(
+    (id: number, starred: boolean) => {
+      setState((s) => ({
+        ...s,
+        candidates: s.candidates.map((c) =>
+          c.id === id ? { ...c, starred } : c
+        )
+      }));
+      persist(() => api.setCandidateStarred(id, starred));
     },
     [persist]
   );
@@ -385,6 +400,7 @@ export function useHiringStore(initial: HiringState): {
     setOwner,
     setSource,
     setStatus,
+    setCandidateStarred,
     addFeedback,
     renameStage,
     addStage,

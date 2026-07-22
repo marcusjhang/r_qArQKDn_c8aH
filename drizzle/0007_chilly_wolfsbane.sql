@@ -1,0 +1,1 @@
+ALTER TABLE "candidates" ADD COLUMN "starred" boolean DEFAULT false NOT NULL;

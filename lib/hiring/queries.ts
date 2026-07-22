@@ -22,7 +22,8 @@ export async function getBoardData(): Promise<HiringState> {
         stage: true,
         owner: true,
         source: true,
-        status: true
+        status: true,
+        starred: true
       },
       with: {
         feedback: {
