@@ -23,6 +23,7 @@ import {
 import type { InterviewWithPanel } from '@/lib/hiring/scheduling/types';
 import SlotPicker from '@/components/calendar/SlotPicker';
 import { fmtDateTimeIso } from '@/components/calendar/util';
+import Modal from './Modal';
 
 /** Date → the `YYYY-MM-DDTHH:mm` a datetime-local input expects (local time). */
 function toLocalInput(d: Date): string {
@@ -135,18 +136,19 @@ export default function SchedulingSection({
         </ul>
       )}
 
-      {scheduling ? (
-        <SlotPicker
-          candidateId={view.id}
-          onScheduled={() => {
-            setScheduling(false);
-            afterInterviewChange();
-          }}
-        />
-      ) : (
-        <button className="btn primary" onClick={() => setScheduling(true)}>
-          ＋ Schedule interview
-        </button>
+      <button className="btn primary" onClick={() => setScheduling(true)}>
+        ＋ Schedule interview
+      </button>
+      {scheduling && (
+        <Modal title="Schedule interview" onClose={() => setScheduling(false)}>
+          <SlotPicker
+            candidateId={view.id}
+            onScheduled={() => {
+              setScheduling(false);
+              afterInterviewChange();
+            }}
+          />
+        </Modal>
       )}
 
       {liveInterviews.length === 0 && (
