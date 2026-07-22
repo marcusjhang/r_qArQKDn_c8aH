@@ -8,6 +8,7 @@
 
 import Link from 'next/link';
 import TopBar from '@/components/hiring/TopBar';
+import { ACCOUNT_LINKS } from '@/components/hiring/UserMenu';
 import ThemeToggle from './ThemeToggle';
 import SourcesPanel from './SourcesPanel';
 import SeniorityBandsPanel from './SeniorityBandsPanel';
@@ -55,7 +56,7 @@ export default function SettingsView({
       <TopBar
         subtitle="Settings"
         userEmail={userEmail}
-        navItems={[{ href: '/members', label: '👥 Members' }]}
+        navItems={[ACCOUNT_LINKS.members]}
       />
 
       <div className="settings-wrap">

@@ -8,6 +8,8 @@
 import { useState } from 'react';
 import {
   MAX_PROFILE_URL,
+  LINKEDIN_URL_PLACEHOLDER,
+  GITHUB_URL_PLACEHOLDER,
   normalizeProfileUrl,
   MAX_YEARS_EXPERIENCE,
   parseYearsInput,
@@ -154,7 +156,7 @@ export default function AddCandidateModal({
               setLinkedin(e.target.value);
               setError('');
             }}
-            placeholder="https://www.linkedin.com/in/…"
+            placeholder={LINKEDIN_URL_PLACEHOLDER}
           />
         </div>
         <div className="field">
@@ -167,7 +169,7 @@ export default function AddCandidateModal({
               setGithub(e.target.value);
               setError('');
             }}
-            placeholder="https://github.com/…"
+            placeholder={GITHUB_URL_PLACEHOLDER}
           />
         </div>
         {error && <div className="form-error">{error}</div>}

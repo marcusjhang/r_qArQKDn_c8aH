@@ -20,6 +20,7 @@ import AddCandidateModal from './AddCandidateModal';
 import NewJobModal from './NewJobModal';
 import JobTabs from './JobTabs';
 import TopBar from './TopBar';
+import { ACCOUNT_LINKS } from './UserMenu';
 import NotificationBell from './NotificationBell';
 import './hiring.css';
 
@@ -93,10 +94,7 @@ export default function HiringApp({
       <TopBar
         subtitle="Pipeline Tracker"
         userEmail={userEmail}
-        navItems={[
-          { href: '/settings', label: '⚙ Settings' },
-          { href: '/members', label: '👥 Members' }
-        ]}
+        navItems={[ACCOUNT_LINKS.settings, ACCOUNT_LINKS.members]}
         topRight={
           <NotificationBell
             notifications={notifications}

@@ -68,8 +68,12 @@ function MemberCard({ member }: { member: Member }) {
           <span className="member-email">{member.email}</span>
         </div>
         <div className="member-stats">
-          <span title="Feedback left">⭐ {member.feedbackCount}</span>
-          <span title="Messages posted">💬 {member.messageCount}</span>
+          <span title="Feedback left">
+            {KIND_ICON.feedback} {member.feedbackCount}
+          </span>
+          <span title="Messages posted">
+            {KIND_ICON.message} {member.messageCount}
+          </span>
         </div>
       </button>
 

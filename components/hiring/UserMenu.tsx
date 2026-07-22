@@ -12,6 +12,16 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 
+/**
+ * The account-menu destinations, defined once so each page's top bar composes
+ * the links it needs (the board shows both; settings and members link to each
+ * other) without repeating the label + route literals.
+ */
+export const ACCOUNT_LINKS = {
+  settings: { href: '/settings', label: '⚙ Settings' },
+  members: { href: '/members', label: '👥 Members' }
+} as const;
+
 export default function UserMenu({
   email,
   navItems = []
