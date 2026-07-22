@@ -18,9 +18,33 @@ A repeatable review pipeline for this repository. It is **stack-aware** (see the
 rather than re-deriving their heuristics: `code-review` and `simplify` for
 correctness and cleanup, `security-review` for auth / DB / secret risks.
 
-The output is a single review report — do **not** push commits, comment on the
-PR, or apply fixes unless the user explicitly asks. Reviewing is read-only by
-default.
+The default output is a single review report — reviewing is **read-only by
+default**: do not comment on the PR, apply fixes, or push commits unless asked.
+Every finding carries a **severity** (`Critical` / `High` / `Medium` / `Low`,
+see **Severity scale**), and the pipeline then **verifies every medium-and-above
+finding** (Step 6) before it is allowed to stand. When — and only when — the user
+asks to act on the review, the gated fix-and-push step (Step 7) applies and
+pushes fixes for the *verified* medium-and-above findings.
+
+## Severity scale
+
+Assign exactly one severity to **every** finding — the stack-checklist findings
+(Step 4) and the ones delegated to `code-review` / `simplify` / `security-review`
+(Step 5) alike. "Medium and above" means `Critical`, `High`, or `Medium`.
+
+- **Critical** — data loss, auth bypass, secret leakage, injection, or a change
+  that is broken/unsound and will ship a bug (e.g. type unsoundness that hides a
+  real null, a write that corrupts state). Must be empty to Approve.
+- **High** — a real defect or a broken stated intention: incorrect behaviour, a
+  missing server-side guard/validation, a schema/seed/migration drift that
+  breaks the environment, a client bundle importing server-only code.
+- **Medium** — a should-fix that is not an immediate breakage: a missing
+  `revalidatePath`, an un-parallelized read, a duplicated component, a
+  convention violation with real maintenance cost, or a probable-but-unconfirmed
+  bug.
+- **Low** — nits: style, naming, dead code, formatting, minor cleanups. Never
+  inflate a Low into a Medium to force it through verification, or deflate a real
+  Medium to a Low to dodge it.
 
 ## The stack (what "according to the stack" means here)
 
@@ -138,8 +162,9 @@ frontend; API/service design for backend) that apply in any stack, plus the
   `**/schemas.ts`, any `type`/`interface`/generic change): → read
   `references/type-management.md`
 
-Record findings with `file:line`, a severity (`blocker` / `should-fix` /
-`nit`), and a concrete suggested fix.
+Record findings with `file:line`, a **severity** from the **Severity scale**
+(`Critical` / `High` / `Medium` / `Low`), and a concrete suggested fix. Every
+finding gets a severity — no unlabelled findings.
 
 ### Step 5 — Delegate code-quality to the built-in skills
 
@@ -161,8 +186,59 @@ focused:
 
 Fold their findings into the report under the relevant area, de-duplicating
 against your Step 4 findings. Attribute each finding to the skill that raised it.
+**Assign each delegated finding a severity from the same Severity scale** — the
+built-in skills use their own wording (e.g. `code-review` effort tiers,
+`security-review` risk levels), so map every one onto `Critical` / `High` /
+`Medium` / `Low` yourself. A delegated finding with no severity is not done.
 
-### Step 6 — Report
+### Step 6 — Verify every medium-and-above finding
+
+Before the report can stand, take **every** finding rated `Medium`, `High`, or
+`Critical` (from Step 4 and Step 5 alike) and adversarially verify it — a review
+that reports false positives at these severities is worse than useless. Low
+findings are exempt (they are cheap to skim and never gate or get pushed).
+
+For each medium-and-above finding:
+
+- **Re-open the cited `file:line`** and confirm the code actually says what the
+  finding claims. A stale line number or a misquoted snippet ⇒ `false-positive`.
+- **Walk the call graph (Step 2)** to confirm the problem is reachable and the
+  claimed consequence is real — e.g. a "missing `revalidatePath`" is only real if
+  the action mutates DB-backed state that a cached page reads; a "missing zod
+  parse" is only real if the arg is actually caller-controlled and unvalidated
+  upstream. Try to **refute** the finding, not confirm it.
+- **Check it isn't already handled** elsewhere (a server guard the client
+  mirrors, a DB `CHECK`/`notNull`, an upstream parse, an existing test).
+- Mark the finding `verified` (the problem is real, at the stated severity — or
+  re-grade it if verification changed your mind) or `false-positive` (drop it
+  from the actionable set, but keep a one-line note of what you checked).
+
+Only `verified` medium-and-above findings remain actionable and feed the verdict
+and the optional Step 7. If you could not verify a finding (couldn't run the
+code, needs a migration, etc.), mark it `needs-verification` rather than
+asserting it — do not silently upgrade an unverified guess.
+
+### Step 7 — (Gated) fix and push the verified medium-and-above findings
+
+**Skip this step unless the user explicitly asked to act on / apply / push the
+review.** The default review ends at Step 8.
+
+When asked, scope the fixes to the **`verified` `Medium` / `High` / `Critical`**
+findings only (never the `Low` / `false-positive` / `needs-verification` ones):
+
+- Apply the fixes to the working tree — reuse `code-review --fix` / `simplify`
+  where a delegated finding produced the fix, and follow this repo's conventions
+  (prettier config, the single write path, derived types) for hand-edits.
+- Re-run the type/build gate (`bun run build`, which runs `tsc`) and confirm it
+  is green before committing. If a fix touches `lib/schema.ts`, run
+  `bun run db:setup` per the backend checklist.
+- Commit on the current branch with a message that references the findings
+  addressed, then push (`git push -u origin HEAD`). Do **not** open or merge a PR
+  unless that was also requested.
+- Report back which verified findings were fixed-and-pushed and which were left
+  (with the reason: `Low`, `false-positive`, `needs-verification`, or "declined").
+
+### Step 8 — Report
 
 Emit the report in the format below.
 
@@ -184,32 +260,52 @@ Emit the report in the format below.
 
 <tree or edge list of changed nodes + one-hop neighbours; note new/removed/dead edges>
 
+Every finding line carries a severity and — for medium-and-above — a Step 6
+verification status (`verified` / `false-positive` / `needs-verification`).
+`Low` findings need no status.
+
 ### Frontend (Step 4 + delegated)
 
-- [blocker|should-fix|nit] file:line — finding — fix (source: checklist | code-review | simplify)
+- [Critical|High|Medium|Low] file:line — finding — fix (source: checklist | code-review | simplify) — [verified|false-positive|needs-verification]
 
 ### Backend (Step 4 + delegated)
 
-- [blocker|should-fix|nit] file:line — finding — fix (source: checklist | code-review | security-review)
+- [Critical|High|Medium|Low] file:line — finding — fix (source: checklist | code-review | security-review) — [verified|false-positive|needs-verification]
 
 ### Types (Step 4)
 
-- [blocker|should-fix|nit] file:line — finding — fix
+- [Critical|High|Medium|Low] file:line — finding — fix — [verified|false-positive|needs-verification]
 
 ### Verdict
 
 Approve | Approve with nits | Request changes — <one-line rationale>.
-Blockers must be empty to Approve.
+Approve requires no `verified` `Critical` or `High` findings; count only
+`verified` findings — `false-positive`s do not gate. Note any
+`needs-verification` items explicitly.
+
+<!-- Present only when Step 7 ran (user asked to act on the review). -->
+### Actions taken (Step 7)
+
+- Fixed & pushed: <verified medium-and-above findings addressed> — <commit / build status>
+- Left: <finding — reason: Low | false-positive | needs-verification | declined>
 ```
 
 ## Notes
 
-- Severity discipline: a `blocker` is something that is wrong or unsafe (data
-  loss, auth bypass, type unsoundness, broken intention). Style preferences are
-  `nit`. Don't inflate.
+- Severity discipline: use the **Severity scale** above. `Critical`/`High` are
+  things that are wrong or unsafe (data loss, auth bypass, type unsoundness,
+  broken intention); `Medium` is a genuine should-fix; style preferences are
+  `Low`. Don't inflate — and don't deflate a real issue to dodge the Step 6
+  verification pass. Every finding, including delegated ones, gets a severity.
+- Verification discipline: never let an unverified `Medium`+ finding stand as
+  fact. Step 6 exists because a confidently-wrong high-severity finding erodes
+  trust in the whole review. Refute first; downgrade or drop what you can't
+  confirm rather than shipping a guess.
 - Prefer citing the existing convention the change violates over asserting a
   generic "best practice" — this repo has strong, documented conventions
   (`CLAUDE.md`, the derived-types pattern, the single write path). A finding
   that "this breaks the pattern in X" is more actionable than an abstract rule.
-- If the user asks to act on the review, offer `code-review --comment` (inline
-  PR comments) or `code-review --fix` / `simplify` (apply to working tree).
+- If the user asks to act on the review, run the gated Step 7 (fix + push the
+  verified medium-and-above findings). You can also offer `code-review --comment`
+  (inline PR comments) or `code-review --fix` / `simplify` (apply to working
+  tree) as the mechanism for individual fixes.
