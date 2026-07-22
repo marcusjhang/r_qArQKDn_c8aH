@@ -57,6 +57,29 @@ export function normalizeProfileUrl(raw: string): {
   }
 }
 
+/** Short, locale-friendly timestamp shared by the chat and notification UIs. */
+export function formatMessageTime(iso: string): string {
+  return new Date(iso).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+}
+
+/**
+ * Whether an `@name` mention token for `name` appears in `text` as a whole
+ * token — i.e. not immediately followed by another name character. This stops
+ * a shorter name ("Ann") from matching inside a longer one's token ("@Anna").
+ */
+export function mentionPresent(text: string, name: string): boolean {
+  const re = new RegExp(
+    '@' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\p{L}\\d])',
+    'u'
+  );
+  return re.test(text);
+}
+
 /** Rejected and Hired are terminal — they're not part of the active pipeline. */
 export function isTerminal(c: Candidate): boolean {
   return c.status === 'rejected' || c.status === 'hired';
