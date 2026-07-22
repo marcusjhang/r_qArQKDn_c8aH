@@ -1,21 +1,18 @@
 'use server';
 
-// Manage the signup allowlist and candidate sources from /settings. The whole
-// app is gated by the auth middleware, so callers here are authenticated users.
+// Manage the signed-in profile, candidate sources, and seniority bands from
+// /settings. The whole app is gated by the auth middleware, so callers here are
+// authenticated users. (The signup allowlist is managed from /members — see
+// app/(dashboard)/members/actions.ts.)
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { and, eq, ne, sql } from 'drizzle-orm';
-import { db, allowedEmails, candidates, users } from '@/lib/db';
+import { db, candidates, users } from '@/lib/db';
 import { sources, seniorityBands } from '@/lib/schema/hiring';
 import { MAX_YEARS_EXPERIENCE } from '@/lib/hiring/primitives';
 import { auth } from '@/lib/auth';
 
-const zEmail = z
-  .string()
-  .trim()
-  .email()
-  .transform((e) => e.toLowerCase());
 const zId = z.number().int().positive();
 const zSourceName = z.string().trim().min(1).max(40);
 const zBandLabel = z.string().trim().min(1).max(40);
@@ -63,19 +60,6 @@ export async function updateProfile(
   revalidatePath('/settings');
   revalidatePath('/');
   return { ok: true };
-}
-
-export async function addAllowedEmail(emailRaw: string) {
-  const email = zEmail.parse(emailRaw);
-  // Unique constraint + onConflictDoNothing makes re-adding a no-op.
-  await db.insert(allowedEmails).values({ email }).onConflictDoNothing();
-  revalidatePath('/settings');
-}
-
-export async function removeAllowedEmail(idRaw: number) {
-  const id = zId.parse(idRaw);
-  await db.delete(allowedEmails).where(eq(allowedEmails.id, id));
-  revalidatePath('/settings');
 }
 
 /* ---------- Candidate sources ---------- */

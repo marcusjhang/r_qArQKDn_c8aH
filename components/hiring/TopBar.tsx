@@ -9,13 +9,13 @@ import UserMenu from './UserMenu';
 export default function TopBar({
   subtitle,
   userEmail,
-  nav,
+  navItems,
   topRight,
   children
 }: {
   subtitle: string;
   userEmail?: string | null;
-  nav?: { href: string; label: string };
+  navItems?: { href: string; label: string }[];
   // Optional controls rendered in the top nav, left of the account menu
   // (e.g. the notification bell on the board).
   topRight?: React.ReactNode;
@@ -27,7 +27,7 @@ export default function TopBar({
         <Brand subtitle={subtitle} />
         <div className="spacer" />
         {topRight}
-        <UserMenu email={userEmail} nav={nav} />
+        <UserMenu email={userEmail} navItems={navItems} />
       </header>
       {children && <div className="subnav">{children}</div>}
     </>

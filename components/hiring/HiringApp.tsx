@@ -93,7 +93,10 @@ export default function HiringApp({
       <TopBar
         subtitle="Pipeline Tracker"
         userEmail={userEmail}
-        nav={{ href: '/settings', label: '⚙ Settings' }}
+        navItems={[
+          { href: '/settings', label: '⚙ Settings' },
+          { href: '/members', label: '👥 Members' }
+        ]}
         topRight={
           <NotificationBell
             notifications={notifications}

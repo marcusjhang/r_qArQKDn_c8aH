@@ -45,7 +45,7 @@ The seed creates four logins — `marcusajh0802@gmail.com`, `benong@lightsprint.
 `benchan@lightsprint.ai`, and `henghonglee@lightsprint.ai` — all with the password
 **`password`** (override with `SEED_PASSWORD`). Change it before any non-demo use.
 New accounts are created via **Sign up** on `/login`, restricted to the email
-allowlist managed on `/settings`. Any signed-in user can use the board.
+allowlist managed on `/members`. Any signed-in user can use the board.
 
 ## Scripts
 

@@ -50,5 +50,5 @@ accounts' passwords after seeding). Do not deploy with the default in place.
   is anchored so a page route that merely starts with `api` is not accidentally
   left public.
 - Signups are restricted to an allowlist (`lib/allowlist.ts`), enforced in
-  `POST /api/register` and managed from `/settings`.
+  `POST /api/register` and managed from `/members`.
 - Passwords are hashed with bcrypt (cost 12) and never logged or returned.
