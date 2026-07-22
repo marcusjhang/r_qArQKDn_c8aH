@@ -1,6 +1,8 @@
 import NextAuth from 'next-auth';
+import type { JWT } from 'next-auth/jwt';
 import Credentials from 'next-auth/providers/credentials';
 import { compare } from 'bcryptjs';
+import { z } from 'zod';
 import { db, users } from '@/lib/db';
 import { normalizeEmail } from '@/lib/allowlist';
 import { eq } from 'drizzle-orm';
@@ -13,7 +15,24 @@ declare module 'next-auth' {
       email?: string | null;
     };
   }
+
+  interface User {
+    id?: string;
+  }
 }
+
+declare module 'next-auth/jwt' {
+  interface JWT {
+    id?: string;
+  }
+}
+
+// Validate the untyped credentials payload at the authorize boundary. On any
+// parse failure we return null (an authentication failure) rather than throw.
+const credentialsSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1)
+});
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   pages: {
@@ -26,20 +45,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { type: 'password' }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        const parsed = credentialsSchema.safeParse(credentials);
+        if (!parsed.success) return null;
+        const { email, password } = parsed.data;
 
         const [user] = await db
           .select()
           .from(users)
-          .where(eq(users.email, normalizeEmail(credentials.email as string)))
+          .where(eq(users.email, normalizeEmail(email)))
           .limit(1);
 
         if (!user) return null;
 
-        const valid = await compare(
-          credentials.password as string,
-          user.passwordHash
-        );
+        const valid = await compare(password, user.passwordHash);
         if (!valid) return null;
 
         return {
@@ -68,7 +86,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return token;
     },
     session({ session, token }) {
-      if (token.id) session.user.id = token.id as string;
+      if (token.id) session.user.id = token.id;
       return session;
     }
   }
