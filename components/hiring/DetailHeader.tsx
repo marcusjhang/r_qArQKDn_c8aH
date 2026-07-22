@@ -4,6 +4,7 @@
 // close control.
 
 import type { Candidate, Job } from '@/lib/hiring';
+import ProfileLinks from './ProfileLinks';
 
 export default function DetailHeader({
   view,
@@ -31,6 +32,13 @@ export default function DetailHeader({
         <div className="sub">
           {view && job ? `${job.title} · ${view.source}` : ''}
         </div>
+        {view && (
+          <ProfileLinks
+            linkedinUrl={view.linkedinUrl}
+            githubUrl={view.githubUrl}
+            withLabels
+          />
+        )}
       </div>
       <button className="close" aria-label="Close" onClick={onClose}>
         ✕

@@ -79,7 +79,7 @@ export default function DetailDrawer({
         />
 
         <div className="drawer-body">
-          <DetailForm view={view} actions={actions} />
+          <DetailForm view={view} actions={actions} resetKey={openId} />
 
           <div className="feedback">
             <FeedbackList view={view} />

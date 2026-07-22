@@ -544,6 +544,7 @@
 }
 .ht-root select,
 .ht-root input[type='text'],
+.ht-root input[type='url'],
 .ht-root textarea {
   width: 100%;
   border: 1px solid var(--border-strong);
@@ -564,6 +565,66 @@
 .ht-root textarea {
   resize: vertical;
   min-height: 60px;
+}
+/* Read-only look for the details form while not editing: readable text on a
+   muted surface, so it reads as "locked" rather than browser-greyed. */
+.ht-root input:disabled,
+.ht-root select:disabled,
+.ht-root textarea:disabled {
+  /* background-color (not the `background` shorthand) so the base chevron's
+     repeat/position aren't reset — the chevron itself is removed below. */
+  background-color: var(--surface-2);
+  color: var(--text);
+  opacity: 1;
+  cursor: default;
+}
+
+/* Candidate details form (drawer) — divider from the Status control below. */
+.ht-root .details-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+
+/* LinkedIn / GitHub icon links (candidate card + drawer header). */
+.ht-root .profile-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.ht-root .card-top-right {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ht-root .card-links .profile-link,
+.ht-root .card-top-right .profile-link {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: var(--surface-2);
+}
+.ht-root .profile-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--primary);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.ht-root .profile-link:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+.ht-root .drawer-head .profile-links {
+  margin-top: 6px;
+  gap: var(--space-3);
 }
 
 .ht-root .status-pill {
@@ -590,6 +651,37 @@
 .ht-root .st-hired {
   background: var(--hired-bg);
   color: var(--hired-fg);
+}
+
+/* Status control: a solid colour dot beside the status dropdown (replaces the
+   separate "current status" pill). Dot colours reuse the status foregrounds. */
+.ht-root .status-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ht-root .status-control select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ht-root .status-dot {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.ht-root .status-dot.st-active {
+  background: var(--primary);
+}
+.ht-root .status-dot.st-onhold {
+  background: var(--hold-fg);
+}
+.ht-root .status-dot.st-rejected {
+  background: var(--rej-fg);
+}
+.ht-root .status-dot.st-hired {
+  background: var(--hired-fg);
 }
 
 .ht-root .section-title {
@@ -1213,4 +1305,12 @@
 }
 .dark .ht-root select {
   background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='16'%20height='16'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%239aa3b2'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpolyline%20points='6%209%2012%2015%2018%209'/%3E%3C/svg%3E");
+}
+/* A disabled (read-only / view-mode) select is not interactive, so it shows no
+   dropdown chevron. Placed after the chevron rules and scoped for both themes
+   so it wins over `.ht-root select` and `.dark .ht-root select`. */
+.ht-root select:disabled,
+.dark .ht-root select:disabled {
+  background-image: none;
+  padding-right: 10px;
 }

@@ -22,6 +22,8 @@ function candidate(over: Partial<Candidate> = {}): Candidate {
     source: 'LinkedIn',
     status: 'active',
     starred: false,
+    linkedinUrl: null,
+    githubUrl: null,
     feedback: [],
     ...over
   };

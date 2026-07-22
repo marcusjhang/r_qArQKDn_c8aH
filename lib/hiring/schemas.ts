@@ -25,6 +25,21 @@ export const zName = z.string().trim().min(1).max(120);
 export const zStageName = z.string().trim().min(1).max(48);
 export const zJobTitle = z.string().trim().min(1).max(80);
 export const zNote = z.string().max(2000);
+// Optional profile link: blank/whitespace collapses to null; anything else must
+// be a valid http(s) URL (≤ 500 chars). The client mirror is normalizeProfileUrl
+// (helpers), kept in sync via the shared MAX_PROFILE_URL bound.
+export const zProfileUrl = z.preprocess(
+  (v) => (typeof v === 'string' && v.trim() === '' ? null : v),
+  z
+    .string()
+    .trim()
+    .max(500)
+    .url()
+    .refine((u) => /^https?:\/\//i.test(u), {
+      message: 'Must be a valid http(s) URL'
+    })
+    .nullable()
+);
 export const zRating = z
   .number()
   .int()
@@ -37,8 +52,21 @@ export const zRating = z
 export const candidateInsertSchema = createInsertSchema(candidates, {
   name: zName,
   source: zSource,
-  owner: zOwner
-}).pick({ name: true, source: true, owner: true });
+  owner: zOwner,
+  linkedinUrl: zProfileUrl,
+  githubUrl: zProfileUrl
+}).pick({
+  name: true,
+  source: true,
+  owner: true,
+  linkedinUrl: true,
+  githubUrl: true
+});
+
+// The detail drawer's Edit form validates the same fields as creation, so it
+// reuses the insert schema outright rather than restating it (the two can't
+// drift). Kept as a named alias to document the edit-path intent at call sites.
+export const candidateEditSchema = candidateInsertSchema;
 
 export const feedbackInsertSchema = createInsertSchema(feedback, {
   byFounder: zOwner,

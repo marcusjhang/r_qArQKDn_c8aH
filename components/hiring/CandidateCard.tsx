@@ -6,6 +6,7 @@
 
 import { founderById, type Candidate } from '@/lib/hiring';
 import RatingChip from './RatingChip';
+import ProfileLinks from './ProfileLinks';
 
 export default function CandidateCard({
   candidate,
@@ -41,8 +42,14 @@ export default function CandidateCard({
           {candidate.starred ? '★' : '☆'}
         </button>
         <span className="card-name">{candidate.name}</span>
-        <span className="avatar" title={owner.name}>
-          {owner.initials}
+        <span className="card-top-right">
+          <ProfileLinks
+            linkedinUrl={candidate.linkedinUrl}
+            githubUrl={candidate.githubUrl}
+          />
+          <span className="avatar" title={owner.name}>
+            {owner.initials}
+          </span>
         </span>
       </div>
       <div className="card-bottom">

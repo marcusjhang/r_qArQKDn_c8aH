@@ -37,11 +37,20 @@ export type HiringEvent =
       name: string;
       source: string;
       owner: string;
+      linkedinUrl: string | null;
+      githubUrl: string | null;
     }
   | { type: 'reconcileCandidateId'; tempId: number; realId: number }
   | { type: 'moveStage'; id: number; stage: string }
-  | { type: 'setOwner'; id: number; owner: string }
-  | { type: 'setSource'; id: number; source: string }
+  | {
+      type: 'editCandidate';
+      id: number;
+      name: string;
+      source: string;
+      owner: string;
+      linkedinUrl: string | null;
+      githubUrl: string | null;
+    }
   | { type: 'setStatus'; id: number; status: Status }
   | { type: 'setCandidateStarred'; id: number; starred: boolean }
   | {
@@ -144,6 +153,8 @@ export function hiringReducer(
             source: event.source,
             status: 'active',
             starred: false,
+            linkedinUrl: event.linkedinUrl,
+            githubUrl: event.githubUrl,
             feedback: []
           }
         ]
@@ -164,13 +175,14 @@ export function hiringReducer(
         ...placeInStage(event.stage, c)
       }));
 
-    case 'setOwner':
-      return mapCandidate(state, event.id, (c) => ({ ...c, owner: event.owner }));
-
-    case 'setSource':
+    case 'editCandidate':
       return mapCandidate(state, event.id, (c) => ({
         ...c,
-        source: event.source
+        name: event.name,
+        source: event.source,
+        owner: event.owner,
+        linkedinUrl: event.linkedinUrl,
+        githubUrl: event.githubUrl
       }));
 
     case 'setStatus':

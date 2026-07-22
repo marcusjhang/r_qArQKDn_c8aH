@@ -44,6 +44,9 @@ export const candidates = pgTable('candidates', {
   // Founder id from the FOUNDERS config — the single accountable owner.
   owner: text('owner').notNull(),
   source: text('source').notNull(),
+  // Optional profile links (nullable — empty input stays NULL).
+  linkedinUrl: text('linkedin_url'),
+  githubUrl: text('github_url'),
   status: candidateStatusEnum('status').notNull().default('active'),
   // Starred candidates float to the top of their column as highlighted
   // standouts (unbounded — unlike starred jobs, they don't pin as tabs).

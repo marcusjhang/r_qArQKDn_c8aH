@@ -24,6 +24,8 @@ describe('getBoard', () => {
       source: 'Referral',
       status: 'active',
       starred: false,
+      linkedinUrl: null,
+      githubUrl: null,
       feedback: []
     }
   ];

@@ -49,12 +49,20 @@ export interface HiringActions {
     jobId: number,
     name: string,
     source: string,
-    owner: string
+    owner: string,
+    linkedinUrl: string | null,
+    githubUrl: string | null
+  ) => void;
+  editCandidate: (
+    id: number,
+    name: string,
+    source: string,
+    owner: string,
+    linkedinUrl: string | null,
+    githubUrl: string | null
   ) => void;
   moveTo: (id: number, stage: string) => void;
   advance: (id: number, dir: 1 | -1) => void;
-  setOwner: (id: number, owner: string) => void;
-  setSource: (id: number, source: string) => void;
   setStatus: (id: number, status: Status) => void;
   setCandidateStarred: (id: number, starred: boolean) => void;
   addFeedback: (
@@ -158,7 +166,14 @@ export function useHiringStore(initial: HiringState): {
   );
 
   const addCandidate = useCallback(
-    (jobId: number, name: string, source: string, owner: string) => {
+    (
+      jobId: number,
+      name: string,
+      source: string,
+      owner: string,
+      linkedinUrl: string | null,
+      githubUrl: string | null
+    ) => {
       const temp = tempId.current--;
       dispatch({
         type: 'addCandidate',
@@ -166,11 +181,20 @@ export function useHiringStore(initial: HiringState): {
         jobId,
         name,
         source,
-        owner
+        owner,
+        linkedinUrl,
+        githubUrl
       });
       startTransition(async () => {
         try {
-          const realId = await api.addCandidate(jobId, name, source, owner);
+          const realId = await api.addCandidate(
+            jobId,
+            name,
+            source,
+            owner,
+            linkedinUrl,
+            githubUrl
+          );
           if (realId != null) {
             dispatch({ type: 'reconcileCandidateId', tempId: temp, realId });
           }
@@ -180,6 +204,31 @@ export function useHiringStore(initial: HiringState): {
       });
     },
     [resync]
+  );
+
+  const editCandidate = useCallback(
+    (
+      id: number,
+      name: string,
+      source: string,
+      owner: string,
+      linkedinUrl: string | null,
+      githubUrl: string | null
+    ) => {
+      dispatch({
+        type: 'editCandidate',
+        id,
+        name,
+        source,
+        owner,
+        linkedinUrl,
+        githubUrl
+      });
+      persist(() =>
+        api.editCandidate(id, name, source, owner, linkedinUrl, githubUrl)
+      );
+    },
+    [persist]
   );
 
   const moveTo = useCallback(
@@ -203,22 +252,6 @@ export function useHiringStore(initial: HiringState): {
       if (stage !== c.stage) moveTo(id, stage);
     },
     [moveTo]
-  );
-
-  const setOwner = useCallback(
-    (id: number, owner: string) => {
-      dispatch({ type: 'setOwner', id, owner });
-      persist(() => api.setOwner(id, owner));
-    },
-    [persist]
-  );
-
-  const setSource = useCallback(
-    (id: number, source: string) => {
-      dispatch({ type: 'setSource', id, source });
-      persist(() => api.setSource(id, source));
-    },
-    [persist]
   );
 
   const setStatus = useCallback(
@@ -308,10 +341,9 @@ export function useHiringStore(initial: HiringState): {
     setJobStarred,
     deleteJob,
     addCandidate,
+    editCandidate,
     moveTo,
     advance,
-    setOwner,
-    setSource,
     setStatus,
     setCandidateStarred,
     addFeedback,

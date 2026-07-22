@@ -31,11 +31,10 @@ import {
   zIndex,
   zDir,
   zStatus,
-  zOwner,
-  zSource,
   zStageName,
   zJobTitle,
   candidateInsertSchema,
+  candidateEditSchema,
   feedbackInsertSchema
 } from './schemas';
 
@@ -74,22 +73,61 @@ export async function addCandidate(
   jobIdRaw: number,
   nameRaw: string,
   sourceRaw: string,
-  ownerRaw: string
+  ownerRaw: string,
+  linkedinUrlRaw: string | null = null,
+  githubUrlRaw: string | null = null
 ): Promise<number | null> {
   const jobId = zId.parse(jobIdRaw);
-  const { name, source, owner } = candidateInsertSchema.parse({
-    name: nameRaw,
-    source: sourceRaw,
-    owner: ownerRaw
-  });
+  const { name, source, owner, linkedinUrl, githubUrl } =
+    candidateInsertSchema.parse({
+      name: nameRaw,
+      source: sourceRaw,
+      owner: ownerRaw,
+      linkedinUrl: linkedinUrlRaw,
+      githubUrl: githubUrlRaw
+    });
   const stages = await loadJobStages(jobId);
   if (!stages) return null;
   const [row] = await db
     .insert(candidates)
-    .values({ jobId, name, stage: stages[0], owner, source, status: 'active' })
+    .values({
+      jobId,
+      name,
+      stage: stages[0],
+      owner,
+      source,
+      linkedinUrl,
+      githubUrl,
+      status: 'active'
+    })
     .returning({ id: candidates.id });
   revalidateTag(BOARD_TAGS.candidates);
   return row?.id ?? null;
+}
+
+/** Edit a candidate's core details: name, source, owner + the profile links. */
+export async function editCandidate(
+  idRaw: number,
+  nameRaw: string,
+  sourceRaw: string,
+  ownerRaw: string,
+  linkedinUrlRaw: string | null,
+  githubUrlRaw: string | null
+) {
+  const id = zId.parse(idRaw);
+  const { name, source, owner, linkedinUrl, githubUrl } =
+    candidateEditSchema.parse({
+      name: nameRaw,
+      source: sourceRaw,
+      owner: ownerRaw,
+      linkedinUrl: linkedinUrlRaw,
+      githubUrl: githubUrlRaw
+    });
+  await db
+    .update(candidates)
+    .set({ name, source, owner, linkedinUrl, githubUrl })
+    .where(eq(candidates.id, id));
+  revalidateTag(BOARD_TAGS.candidates);
 }
 
 export async function setJobStarred(jobIdRaw: number, starred: boolean) {
@@ -140,20 +178,6 @@ export async function moveStage(idRaw: number, stageRaw: string) {
   if (!c) return;
   const placement = placeInStage(stage, c);
   await db.update(candidates).set(placement).where(eq(candidates.id, id));
-  revalidateTag(BOARD_TAGS.candidates);
-}
-
-export async function setOwner(idRaw: number, ownerRaw: string) {
-  const id = zId.parse(idRaw);
-  const owner = zOwner.parse(ownerRaw);
-  await db.update(candidates).set({ owner }).where(eq(candidates.id, id));
-  revalidateTag(BOARD_TAGS.candidates);
-}
-
-export async function setSource(idRaw: number, sourceRaw: string) {
-  const id = zId.parse(idRaw);
-  const source = zSource.parse(sourceRaw);
-  await db.update(candidates).set({ source }).where(eq(candidates.id, id));
   revalidateTag(BOARD_TAGS.candidates);
 }
 
