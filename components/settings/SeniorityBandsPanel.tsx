@@ -5,11 +5,13 @@
 // panel's styling and useTransition write flow. Each band starts at `minYears`
 // whole years; a candidate's band is the highest threshold their experience
 // meets. Server actions return a result object so failures (duplicate
-// threshold) surface inline instead of throwing.
+// threshold) surface inline instead of throwing. The add/edit/remove state
+// machine and shell come from useEditableList / EditableList.
 
-import { useState, useTransition } from 'react';
+import EditableList from './EditableList';
+import { useEditableList, type Result } from './useEditableList';
 
-type Result = { ok: true } | { ok: false; error: string };
+type Draft = { label: string; years: string };
 
 export default function SeniorityBandsPanel({
   bands,
@@ -24,15 +26,6 @@ export default function SeniorityBandsPanel({
   updateBand: (id: number, label: string, minYears: number) => Promise<Result>;
   removeBand: (id: number) => Promise<Result>;
 }) {
-  const [label, setLabel] = useState('');
-  const [years, setYears] = useState('');
-  const [error, setError] = useState('');
-  // Which row is being edited, plus its draft label + threshold.
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [draftLabel, setDraftLabel] = useState('');
-  const [draftYears, setDraftYears] = useState('');
-  const [pending, startTransition] = useTransition();
-
   function parseYears(raw: string): number | null {
     const n = Number(raw.trim());
     if (raw.trim() === '' || !Number.isInteger(n) || n < 0 || n > maxYears) {
@@ -41,192 +34,146 @@ export default function SeniorityBandsPanel({
     return n;
   }
 
-  function add(e: React.FormEvent) {
-    e.preventDefault();
-    const l = label.trim();
-    const y = parseYears(years);
-    if (!l) {
-      setError('Enter a band label.');
-      return;
-    }
-    if (y === null) {
-      setError(`Enter a threshold of 0–${maxYears} years.`);
-      return;
-    }
-    if (bands.some((b) => b.minYears === y)) {
-      setError('A band with that threshold already exists.');
-      return;
-    }
-    startTransition(async () => {
-      const res = await addBand(l, y);
-      if (res.ok) {
-        setLabel('');
-        setYears('');
-        setError('');
-      } else {
-        setError(res.error);
+  const list = useEditableList<Draft, Draft>({
+    emptyAdd: { label: '', years: '' },
+    validateAdd: ({ label, years }) => {
+      const l = label.trim();
+      const y = parseYears(years);
+      if (!l) return 'Enter a band label.';
+      if (y === null) return `Enter a threshold of 0–${maxYears} years.`;
+      if (bands.some((b) => b.minYears === y)) {
+        return 'A band with that threshold already exists.';
       }
-    });
-  }
-
-  function startEdit(id: number, l: string, y: number) {
-    setEditingId(id);
-    setDraftLabel(l);
-    setDraftYears(String(y));
-    setError('');
-  }
-
-  function saveEdit(id: number) {
-    const l = draftLabel.trim();
-    const y = parseYears(draftYears);
-    if (!l) {
-      setError('Enter a band label.');
-      return;
-    }
-    if (y === null) {
-      setError(`Enter a threshold of 0–${maxYears} years.`);
-      return;
-    }
-    startTransition(async () => {
-      const res = await updateBand(id, l, y);
-      if (res.ok) {
-        setEditingId(null);
-        setError('');
-      } else {
-        setError(res.error);
+      return null;
+    },
+    onAdd: ({ label, years }) => addBand(label.trim(), parseYears(years)!),
+    validateEdit: ({ label, years }) => {
+      if (!label.trim()) return 'Enter a band label.';
+      if (parseYears(years) === null) {
+        return `Enter a threshold of 0–${maxYears} years.`;
       }
-    });
-  }
-
-  function remove(id: number) {
-    startTransition(async () => {
-      const res = await removeBand(id);
-      setError(res.ok ? '' : res.error);
-    });
-  }
+      return null;
+    },
+    onSave: (id, { label, years }) =>
+      updateBand(id, label.trim(), parseYears(years)!),
+    onRemove: removeBand
+  });
 
   return (
-    <section className="settings-panel">
-      <div>
-        <p className="settings-section-title">Seniority</p>
-        <h1 className="settings-title">Seniority bands</h1>
-        <p className="settings-sub">
+    <EditableList
+      section="Seniority"
+      title="Seniority bands"
+      description={
+        <>
           Maps years of experience to a label; the highest matching threshold
           wins.
-        </p>
-      </div>
-
-      <form className="settings-add" onSubmit={add}>
-        <div className="field" style={{ flex: '2 1 160px' }}>
-          <span className="label">Label</span>
-          <input
-            type="text"
-            placeholder="e.g. Staff"
-            maxLength={40}
-            value={label}
-            onChange={(e) => {
-              setLabel(e.target.value);
-              setError('');
-            }}
-          />
-        </div>
-        <div className="field" style={{ flex: '0 0 120px' }}>
-          <span className="label">From (years)</span>
-          <input
-            type="number"
-            min={0}
-            max={maxYears}
-            step={1}
-            placeholder="0"
-            value={years}
-            onChange={(e) => {
-              setYears(e.target.value);
-              setError('');
-            }}
-          />
-        </div>
-        <button className="btn primary" type="submit" disabled={pending}>
-          Add band
-        </button>
-      </form>
-      {error && <div className="form-error">{error}</div>}
-
-      <ul className="email-list">
-        {bands.length === 0 && (
-          <li className="email-empty">
-            No bands yet — add one so candidates show a seniority label.
-          </li>
-        )}
-        {bands.map((b) => (
-          <li className="email-row" key={b.id}>
-            {editingId === b.id ? (
-              <>
-                <input
-                  className="source-edit"
-                  type="text"
-                  maxLength={40}
-                  autoFocus
-                  value={draftLabel}
-                  onChange={(e) => setDraftLabel(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') saveEdit(b.id);
-                    if (e.key === 'Escape') setEditingId(null);
-                  }}
-                />
-                <input
-                  className="band-years-edit"
-                  type="number"
-                  min={0}
-                  max={maxYears}
-                  step={1}
-                  value={draftYears}
-                  onChange={(e) => setDraftYears(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') saveEdit(b.id);
-                    if (e.key === 'Escape') setEditingId(null);
-                  }}
-                />
-                <button
-                  className="btn primary"
-                  onClick={() => saveEdit(b.id)}
-                  disabled={pending}
-                >
-                  Save
-                </button>
-                <button
-                  className="btn"
-                  onClick={() => setEditingId(null)}
-                  disabled={pending}
-                >
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="email-addr">
-                  {b.label} <span className="band-threshold">· {b.minYears}+ yrs</span>
-                </span>
-                <button
-                  className="btn"
-                  onClick={() => startEdit(b.id, b.label, b.minYears)}
-                  disabled={pending}
-                  aria-label={`Edit ${b.label}`}
-                >
-                  Edit
-                </button>
-                <button
-                  className="btn"
-                  onClick={() => remove(b.id)}
-                  disabled={pending}
-                  aria-label={`Remove ${b.label}`}
-                >
-                  Remove
-                </button>
-              </>
-            )}
-          </li>
-        ))}
-      </ul>
-    </section>
+        </>
+      }
+      addFields={
+        <>
+          <div className="field" style={{ flex: '2 1 160px' }}>
+            <span className="label">Label</span>
+            <input
+              type="text"
+              placeholder="e.g. Staff"
+              maxLength={40}
+              value={list.addDraft.label}
+              onChange={(e) => list.setAddDraft({ label: e.target.value })}
+            />
+          </div>
+          <div className="field" style={{ flex: '0 0 120px' }}>
+            <span className="label">From (years)</span>
+            <input
+              type="number"
+              min={0}
+              max={maxYears}
+              step={1}
+              placeholder="0"
+              value={list.addDraft.years}
+              onChange={(e) => list.setAddDraft({ years: e.target.value })}
+            />
+          </div>
+        </>
+      }
+      addLabel="Add band"
+      onAddSubmit={list.submitAdd}
+      pending={list.pending}
+      error={list.error}
+      items={bands}
+      emptyText="No bands yet — add one so candidates show a seniority label."
+      renderRow={(b) =>
+        list.editingId === b.id ? (
+          <>
+            <input
+              className="source-edit"
+              type="text"
+              maxLength={40}
+              autoFocus
+              value={list.editDraft.label}
+              onChange={(e) => list.setEditDraft({ label: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') list.saveEdit(b.id);
+                if (e.key === 'Escape') list.cancelEdit();
+              }}
+            />
+            <input
+              className="band-years-edit"
+              type="number"
+              min={0}
+              max={maxYears}
+              step={1}
+              value={list.editDraft.years}
+              onChange={(e) => list.setEditDraft({ years: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') list.saveEdit(b.id);
+                if (e.key === 'Escape') list.cancelEdit();
+              }}
+            />
+            <button
+              className="btn primary"
+              onClick={() => list.saveEdit(b.id)}
+              disabled={list.pending}
+            >
+              Save
+            </button>
+            <button
+              className="btn"
+              onClick={list.cancelEdit}
+              disabled={list.pending}
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <>
+            <span className="email-addr">
+              {b.label}{' '}
+              <span className="band-threshold">· {b.minYears}+ yrs</span>
+            </span>
+            <button
+              className="btn"
+              onClick={() =>
+                list.startEdit(b.id, {
+                  label: b.label,
+                  years: String(b.minYears)
+                })
+              }
+              disabled={list.pending}
+              aria-label={`Edit ${b.label}`}
+            >
+              Edit
+            </button>
+            <button
+              className="btn"
+              onClick={() => list.remove(b.id)}
+              disabled={list.pending}
+              aria-label={`Remove ${b.label}`}
+            >
+              Remove
+            </button>
+          </>
+        )
+      }
+    />
   );
 }
