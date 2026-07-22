@@ -6,7 +6,7 @@
 
 import { useState } from 'react';
 import {
-  FOUNDERS,
+  USERS,
   SOURCES,
   MAX_PROFILE_URL,
   normalizeProfileUrl
@@ -30,7 +30,7 @@ export default function AddCandidateModal({
 }) {
   const [name, setName] = useState('');
   const [source, setSource] = useState(SOURCES[0]);
-  const [owner, setOwner] = useState(FOUNDERS[0].id);
+  const [owner, setOwner] = useState(USERS[0].id);
   const [linkedin, setLinkedin] = useState('');
   const [github, setGithub] = useState('');
   const [error, setError] = useState('');
@@ -87,9 +87,9 @@ export default function AddCandidateModal({
           <div className="field">
             <span className="label">Owner</span>
             <select value={owner} onChange={(e) => setOwner(e.target.value)}>
-              {FOUNDERS.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
+              {USERS.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
                 </option>
               ))}
             </select>

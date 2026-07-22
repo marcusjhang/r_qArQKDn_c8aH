@@ -35,8 +35,8 @@ import type { RatingValue, Status } from './primitives';
 
 export type { Status, RatingValue } from './primitives';
 
-/** An owner / interviewer. Pure domain concept, not a database row. */
-export interface Founder {
+/** A user — an owner / interviewer. Pure domain concept, not a database row. */
+export interface User {
   id: string;
   name: string;
   initials: string;
@@ -45,7 +45,7 @@ export interface Founder {
 /** One interviewer's entry, trimmed to the fields the UI shows. */
 export interface Feedback {
   id: number;
-  byFounder: string;
+  byUser: string;
   rating: RatingValue;
   note: string;
 }
@@ -141,7 +141,7 @@ const drizzleReader: BoardReader = {
         },
         with: {
           feedback: {
-            columns: { id: true, byFounder: true, rating: true, note: true },
+            columns: { id: true, byUser: true, rating: true, note: true },
             orderBy: (f, { asc }) => [asc(f.id)]
           }
         },

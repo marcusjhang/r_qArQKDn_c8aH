@@ -7,7 +7,7 @@
 // code (components, store, config, helpers) a stable, framework-free import.
 
 export type {
-  Founder,
+  User,
   Feedback,
   Candidate,
   Job,

@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import {
-  FOUNDERS,
+  USERS,
   SOURCES,
   STATUS,
   MAX_PROFILE_URL,
@@ -31,7 +31,7 @@ export default function DetailForm({
   const [editing, setEditing] = useState(false);
   const [dName, setDName] = useState('');
   const [dSource, setDSource] = useState(SOURCES[0]);
-  const [dOwner, setDOwner] = useState(FOUNDERS[0].id);
+  const [dOwner, setDOwner] = useState(USERS[0].id);
   const [dLinkedin, setDLinkedin] = useState('');
   const [dGithub, setDGithub] = useState('');
   const [error, setError] = useState('');
@@ -39,7 +39,7 @@ export default function DetailForm({
   function seedDraft(c: Candidate | null) {
     setDName(c?.name ?? '');
     setDSource(c?.source ?? SOURCES[0]);
-    setDOwner(c?.owner ?? FOUNDERS[0].id);
+    setDOwner(c?.owner ?? USERS[0].id);
     setDLinkedin(c?.linkedinUrl ?? '');
     setDGithub(c?.githubUrl ?? '');
     setError('');
@@ -100,7 +100,7 @@ export default function DetailForm({
   // Read-only fields reflect the live candidate; only edit mode uses the draft.
   const nameVal = editing ? dName : (view?.name ?? '');
   const sourceVal = editing ? dSource : (view?.source ?? SOURCES[0]);
-  const ownerVal = editing ? dOwner : (view?.owner ?? FOUNDERS[0].id);
+  const ownerVal = editing ? dOwner : (view?.owner ?? USERS[0].id);
   const linkedinVal = editing ? dLinkedin : (view?.linkedinUrl ?? '');
   const githubVal = editing ? dGithub : (view?.githubUrl ?? '');
 
@@ -144,9 +144,9 @@ export default function DetailForm({
               disabled={!editing}
               onChange={(e) => setDOwner(e.target.value)}
             >
-              {FOUNDERS.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
+              {USERS.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
                 </option>
               ))}
             </select>

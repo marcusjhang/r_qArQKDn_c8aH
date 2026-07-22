@@ -7,10 +7,10 @@
 // own.
 
 import { useEffect, useState } from 'react';
-import { FOUNDERS, type RatingValue } from '@/lib/hiring';
+import { USERS, type RatingValue } from '@/lib/hiring';
 
 export interface FeedbackEntry {
-  byFounder: string;
+  byUser: string;
   rating: RatingValue;
   note: string;
 }
@@ -37,13 +37,13 @@ export function useFeedbackDraft(
   resetKey: number | null,
   onSubmit: (entry: FeedbackEntry) => void
 ): FeedbackDraft {
-  const [who, setWho] = useState<string>(FOUNDERS[0].id);
+  const [who, setWho] = useState<string>(USERS[0].id);
   const [rating, setRating] = useState<RatingValue | null>(null);
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setWho(FOUNDERS[0].id);
+    setWho(USERS[0].id);
     setRating(null);
     setNote('');
     setError('');
@@ -59,7 +59,7 @@ export function useFeedbackDraft(
       setError('Pick a rating first.');
       return false;
     }
-    onSubmit({ byFounder: who, rating, note: note.trim() });
+    onSubmit({ byUser: who, rating, note: note.trim() });
     setRating(null);
     setNote('');
     setError('');

@@ -6,7 +6,7 @@
 import {
   RATINGS,
   agg,
-  founderById,
+  userById,
   roundedRating,
   type Candidate
 } from '@/lib/hiring';
@@ -38,7 +38,7 @@ export default function FeedbackList({ view }: { view: Candidate | null }) {
           <div className="feedback">
             {view.feedback.map((f, i) => {
               const r = RATINGS[f.rating];
-              const fo = founderById(f.byFounder);
+              const fo = userById(f.byUser);
               return (
                 <div className="fb-entry" key={i}>
                   <div className="fb-top">

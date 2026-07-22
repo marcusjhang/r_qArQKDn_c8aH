@@ -4,7 +4,7 @@
 // the board's useBoardDnd hook; clicking opens the detail drawer, and the star
 // toggles favourite status without opening it.
 
-import { founderById, type Candidate } from '@/lib/hiring';
+import { userById, type Candidate } from '@/lib/hiring';
 import RatingChip from './RatingChip';
 import ProfileLinks from './ProfileLinks';
 
@@ -22,7 +22,7 @@ export default function CandidateCard({
   onOpen: (id: number) => void;
   onToggleStar: (id: number, starred: boolean) => void;
 }) {
-  const owner = founderById(candidate.owner);
+  const owner = userById(candidate.owner);
   return (
     <div
       className={`card${candidate.starred ? ' starred' : ''}`}

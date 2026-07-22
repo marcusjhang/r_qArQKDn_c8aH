@@ -41,7 +41,7 @@ export const candidates = pgTable('candidates', {
     .references(() => jobs.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   stage: text('stage').notNull(),
-  // Founder id from the FOUNDERS config — the single accountable owner.
+  // User id from the USERS config — the single accountable owner.
   owner: text('owner').notNull(),
   source: text('source').notNull(),
   // Optional profile links (nullable — empty input stays NULL).
@@ -62,8 +62,8 @@ export const feedback = pgTable(
     candidateId: integer('candidate_id')
       .notNull()
       .references(() => candidates.id, { onDelete: 'cascade' }),
-    // Founder id of the interviewer.
-    byFounder: text('by_founder').notNull(),
+    // User id of the interviewer.
+    byUser: text('by_user').notNull(),
     // 4-point verdict rating (1 = Strong No … 4 = Strong Yes). $type pins the
     // column to RatingValue; the CHECK below backs that at the DB level.
     rating: integer('rating').$type<RatingValue>().notNull(),

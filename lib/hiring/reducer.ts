@@ -57,7 +57,7 @@ export type HiringEvent =
       type: 'addFeedback';
       id: number;
       tempId: number;
-      byFounder: string;
+      byUser: string;
       rating: RatingValue;
       note: string;
     }
@@ -204,7 +204,7 @@ export function hiringReducer(
           ...c.feedback,
           {
             id: event.tempId,
-            byFounder: event.byFounder,
+            byUser: event.byUser,
             rating: event.rating,
             note: event.note
           }

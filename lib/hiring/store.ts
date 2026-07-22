@@ -67,7 +67,7 @@ export interface HiringActions {
   setCandidateStarred: (id: number, starred: boolean) => void;
   addFeedback: (
     id: number,
-    entry: { byFounder: string; rating: RatingValue; note: string }
+    entry: { byUser: string; rating: RatingValue; note: string }
   ) => void;
   renameStage: (jobId: number, index: number, name: string) => void;
   addStage: (jobId: number, name: string) => void;
@@ -271,11 +271,11 @@ export function useHiringStore(initial: HiringState): {
   );
 
   const addFeedback = useCallback(
-    (id: number, entry: { byFounder: string; rating: RatingValue; note: string }) => {
+    (id: number, entry: { byUser: string; rating: RatingValue; note: string }) => {
       const temp = tempId.current--;
       dispatch({ type: 'addFeedback', id, tempId: temp, ...entry });
       persist(() =>
-        api.addFeedback(id, entry.byFounder, entry.rating, entry.note)
+        api.addFeedback(id, entry.byUser, entry.rating, entry.note)
       );
     },
     [persist]

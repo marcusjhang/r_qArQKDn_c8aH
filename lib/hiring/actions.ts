@@ -199,19 +199,19 @@ export async function setStatus(idRaw: number, statusRaw: Status) {
 
 export async function addFeedback(
   idRaw: number,
-  byFounderRaw: string,
+  byUserRaw: string,
   ratingRaw: number,
   noteRaw: string
 ) {
   const id = zId.parse(idRaw);
-  const { byFounder, rating, note } = feedbackInsertSchema.parse({
-    byFounder: byFounderRaw,
+  const { byUser, rating, note } = feedbackInsertSchema.parse({
+    byUser: byUserRaw,
     rating: ratingRaw,
     note: noteRaw ?? ''
   });
   await db
     .insert(feedback)
-    .values({ candidateId: id, byFounder, rating, note });
+    .values({ candidateId: id, byUser, rating, note });
   // Feedback is nested inside the candidates read, so invalidate that tag.
   revalidateTag(BOARD_TAGS.candidates);
 }

@@ -30,7 +30,7 @@ function candidate(over: Partial<Candidate> = {}): Candidate {
 }
 
 function withRatings(...values: RatingValue[]): Candidate['feedback'] {
-  return values.map((v, i) => ({ id: i + 1, byFounder: 'bo', rating: v, note: '' }));
+  return values.map((v, i) => ({ id: i + 1, byUser: 'bo', rating: v, note: '' }));
 }
 
 function job(over: Partial<Job> = {}): Job {

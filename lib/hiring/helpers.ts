@@ -1,10 +1,10 @@
 // Pure, framework-free helpers over the hiring domain model.
 
-import { FOUNDERS } from './config';
-import type { Candidate, Founder, Job, RatingValue, Status } from './types';
+import { USERS } from './config';
+import type { Candidate, Job, RatingValue, Status, User } from './types';
 
-export function founderById(id: string): Founder {
-  return FOUNDERS.find((f) => f.id === id) ?? FOUNDERS[0];
+export function userById(id: string): User {
+  return USERS.find((u) => u.id === id) ?? USERS[0];
 }
 
 /** Max length of a profile URL (kept in sync with the zProfileUrl bound). */

@@ -1,13 +1,14 @@
 // Reusable configuration for the Hiring Pipeline Tracker.
 //
 // This is the single place a new business adapts the tool: relabel the
-// founders/owners, the candidate sources, the rating scale, the statuses,
+// users/owners, the candidate sources, the rating scale, the statuses,
 // or the default pipeline — no rendering code needs to change.
 
-import type { Founder, RatingValue, Status } from './types';
+import type { RatingValue, Status, User } from './types';
 
-/** Owners / interviewers. For Lightsprint: the three founders. */
-export const FOUNDERS: Founder[] = [
+/** Owners / interviewers — the users who work the pipeline. */
+export const USERS: User[] = [
+  { id: 'ma', name: 'Marcus Ang', initials: 'MA' },
   { id: 'bo', name: 'Ben Ong', initials: 'BO' },
   { id: 'bc', name: 'Benedict Chan', initials: 'BC' },
   { id: 'hl', name: 'Heng Hong Lee', initials: 'HL' }

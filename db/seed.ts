@@ -14,9 +14,13 @@ const SEED_ALLOWED_EMAILS = [
 ];
 
 // Login accounts created on seed. Override the shared password via SEED_PASSWORD.
+// One account per allowlisted user; all share the same seeded password.
 const SEED_PASSWORD = process.env.SEED_PASSWORD ?? 'password';
 const SEED_ACCOUNTS = [
-  { email: 'marcusajh0802@gmail.com', name: 'Marcus Ang' }
+  { email: 'marcusajh0802@gmail.com', name: 'Marcus Ang' },
+  { email: 'benong@lightsprint.ai', name: 'Ben Ong' },
+  { email: 'benchan@lightsprint.ai', name: 'Benedict Chan' },
+  { email: 'henghonglee@lightsprint.ai', name: 'Heng Hong Lee' }
 ];
 
 async function main() {
@@ -98,7 +102,7 @@ async function main() {
         await db.insert(feedback).values(
           c.feedback.map((f) => ({
             candidateId: row.id,
-            byFounder: f.by,
+            byUser: f.by,
             rating: f.v,
             note: f.note
           }))

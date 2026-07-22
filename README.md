@@ -41,9 +41,10 @@ bun run dev
 
 ## Accounts
 
-The seed creates one login: **`marcusajh0802@gmail.com` / `password`** (override
-the password with `SEED_PASSWORD`). Change it before any non-demo use. New
-accounts are created via **Sign up** on `/login`, restricted to the email
+The seed creates four logins — `marcusajh0802@gmail.com`, `benong@lightsprint.ai`,
+`benchan@lightsprint.ai`, and `henghonglee@lightsprint.ai` — all with the password
+**`password`** (override with `SEED_PASSWORD`). Change it before any non-demo use.
+New accounts are created via **Sign up** on `/login`, restricted to the email
 allowlist managed on `/settings`. Any signed-in user can use the board.
 
 ## Scripts

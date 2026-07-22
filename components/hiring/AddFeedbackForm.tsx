@@ -4,7 +4,7 @@
 // state, reset-on-candidate-change and validation live in useFeedbackDraft;
 // this component is the presentational shell around that hook.
 
-import { FOUNDERS, RATINGS, type RatingValue } from '@/lib/hiring';
+import { USERS, RATINGS, type RatingValue } from '@/lib/hiring';
 import { useFeedbackDraft, type FeedbackEntry } from './useFeedbackDraft';
 
 const RATING_ORDER: RatingValue[] = [1, 2, 3, 4];
@@ -24,9 +24,9 @@ export default function AddFeedbackForm({
       <div className="field">
         <span className="label">Interviewer</span>
         <select value={fb.who} onChange={(e) => fb.setWho(e.target.value)}>
-          {FOUNDERS.map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.name}
+          {USERS.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.name}
             </option>
           ))}
         </select>

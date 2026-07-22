@@ -1,0 +1,1 @@
+ALTER TABLE "feedback" RENAME COLUMN "by_founder" TO "by_user";
