@@ -25,6 +25,21 @@ export const zName = z.string().trim().min(1).max(120);
 export const zStageName = z.string().trim().min(1).max(48);
 export const zJobTitle = z.string().trim().min(1).max(80);
 export const zNote = z.string().max(2000);
+// Optional profile link: blank/whitespace collapses to null; anything else must
+// be a valid http(s) URL (≤ 500 chars). The client mirror is normalizeProfileUrl
+// (helpers), kept in sync via the shared MAX_PROFILE_URL bound.
+export const zProfileUrl = z.preprocess(
+  (v) => (typeof v === 'string' && v.trim() === '' ? null : v),
+  z
+    .string()
+    .trim()
+    .max(500)
+    .url()
+    .refine((u) => /^https?:\/\//i.test(u), {
+      message: 'Must be a valid http(s) URL'
+    })
+    .nullable()
+);
 export const zRating = z
   .number()
   .int()
@@ -37,8 +52,26 @@ export const zRating = z
 export const candidateInsertSchema = createInsertSchema(candidates, {
   name: zName,
   source: zSource,
-  owner: zOwner
-}).pick({ name: true, source: true, owner: true });
+  owner: zOwner,
+  linkedinUrl: zProfileUrl,
+  githubUrl: zProfileUrl
+}).pick({
+  name: true,
+  source: true,
+  owner: true,
+  linkedinUrl: true,
+  githubUrl: true
+});
+
+// Editable candidate details from the detail drawer's Edit form. Mirrors the
+// add-candidate fields exactly so both forms validate identically.
+export const candidateEditSchema = z.object({
+  name: zName,
+  source: zSource,
+  owner: zOwner,
+  linkedinUrl: zProfileUrl,
+  githubUrl: zProfileUrl
+});
 
 export const feedbackInsertSchema = createInsertSchema(feedback, {
   byFounder: zOwner,

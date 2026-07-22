@@ -60,6 +60,8 @@ export interface Candidate {
   source: string;
   status: Status;
   starred: boolean;
+  linkedinUrl: string | null;
+  githubUrl: string | null;
   feedback: Feedback[];
 }
 
@@ -133,7 +135,9 @@ const drizzleReader: BoardReader = {
           owner: true,
           source: true,
           status: true,
-          starred: true
+          starred: true,
+          linkedinUrl: true,
+          githubUrl: true
         },
         with: {
           feedback: {

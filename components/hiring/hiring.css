@@ -544,6 +544,7 @@
 }
 .ht-root select,
 .ht-root input[type='text'],
+.ht-root input[type='url'],
 .ht-root textarea {
   width: 100%;
   border: 1px solid var(--border-strong);
@@ -564,6 +565,64 @@
 .ht-root textarea {
   resize: vertical;
   min-height: 60px;
+}
+/* Read-only look for the details form while not editing: readable text on a
+   muted surface, so it reads as "locked" rather than browser-greyed. */
+.ht-root input:disabled,
+.ht-root select:disabled,
+.ht-root textarea:disabled {
+  background: var(--surface-2);
+  color: var(--text);
+  opacity: 1;
+  cursor: default;
+}
+
+/* Candidate details form (drawer) — divider from the Status control below. */
+.ht-root .details-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+
+/* LinkedIn / GitHub icon links (candidate card + drawer header). */
+.ht-root .profile-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.ht-root .card-top-right {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ht-root .card-links .profile-link,
+.ht-root .card-top-right .profile-link {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: var(--surface-2);
+}
+.ht-root .profile-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--primary);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.ht-root .profile-link:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+.ht-root .drawer-head .profile-links {
+  margin-top: 6px;
+  gap: var(--space-3);
 }
 
 .ht-root .status-pill {

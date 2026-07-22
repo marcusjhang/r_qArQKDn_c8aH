@@ -1,10 +1,16 @@
 'use client';
 
 // Add-candidate form (Decision 6): name + source + owner in one step, with
-// valid-by-construction selects instead of free-text prompts.
+// valid-by-construction selects instead of free-text prompts. LinkedIn and
+// GitHub URLs are optional; blank inputs are stored as NULL.
 
 import { useState } from 'react';
-import { FOUNDERS, SOURCES } from '@/lib/hiring';
+import {
+  FOUNDERS,
+  SOURCES,
+  MAX_PROFILE_URL,
+  normalizeProfileUrl
+} from '@/lib/hiring';
 import Modal from './Modal';
 
 export default function AddCandidateModal({
@@ -14,11 +20,19 @@ export default function AddCandidateModal({
 }: {
   jobTitle: string;
   onClose: () => void;
-  onAdd: (name: string, source: string, owner: string) => void;
+  onAdd: (
+    name: string,
+    source: string,
+    owner: string,
+    linkedinUrl: string | null,
+    githubUrl: string | null
+  ) => void;
 }) {
   const [name, setName] = useState('');
   const [source, setSource] = useState(SOURCES[0]);
   const [owner, setOwner] = useState(FOUNDERS[0].id);
+  const [linkedin, setLinkedin] = useState('');
+  const [github, setGithub] = useState('');
   const [error, setError] = useState('');
 
   function submit(e: React.FormEvent) {
@@ -28,7 +42,17 @@ export default function AddCandidateModal({
       setError('Enter a candidate name.');
       return;
     }
-    onAdd(trimmed, source, owner);
+    const li = normalizeProfileUrl(linkedin);
+    if (!li.ok) {
+      setError('LinkedIn must be a valid http(s) URL.');
+      return;
+    }
+    const gh = normalizeProfileUrl(github);
+    if (!gh.ok) {
+      setError('GitHub must be a valid http(s) URL.');
+      return;
+    }
+    onAdd(trimmed, source, owner, li.value, gh.value);
     onClose();
   }
 
@@ -70,6 +94,32 @@ export default function AddCandidateModal({
               ))}
             </select>
           </div>
+        </div>
+        <div className="field">
+          <span className="label">LinkedIn URL (optional)</span>
+          <input
+            type="url"
+            maxLength={MAX_PROFILE_URL}
+            value={linkedin}
+            onChange={(e) => {
+              setLinkedin(e.target.value);
+              setError('');
+            }}
+            placeholder="https://www.linkedin.com/in/…"
+          />
+        </div>
+        <div className="field">
+          <span className="label">GitHub URL (optional)</span>
+          <input
+            type="url"
+            maxLength={MAX_PROFILE_URL}
+            value={github}
+            onChange={(e) => {
+              setGithub(e.target.value);
+              setError('');
+            }}
+            placeholder="https://github.com/…"
+          />
         </div>
         {error && <div className="form-error">{error}</div>}
         <div className="modal-actions">
