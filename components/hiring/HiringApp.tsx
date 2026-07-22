@@ -100,8 +100,7 @@ export default function HiringApp({
   const openCandidateInJob = useCallback(
     (candidateId: number, jobId: number) => {
       if (state.jobs.some((j) => j.id === jobId)) setActiveJob(jobId);
-      setFocusMessageId(null);
-      setOpenId(candidateId);
+      dispatchOverlay({ type: 'openCandidate', candidateId });
     },
     [state.jobs]
   );

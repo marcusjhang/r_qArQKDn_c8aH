@@ -8,13 +8,15 @@
 
 import { z } from 'zod';
 import { revalidatePath, revalidateTag } from 'next/cache';
+import { headers } from 'next/headers';
 import { and, eq, ne, sql } from 'drizzle-orm';
-import { db, candidates, users } from '@/lib/db';
+import { db, candidates, users, apiTokens } from '@/lib/db';
 import { sources, seniorityBands } from '@/lib/schema/hiring';
 import { MAX_YEARS_EXPERIENCE } from '@/lib/hiring/primitives';
 import { BOARD_TAGS } from '@/lib/hiring/cache';
 import { auth } from '@/lib/auth';
-import type { SettingsResult } from '@/lib/settings-types';
+import type { SettingsResult, CreateTokenResult } from '@/lib/settings-types';
+import { mintToken } from '@/lib/mcp/auth';
 
 const zId = z.number().int().positive();
 const zSourceName = z.string().trim().min(1).max(40);
@@ -254,5 +256,82 @@ export async function removeBand(idRaw: number): Promise<SettingsResult> {
   await db.delete(seniorityBands).where(eq(seniorityBands.id, id));
   revalidatePath('/settings');
   revalidateTag(BOARD_TAGS.bands);
+  return { ok: true };
+}
+
+/* ---------- API tokens (MCP access) ---------- */
+
+const zTokenName = z.string().trim().min(1).max(40);
+// Optional expiry: 0 = never, else a fixed number of days from now.
+const zExpiryDays = z.union([
+  z.literal(0),
+  z.literal(30),
+  z.literal(60),
+  z.literal(90)
+]);
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Build the exact Claude Code connection command for this deployment + token. */
+async function mcpAddCommand(token: string): Promise<string> {
+  const h = await headers();
+  const host =
+    h.get('x-forwarded-host') ?? h.get('host') ?? 'your-app.example.com';
+  const proto = h.get('x-forwarded-proto') ?? 'https';
+  const url = `${proto}://${host}/api/mcp`;
+  return `claude mcp add --transport http hiring ${url} --header "Authorization: Bearer ${token}"`;
+}
+
+/**
+ * Mint a new API token for the signed-in user. Stores only the SHA-256 hash and
+ * a display prefix; returns the plaintext secret once (Decision 1).
+ */
+export async function createApiToken(
+  nameRaw: string,
+  expiresInDaysRaw: number
+): Promise<CreateTokenResult> {
+  let name: string;
+  let expiresInDays: 0 | 30 | 60 | 90;
+  try {
+    name = zTokenName.parse(nameRaw);
+    expiresInDays = zExpiryDays.parse(expiresInDaysRaw);
+  } catch {
+    return { ok: false, error: 'Enter a token name (1–40 characters).' };
+  }
+
+  const userId = await signedInUserId();
+  if (!userId) return { ok: false, error: 'Not signed in.' };
+
+  const { token, tokenHash, prefix } = mintToken();
+  const expiresAt =
+    expiresInDays > 0 ? new Date(Date.now() + expiresInDays * DAY_MS) : null;
+
+  await db
+    .insert(apiTokens)
+    .values({ userId, name, tokenHash, prefix, expiresAt });
+
+  revalidatePath('/settings');
+  return { ok: true, token, prefix, command: await mcpAddCommand(token) };
+}
+
+/**
+ * Revoke (delete) one of the signed-in user's tokens. Scoped to the owner, so a
+ * user can only revoke their own tokens. Deleting the row is instant revocation.
+ */
+export async function revokeApiToken(idRaw: number): Promise<SettingsResult> {
+  let id: number;
+  try {
+    id = zId.parse(idRaw);
+  } catch {
+    return { ok: false, error: 'Invalid token.' };
+  }
+
+  const userId = await signedInUserId();
+  if (!userId) return { ok: false, error: 'Not signed in.' };
+
+  await db
+    .delete(apiTokens)
+    .where(and(eq(apiTokens.id, id), eq(apiTokens.userId, userId)));
+
+  revalidatePath('/settings');
   return { ok: true };
 }

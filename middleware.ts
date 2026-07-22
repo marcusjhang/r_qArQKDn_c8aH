@@ -9,9 +9,12 @@ export { auth as middleware } from '@/lib/auth';
 // the NextAuth handlers aren't redirected to /login.
 //
 // Excluded (must NOT be gated):
-//   - `api/`   NextAuth handlers + /api/register (self-guarded by the allowlist).
-//              Anchored with a trailing slash so a page route that merely starts
-//              with "api" (e.g. a future /api-docs) is still gated, not excluded.
+//   - `api/`   NextAuth handlers, /api/register (self-guarded by the allowlist),
+//              and /api/mcp (the MCP endpoint, self-guarded by a per-user bearer
+//              token — see app/api/mcp/route.ts). These authenticate themselves,
+//              not via the login cookie, so the gate would wrongly 302 them to
+//              /login. Anchored with a trailing slash so a page route that merely
+//              starts with "api" (e.g. a future /api-docs) is still gated.
 //   - `_next/static`, `_next/image`  Next build output and the image optimizer.
 //   - `favicon.ico` and any request ending in a static-asset extension (images,
 //              fonts, web manifest, txt/xml) — e.g. the brand SVG in /public —

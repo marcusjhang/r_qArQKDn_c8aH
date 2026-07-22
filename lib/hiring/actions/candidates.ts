@@ -2,24 +2,25 @@
 
 // Candidate write actions (add / edit / star / move stage / set status). Part
 // of the board's single write path — see ./index for the boundary contract.
-// The stage/status writes go through the shared pure placement helpers so the
-// optimistic store and the server compute the same coupled (stage, status).
+//
+// These are thin wrappers over the actor-scoped core in ../core, which both this
+// web path and the MCP tools (app/api/mcp/route.ts) share — one write path, two
+// front doors, so they can never drift. Each wrapper confirms the session
+// (requireUser), calls the core with the acting user, then revalidates; the core
+// does the zod-parse + guard + placement + DB write and neither resolves auth nor
+// revalidates.
 
-import { eq } from 'drizzle-orm';
 import { revalidateTag } from 'next/cache';
 import { requireUser } from '@/lib/auth';
-import { db, candidates } from '@/lib/db';
 import { BOARD_TAGS } from '../cache';
-import { placeInStage, placeWithStatus } from '../helpers';
 import type { Status } from '../types';
 import {
-  zId,
-  zStatus,
-  zStageName,
-  candidateInsertSchema,
-  candidateEditSchema
-} from '../schemas';
-import { loadJobStages } from './support';
+  addCandidateCore,
+  editCandidateCore,
+  setCandidateStarredCore,
+  moveStageCore,
+  setStatusCore
+} from '../core';
 
 /** Returns the new candidate's id so the client can reconcile its optimistic row. */
 export async function addCandidate(
@@ -31,35 +32,18 @@ export async function addCandidate(
   githubUrlRaw: string | null = null,
   yearsExperienceRaw: number | null = null
 ): Promise<number | null> {
-  await requireUser();
-  const jobId = zId.parse(jobIdRaw);
-  const { name, source, owner, linkedinUrl, githubUrl, yearsExperience } =
-    candidateInsertSchema.parse({
-      name: nameRaw,
-      source: sourceRaw,
-      owner: ownerRaw,
-      linkedinUrl: linkedinUrlRaw,
-      githubUrl: githubUrlRaw,
-      yearsExperience: yearsExperienceRaw
-    });
-  const stages = await loadJobStages(jobId);
-  if (!stages) return null;
-  const [row] = await db
-    .insert(candidates)
-    .values({
-      jobId,
-      name,
-      stage: stages[0],
-      owner,
-      source,
-      linkedinUrl,
-      githubUrl,
-      yearsExperience,
-      status: 'active'
-    })
-    .returning({ id: candidates.id });
+  // The client picks the owner in the form; the actor is the signed-in user.
+  const actor = await requireUser();
+  const id = await addCandidateCore(actor, jobIdRaw, {
+    name: nameRaw,
+    source: sourceRaw,
+    owner: ownerRaw,
+    linkedinUrl: linkedinUrlRaw,
+    githubUrl: githubUrlRaw,
+    yearsExperience: yearsExperienceRaw
+  });
   revalidateTag(BOARD_TAGS.candidates);
-  return row?.id ?? null;
+  return id;
 }
 
 /**
@@ -75,21 +59,15 @@ export async function editCandidate(
   githubUrlRaw: string | null,
   yearsExperienceRaw: number | null
 ) {
-  await requireUser();
-  const id = zId.parse(idRaw);
-  const { name, source, owner, linkedinUrl, githubUrl, yearsExperience } =
-    candidateEditSchema.parse({
-      name: nameRaw,
-      source: sourceRaw,
-      owner: ownerRaw,
-      linkedinUrl: linkedinUrlRaw,
-      githubUrl: githubUrlRaw,
-      yearsExperience: yearsExperienceRaw
-    });
-  await db
-    .update(candidates)
-    .set({ name, source, owner, linkedinUrl, githubUrl, yearsExperience })
-    .where(eq(candidates.id, id));
+  const actor = await requireUser();
+  await editCandidateCore(actor, idRaw, {
+    name: nameRaw,
+    source: sourceRaw,
+    owner: ownerRaw,
+    linkedinUrl: linkedinUrlRaw,
+    githubUrl: githubUrlRaw,
+    yearsExperience: yearsExperienceRaw
+  });
   revalidateTag(BOARD_TAGS.candidates);
 }
 
@@ -98,64 +76,19 @@ export async function editCandidate(
  * float to the top of their column), so there's no favorites cap like jobs.
  */
 export async function setCandidateStarred(idRaw: number, starred: boolean) {
-  await requireUser();
-  const id = zId.parse(idRaw);
-  await db
-    .update(candidates)
-    .set({ starred: !!starred })
-    .where(eq(candidates.id, id));
+  const actor = await requireUser();
+  await setCandidateStarredCore(actor, idRaw, starred);
   revalidateTag(BOARD_TAGS.candidates);
 }
 
 export async function moveStage(idRaw: number, stageRaw: string) {
-  await requireUser();
-  const id = zId.parse(idRaw);
-  const stage = zStageName.parse(stageRaw);
-  // Only the placement inputs are read — jobId (to load the stage list) and the
-  // current stage/status that placeInStage keys off — so project to those three
-  // columns instead of a SELECT * of the whole candidate row.
-  const [c] = await db
-    .select({
-      jobId: candidates.jobId,
-      stage: candidates.stage,
-      status: candidates.status
-    })
-    .from(candidates)
-    .where(eq(candidates.id, id))
-    .limit(1);
-  if (!c) return;
-  // Resolve "terminal" structurally (last stage), so auto-hire survives a rename.
-  const stages = (await loadJobStages(c.jobId)) ?? [];
-  // Guard stage membership: the client only ever moves a card into one of its
-  // job's stages, but this action is the sole write path and can't trust that.
-  // Without the check a stray stage would strand the card in a non-existent
-  // column (no board column renders it), and a stray terminal stage would
-  // wrongly flip the status to hired (see placeInStage).
-  if (!stages.includes(stage)) return;
-  const placement = placeInStage(stage, c, stages);
-  await db.update(candidates).set(placement).where(eq(candidates.id, id));
+  const actor = await requireUser();
+  await moveStageCore(actor, idRaw, stageRaw);
   revalidateTag(BOARD_TAGS.candidates);
 }
 
 export async function setStatus(idRaw: number, statusRaw: Status) {
-  await requireUser();
-  const id = zId.parse(idRaw);
-  const status = zStatus.parse(statusRaw);
-  // Same projection as moveStage: placeWithStatus only needs the current stage
-  // (and jobId to load the stage list), so avoid a SELECT * of the row.
-  const [c] = await db
-    .select({
-      jobId: candidates.jobId,
-      stage: candidates.stage,
-      status: candidates.status
-    })
-    .from(candidates)
-    .where(eq(candidates.id, id))
-    .limit(1);
-  if (!c) return;
-  // Setting status to Hired moves the card into the Hired stage if one exists.
-  const stages = status === 'hired' ? await loadJobStages(c.jobId) : null;
-  const placement = placeWithStatus(status, c, stages ?? []);
-  await db.update(candidates).set(placement).where(eq(candidates.id, id));
+  const actor = await requireUser();
+  await setStatusCore(actor, idRaw, statusRaw);
   revalidateTag(BOARD_TAGS.candidates);
 }
