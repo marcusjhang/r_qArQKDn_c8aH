@@ -192,12 +192,21 @@ export const MAX_STAGE_NAME = 48;
 export const MAX_FAVORITES = 3;
 
 /**
- * The terminal pipeline stage. Entering it marks a candidate `hired` and
- * leaving it clears that status — a coupling honored identically on client and
- * server (see `placeInStage` / `placeWithStatus`). Named once here so the rule
- * isn't spelled out as a bare `'Hired'` literal in four different call sites.
+ * The terminal ("hired") stage of a pipeline, defined *structurally* as the last
+ * stage — not by a magic `'Hired'` name. Entering it marks a candidate `hired`
+ * and leaving it clears that status, a coupling honored identically on client
+ * and server (see `placeInStage` / `placeWithStatus`). Identifying it by position
+ * means renaming the column can't silently break auto-hire, and it matches where
+ * `addStageToPipeline` inserts. Returns undefined only for an empty pipeline.
  */
-export const HIRED_STAGE = 'Hired';
+export function terminalStage(stages: string[]): string | undefined {
+  return stages.length ? stages[stages.length - 1] : undefined;
+}
+
+/** Whether `stage` is the pipeline's terminal (last) stage. */
+export function isTerminalStage(stages: string[], stage: string): boolean {
+  return stages.length > 0 && stage === stages[stages.length - 1];
+}
 
 /**
  * Discriminated-union result of a stage-array mutation. On success it carries
@@ -269,8 +278,10 @@ export function stageDeletable(
 
 /**
  * Add a stage to a pipeline: validate the name (see `validateStageName`) then
- * insert it just before the terminal stage. Returns the next stages array so
- * the client store and the server action share one insertion rule.
+ * insert it just before the terminal (last) stage — the same position-based
+ * notion of "terminal" that `placeInStage`/`placeWithStatus` use, so a new stage
+ * never displaces the hired column. Returns the next stages array so the client
+ * store and the server action share one insertion rule.
  */
 export function addStageToPipeline(
   stages: string[],
@@ -340,11 +351,17 @@ export interface Placement {
 
 /**
  * Resolve the placement when a candidate is *moved* into `stage`. Entering the
- * terminal stage marks them `hired`; leaving it clears a stale `hired` back to
- * `active`. Otherwise the status is untouched.
+ * terminal stage (the pipeline's last, see `isTerminalStage`) marks them
+ * `hired`; leaving it clears a stale `hired` back to `active`. Otherwise the
+ * status is untouched. Takes the job's `stages` so "terminal" is resolved by
+ * position, not a hardcoded name.
  */
-export function placeInStage(stage: string, current: Placement): Placement {
-  if (stage === HIRED_STAGE) return { stage, status: 'hired' };
+export function placeInStage(
+  stage: string,
+  current: Placement,
+  stages: string[]
+): Placement {
+  if (isTerminalStage(stages, stage)) return { stage, status: 'hired' };
   if (current.status === 'hired') return { stage, status: 'active' };
   return { stage, status: current.status };
 }
@@ -359,12 +376,13 @@ export function placeWithStatus(
   current: Placement,
   stages: string[]
 ): Placement {
+  const terminal = terminalStage(stages);
   if (
     status === 'hired' &&
-    current.stage !== HIRED_STAGE &&
-    stages.includes(HIRED_STAGE)
+    terminal !== undefined &&
+    current.stage !== terminal
   ) {
-    return { stage: HIRED_STAGE, status };
+    return { stage: terminal, status };
   }
   return { stage: current.stage, status };
 }
