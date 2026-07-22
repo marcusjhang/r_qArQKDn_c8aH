@@ -137,13 +137,13 @@
   font-size: 11px;
   padding: 1px 7px;
 }
-.ht-root .jobtab[aria-selected='true'] {
+.ht-root .jobtab[aria-current='true'] {
   background: var(--primary-weak);
   border-color: var(--primary-border);
   color: var(--primary);
   font-weight: 600;
 }
-.ht-root .jobtab[aria-selected='true'] .count {
+.ht-root .jobtab[aria-current='true'] .count {
   background: var(--surface);
   color: var(--primary);
 }
