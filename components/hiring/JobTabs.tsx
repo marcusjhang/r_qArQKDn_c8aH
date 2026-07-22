@@ -5,7 +5,7 @@
 // (pin as a tab) and delete jobs. The active job is always kept visible.
 
 import { useEffect, useRef, useState } from 'react';
-import { MAX_FAVORITES, type Job } from '@/lib/hiring';
+import { partitionJobTabs, MAX_FAVORITES, type Job } from '@/lib/hiring';
 
 const INLINE_CAP = 3;
 
@@ -50,15 +50,11 @@ export default function JobTabs({
 
   // Starred first (stable — jobs already come oldest-first), cap the inline set,
   // then guarantee the active job is shown even if it would otherwise overflow.
-  const sorted = [...jobs].sort((a, b) => Number(b.starred) - Number(a.starred));
-  let inline = sorted.slice(0, INLINE_CAP);
-  if (!inline.some((j) => j.id === activeJob)) {
-    const active = jobs.find((j) => j.id === activeJob);
-    if (active) inline = [...inline, active];
-  }
-  const inlineIds = new Set(inline.map((j) => j.id));
-  const overflow = sorted.filter((j) => !inlineIds.has(j.id));
-  const favCount = jobs.filter((j) => j.starred).length;
+  const { sorted, inline, overflow, favCount } = partitionJobTabs(
+    jobs,
+    activeJob,
+    INLINE_CAP
+  );
 
   return (
     <div className="jobtabs" ref={ref}>

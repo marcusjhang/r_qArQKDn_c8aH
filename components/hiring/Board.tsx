@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   RATINGS,
-  agg,
+  candidateRating,
   founderById,
   selectStageCards,
   validateStageName,
@@ -20,9 +20,9 @@ import {
 } from '@/lib/hiring';
 
 function RatingChip({ candidate }: { candidate: Candidate }) {
-  const a = agg(candidate);
-  if (a == null) return <span className="rating-chip muted">No ratings</span>;
-  const r = RATINGS[Math.round(a) as 1 | 2 | 3 | 4];
+  const value = candidateRating(candidate);
+  if (value == null) return <span className="rating-chip muted">No ratings</span>;
+  const r = RATINGS[value];
   return (
     <span className={`rating-chip ${r.cls}`}>
       {r.label} <span className="n">· {candidate.feedback.length}</span>

@@ -13,6 +13,8 @@ import {
   STATUS,
   agg,
   founderById,
+  roundedRating,
+  stageNavigation,
   type HiringActions,
   type Candidate,
   type HiringState,
@@ -61,11 +63,10 @@ export default function DetailDrawer({
 
   const job = view ? state.jobs.find((j) => j.id === view.jobId) : undefined;
   const a = view ? agg(view) : null;
+  const aRounded = roundedRating(a);
 
   // Stage position drives which footer actions exist (no dead-end buttons).
-  const stageIdx = job && view ? job.stages.indexOf(view.stage) : -1;
-  const canMoveBack = stageIdx > 0;
-  const canAdvance = stageIdx >= 0 && stageIdx < (job?.stages.length ?? 0) - 1;
+  const { canMoveBack, canAdvance } = stageNavigation(job, view);
 
   // Moving a candidate's stage returns you to the board so the move is visible.
   function moveAndClose(dir: 1 | -1) {
@@ -171,11 +172,11 @@ export default function DetailDrawer({
             <div className="section-title">
               Interview feedback
               <span className="agg">
-                {a == null ? (
+                {a == null || aRounded == null ? (
                   <span className="rating-chip muted">No ratings</span>
                 ) : (
-                  <span className={`rating-chip ${RATINGS[Math.round(a) as RatingValue].cls}`}>
-                    {RATINGS[Math.round(a) as RatingValue].label} · avg {a.toFixed(1)}
+                  <span className={`rating-chip ${RATINGS[aRounded].cls}`}>
+                    {RATINGS[aRounded].label} · avg {a.toFixed(1)}
                   </span>
                 )}
               </span>

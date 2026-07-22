@@ -1,7 +1,7 @@
 // Pure, framework-free helpers over the hiring domain model.
 
 import { FOUNDERS } from './config';
-import type { Candidate, Founder, Status } from './types';
+import type { Candidate, Founder, Job, RatingValue, Status } from './types';
 
 export function founderById(id: string): Founder {
   return FOUNDERS.find((f) => f.id === id) ?? FOUNDERS[0];
@@ -225,4 +225,126 @@ export function placeWithStatus(
     return { stage: HIRED_STAGE, status };
   }
   return { stage: current.stage, status };
+}
+
+/* ------------------------------------------------------------------ *
+ * Board view derivations.
+ *
+ * Pure functions that turn the raw board state into the numbers, labels and
+ * orderings the UI renders. Kept here (rather than inline in the components)
+ * so the derivations are unit-testable on their own — the same reason the
+ * stage/placement rules above were centralized.
+ * ------------------------------------------------------------------ */
+
+/** Count of candidates still in the active pipeline for a job (not terminal). */
+export function liveCount(candidates: Candidate[], jobId: number): number {
+  return candidates.filter((c) => c.jobId === jobId && !isTerminal(c)).length;
+}
+
+/** Live / hired / rejected tallies for a single job, in one pass. */
+export interface JobStats {
+  /** Candidates still moving through the pipeline. */
+  live: number;
+  /** Candidates in the terminal Hired state. */
+  hired: number;
+  /** Candidates in the terminal Rejected state. */
+  rejected: number;
+}
+
+export function jobStats(candidates: Candidate[], jobId: number): JobStats {
+  const mine = candidates.filter((c) => c.jobId === jobId);
+  return {
+    live: mine.filter((c) => !isTerminal(c)).length,
+    hired: mine.filter((c) => c.status === 'hired').length,
+    rejected: mine.filter((c) => c.status === 'rejected').length
+  };
+}
+
+/**
+ * The toolbar summary line under the job title, e.g.
+ * "3 active candidates · 1 hired · 2 rejected hidden". The rejected tally only
+ * appears while the terminal-state filter is hiding those cards.
+ */
+export function formatJobMeta(stats: JobStats, showRejected: boolean): string {
+  const { live, hired, rejected } = stats;
+  return (
+    `${live} active candidate${live === 1 ? '' : 's'}` +
+    (hired ? ` · ${hired} hired` : '') +
+    (rejected && !showRejected ? ` · ${rejected} rejected hidden` : '')
+  );
+}
+
+/** Where a candidate sits in its pipeline and which footer moves are valid. */
+export interface StageNavigation {
+  /** Index of the candidate's stage in its job pipeline, or -1 if unknown. */
+  index: number;
+  /** True when there is an earlier stage to move back to. */
+  canMoveBack: boolean;
+  /** True when there is a later stage to advance to. */
+  canAdvance: boolean;
+}
+
+/**
+ * Resolve the drawer's Advance/Back affordances from stage position, so the UI
+ * never renders a dead-end button at either end of the pipeline.
+ */
+export function stageNavigation(
+  job: Job | undefined,
+  candidate: Candidate | null | undefined
+): StageNavigation {
+  const index = job && candidate ? job.stages.indexOf(candidate.stage) : -1;
+  return {
+    index,
+    canMoveBack: index > 0,
+    canAdvance: index >= 0 && index < (job?.stages.length ?? 0) - 1
+  };
+}
+
+/**
+ * Round an aggregate rating (a 1–4 mean, see `agg`) to the nearest whole rating
+ * value for the summary chip, or null when there is nothing to round. Clamped
+ * into the 1–4 scale defensively.
+ */
+export function roundedRating(average: number | null): RatingValue | null {
+  if (average == null) return null;
+  return Math.min(4, Math.max(1, Math.round(average))) as RatingValue;
+}
+
+/** The rating-chip value for a candidate: rounded aggregate, or null. */
+export function candidateRating(c: Candidate): RatingValue | null {
+  return roundedRating(agg(c));
+}
+
+/** How the job switcher lays jobs out across inline tabs and the dropdown. */
+export interface JobTabLayout {
+  /** All jobs, starred-first — the order used by the "all jobs" dropdown. */
+  sorted: Job[];
+  /** Jobs shown as inline tabs. */
+  inline: Job[];
+  /** Jobs tucked into the "more" dropdown. */
+  overflow: Job[];
+  /** How many jobs are currently favorited. */
+  favCount: number;
+}
+
+/**
+ * Split jobs into inline tabs and an overflow list: starred jobs first (stable,
+ * since jobs already arrive oldest-first), cap the inline set to `cap`, then
+ * guarantee the active job stays visible even if it would otherwise overflow.
+ */
+export function partitionJobTabs(
+  jobs: Job[],
+  activeJob: number,
+  cap: number
+): JobTabLayout {
+  const sorted = [...jobs].sort((a, b) => Number(b.starred) - Number(a.starred));
+  let inline = sorted.slice(0, cap);
+  if (!inline.some((j) => j.id === activeJob)) {
+    const active = jobs.find((j) => j.id === activeJob);
+    if (active) inline = [...inline, active];
+  }
+  const inlineIds = new Set(inline.map((j) => j.id));
+  const overflow = sorted.filter((j) => !inlineIds.has(j.id));
+  const favCount = jobs.filter((j) => j.starred).length;
+  return { sorted, inline, overflow, favCount };
 }

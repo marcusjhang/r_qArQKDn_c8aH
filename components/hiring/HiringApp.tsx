@@ -6,7 +6,13 @@
 // over it so pipeline context stays on screen.
 
 import { useEffect, useState } from 'react';
-import { isTerminal, useHiringStore, type HiringState } from '@/lib/hiring';
+import {
+  formatJobMeta,
+  jobStats,
+  liveCount,
+  useHiringStore,
+  type HiringState
+} from '@/lib/hiring';
 import Board from './Board';
 import DetailDrawer from './DetailDrawer';
 import AddCandidateModal from './AddCandidateModal';
@@ -38,29 +44,20 @@ export default function HiringApp({
 
   const job = state.jobs.find((j) => j.id === activeJob) ?? state.jobs[0];
 
-  function liveCount(jobId: number) {
-    return state.candidates.filter((c) => c.jobId === jobId && !isTerminal(c))
-      .length;
-  }
+  // Thin adapter so JobTabs keeps its (jobId) => number prop contract.
+  const jobLiveCount = (jobId: number) => liveCount(state.candidates, jobId);
 
   function selectJob(jobId: number) {
     setActiveJob(jobId);
     setOpenId(null);
   }
 
-
-  const jobCands = job
-    ? state.candidates.filter((c) => c.jobId === job.id)
-    : [];
-  const live = job ? liveCount(job.id) : 0;
-  const hiredCount = jobCands.filter((c) => c.status === 'hired').length;
-  const rejectedCount = jobCands.filter((c) => c.status === 'rejected').length;
-  const meta =
-    `${live} active candidate${live === 1 ? '' : 's'}` +
-    (hiredCount ? ` · ${hiredCount} hired` : '') +
-    (rejectedCount && !showRejected
-      ? ` · ${rejectedCount} rejected hidden`
-      : '');
+  const meta = formatJobMeta(
+    job
+      ? jobStats(state.candidates, job.id)
+      : { live: 0, hired: 0, rejected: 0 },
+    showRejected
+  );
 
   return (
     <div className="ht-root">
@@ -75,7 +72,7 @@ export default function HiringApp({
         <JobTabs
           jobs={state.jobs}
           activeJob={activeJob}
-          liveCount={liveCount}
+          liveCount={jobLiveCount}
           onSelect={selectJob}
           onToggleStar={actions.setJobStarred}
           onDelete={actions.deleteJob}
