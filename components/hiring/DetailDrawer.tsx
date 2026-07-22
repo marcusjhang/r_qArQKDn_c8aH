@@ -5,11 +5,12 @@
 // 4-point rating picker, and Advance/Back stage controls. The board stays
 // visible behind the drawer so pipeline context is never lost.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { FOUNDERS, RATINGS, SOURCES, STATUS } from '@/lib/hiring/config';
 import { agg, founderById } from '@/lib/hiring/helpers';
 import type { HiringActions } from '@/lib/hiring/store';
 import type { Candidate, HiringState, RatingValue, Status } from '@/lib/hiring/types';
+import { useFeedbackDraft } from './useFeedbackDraft';
 
 const RATING_ORDER: RatingValue[] = [1, 2, 3, 4];
 
@@ -33,18 +34,11 @@ export default function DetailDrawer({
   const view = candidate ?? lastRef.current;
   const open = candidate != null;
 
-  // Add-feedback draft, reset whenever a different candidate opens.
-  const [fbWho, setFbWho] = useState<string>(FOUNDERS[0].id);
-  const [draftV, setDraftV] = useState<RatingValue | null>(null);
-  const [note, setNote] = useState('');
-  const [fbError, setFbError] = useState('');
-
-  useEffect(() => {
-    setFbWho(FOUNDERS[0].id);
-    setDraftV(null);
-    setNote('');
-    setFbError('');
-  }, [openId]);
+  // Add-feedback draft (state, reset-on-open, and validation) lives in a hook;
+  // resets whenever a different candidate opens.
+  const fb = useFeedbackDraft(openId, (entry) => {
+    if (view) actions.addFeedback(view.id, entry);
+  });
 
   // Close on Escape while open.
   useEffect(() => {
@@ -55,22 +49,6 @@ export default function DetailDrawer({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
-
-  function addFeedback() {
-    if (!view) return;
-    if (!draftV) {
-      setFbError('Pick a rating first.');
-      return;
-    }
-    actions.addFeedback(view.id, {
-      byFounder: fbWho,
-      rating: draftV,
-      note: note.trim()
-    });
-    setDraftV(null);
-    setNote('');
-    setFbError('');
-  }
 
   const job = view ? state.jobs.find((j) => j.id === view.jobId) : undefined;
   const a = view ? agg(view) : null;
@@ -227,7 +205,7 @@ export default function DetailDrawer({
             <div className="add-fb">
               <div className="field">
                 <span className="label">Interviewer</span>
-                <select value={fbWho} onChange={(e) => setFbWho(e.target.value)}>
+                <select value={fb.who} onChange={(e) => fb.setWho(e.target.value)}>
                   {FOUNDERS.map((f) => (
                     <option key={f.id} value={f.id}>
                       {f.name}
@@ -242,11 +220,8 @@ export default function DetailDrawer({
                     <button
                       key={v}
                       className={`rp ${RATINGS[v].cls}`}
-                      aria-pressed={draftV === v}
-                      onClick={() => {
-                        setDraftV(v);
-                        setFbError('');
-                      }}
+                      aria-pressed={fb.rating === v}
+                      onClick={() => fb.pickRating(v)}
                     >
                       {RATINGS[v].label}
                     </button>
@@ -256,14 +231,14 @@ export default function DetailDrawer({
               <div className="field">
                 <span className="label">Note</span>
                 <textarea
-                  value={note}
+                  value={fb.note}
                   maxLength={2000}
-                  onChange={(e) => setNote(e.target.value)}
+                  onChange={(e) => fb.setNote(e.target.value)}
                   placeholder="What stood out? Concerns?"
                 />
               </div>
-              {fbError && <div className="form-error">{fbError}</div>}
-              <button className="btn primary" onClick={addFeedback}>
+              {fb.error && <div className="form-error">{fb.error}</div>}
+              <button className="btn primary" onClick={() => fb.submit()}>
                 Add feedback
               </button>
             </div>
