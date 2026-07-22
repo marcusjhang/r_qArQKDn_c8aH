@@ -63,15 +63,10 @@ export const candidateInsertSchema = createInsertSchema(candidates, {
   githubUrl: true
 });
 
-// Editable candidate details from the detail drawer's Edit form. Mirrors the
-// add-candidate fields exactly so both forms validate identically.
-export const candidateEditSchema = z.object({
-  name: zName,
-  source: zSource,
-  owner: zOwner,
-  linkedinUrl: zProfileUrl,
-  githubUrl: zProfileUrl
-});
+// The detail drawer's Edit form validates the same fields as creation, so it
+// reuses the insert schema outright rather than restating it (the two can't
+// drift). Kept as a named alias to document the edit-path intent at call sites.
+export const candidateEditSchema = candidateInsertSchema;
 
 export const feedbackInsertSchema = createInsertSchema(feedback, {
   byFounder: zOwner,

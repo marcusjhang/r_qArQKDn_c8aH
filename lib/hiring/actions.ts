@@ -31,8 +31,6 @@ import {
   zIndex,
   zDir,
   zStatus,
-  zOwner,
-  zSource,
   zStageName,
   zJobTitle,
   candidateInsertSchema,
@@ -180,20 +178,6 @@ export async function moveStage(idRaw: number, stageRaw: string) {
   if (!c) return;
   const placement = placeInStage(stage, c);
   await db.update(candidates).set(placement).where(eq(candidates.id, id));
-  revalidateTag(BOARD_TAGS.candidates);
-}
-
-export async function setOwner(idRaw: number, ownerRaw: string) {
-  const id = zId.parse(idRaw);
-  const owner = zOwner.parse(ownerRaw);
-  await db.update(candidates).set({ owner }).where(eq(candidates.id, id));
-  revalidateTag(BOARD_TAGS.candidates);
-}
-
-export async function setSource(idRaw: number, sourceRaw: string) {
-  const id = zId.parse(idRaw);
-  const source = zSource.parse(sourceRaw);
-  await db.update(candidates).set({ source }).where(eq(candidates.id, id));
   revalidateTag(BOARD_TAGS.candidates);
 }
 

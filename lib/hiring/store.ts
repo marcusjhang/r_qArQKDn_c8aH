@@ -63,8 +63,6 @@ export interface HiringActions {
   ) => void;
   moveTo: (id: number, stage: string) => void;
   advance: (id: number, dir: 1 | -1) => void;
-  setOwner: (id: number, owner: string) => void;
-  setSource: (id: number, source: string) => void;
   setStatus: (id: number, status: Status) => void;
   setCandidateStarred: (id: number, starred: boolean) => void;
   addFeedback: (
@@ -256,22 +254,6 @@ export function useHiringStore(initial: HiringState): {
     [moveTo]
   );
 
-  const setOwner = useCallback(
-    (id: number, owner: string) => {
-      dispatch({ type: 'setOwner', id, owner });
-      persist(() => api.setOwner(id, owner));
-    },
-    [persist]
-  );
-
-  const setSource = useCallback(
-    (id: number, source: string) => {
-      dispatch({ type: 'setSource', id, source });
-      persist(() => api.setSource(id, source));
-    },
-    [persist]
-  );
-
   const setStatus = useCallback(
     (id: number, status: Status) => {
       dispatch({ type: 'setStatus', id, status });
@@ -362,8 +344,6 @@ export function useHiringStore(initial: HiringState): {
     editCandidate,
     moveTo,
     advance,
-    setOwner,
-    setSource,
     setStatus,
     setCandidateStarred,
     addFeedback,

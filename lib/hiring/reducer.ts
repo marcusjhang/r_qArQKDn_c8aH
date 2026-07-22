@@ -51,8 +51,6 @@ export type HiringEvent =
       linkedinUrl: string | null;
       githubUrl: string | null;
     }
-  | { type: 'setOwner'; id: number; owner: string }
-  | { type: 'setSource'; id: number; source: string }
   | { type: 'setStatus'; id: number; status: Status }
   | { type: 'setCandidateStarred'; id: number; starred: boolean }
   | {
@@ -185,15 +183,6 @@ export function hiringReducer(
         owner: event.owner,
         linkedinUrl: event.linkedinUrl,
         githubUrl: event.githubUrl
-      }));
-
-    case 'setOwner':
-      return mapCandidate(state, event.id, (c) => ({ ...c, owner: event.owner }));
-
-    case 'setSource':
-      return mapCandidate(state, event.id, (c) => ({
-        ...c,
-        source: event.source
       }));
 
     case 'setStatus':

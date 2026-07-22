@@ -20,10 +20,13 @@ import {
 
 export default function DetailForm({
   view,
-  actions
+  actions,
+  resetKey
 }: {
   view: Candidate | null;
   actions: HiringActions;
+  /** Identity of the open candidate (openId) — the form resets when it changes. */
+  resetKey: number | null;
 }) {
   const [editing, setEditing] = useState(false);
   const [dName, setDName] = useState('');
@@ -42,14 +45,17 @@ export default function DetailForm({
     setError('');
   }
 
-  // Leave edit mode and re-seed the draft whenever a different candidate opens.
+  // Leave edit mode and re-seed the draft whenever the drawer opens a different
+  // candidate (or closes). Keyed on openId — which flips on open/close/switch —
+  // rather than view?.id: view falls back to the last-shown candidate during
+  // the slide-out, so keying on its id would leave a reopened candidate stuck
+  // in edit mode; and an optimistic update to the open candidate must NOT reset
+  // an in-progress edit.
   useEffect(() => {
     setEditing(false);
     seedDraft(view);
-    // Keyed on the candidate identity only — not on every optimistic update,
-    // which would clobber an in-progress edit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view?.id]);
+  }, [resetKey]);
 
   const detailsDirty =
     !!view &&
