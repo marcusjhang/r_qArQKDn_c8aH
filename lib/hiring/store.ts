@@ -6,7 +6,16 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { stageDeletable, validateStageName, MAX_FAVORITES } from './helpers';
+import {
+  stageDeletable,
+  validateStageName,
+  addStageToPipeline,
+  reorderStages,
+  removeStage,
+  placeInStage,
+  placeWithStatus,
+  MAX_FAVORITES
+} from './helpers';
 import { DEFAULT_STAGES } from './config';
 import * as api from './actions';
 import type { HiringState, RatingValue, Status } from './types';
@@ -206,13 +215,9 @@ export function useHiringStore(initial: HiringState): {
     (id: number, stage: string) => {
       setState((s) => ({
         ...s,
-        candidates: s.candidates.map((c) => {
-          if (c.id !== id) return c;
-          let status: Status = c.status;
-          if (stage === 'Hired') status = 'hired';
-          else if (c.status === 'hired') status = 'active';
-          return { ...c, stage, status };
-        })
+        candidates: s.candidates.map((c) =>
+          c.id === id ? { ...c, ...placeInStage(stage, c) } : c
+        )
       }));
       persist(() => api.moveStage(id, stage));
     },
@@ -267,13 +272,7 @@ export function useHiringStore(initial: HiringState): {
         candidates: s.candidates.map((c) => {
           if (c.id !== id) return c;
           const job = s.jobs.find((j) => j.id === c.jobId);
-          const stage =
-            status === 'hired' &&
-            c.stage !== 'Hired' &&
-            job?.stages.includes('Hired')
-              ? 'Hired'
-              : c.stage;
-          return { ...c, status, stage };
+          return { ...c, ...placeWithStatus(status, c, job?.stages ?? []) };
         })
       }));
       persist(() => api.setStatus(id, status));
@@ -340,16 +339,14 @@ export function useHiringStore(initial: HiringState): {
     (jobId: number, name: string) => {
       const job = stateRef.current.jobs.find((j) => j.id === jobId);
       if (!job) return;
-      if (!validateStageName(job.stages, name).ok) return;
+      const result = addStageToPipeline(job.stages, name);
+      if (!result.ok) return;
       const trimmed = name.trim();
       setState((s) => ({
         ...s,
-        jobs: s.jobs.map((j) => {
-          if (j.id !== jobId) return j;
-          const stages = [...j.stages];
-          stages.splice(stages.length - 1, 0, trimmed);
-          return { ...j, stages };
-        })
+        jobs: s.jobs.map((j) =>
+          j.id === jobId ? { ...j, stages: result.stages } : j
+        )
       }));
       persist(() => api.addStage(jobId, trimmed));
     },
@@ -358,16 +355,15 @@ export function useHiringStore(initial: HiringState): {
 
   const reorderStage = useCallback(
     (jobId: number, index: number, dir: 1 | -1) => {
+      const job = stateRef.current.jobs.find((j) => j.id === jobId);
+      if (!job) return;
+      const result = reorderStages(job.stages, index, dir);
+      if (!result.ok) return;
       setState((s) => ({
         ...s,
-        jobs: s.jobs.map((j) => {
-          if (j.id !== jobId) return j;
-          const target = index + dir;
-          if (target < 0 || target >= j.stages.length) return j;
-          const stages = [...j.stages];
-          [stages[index], stages[target]] = [stages[target], stages[index]];
-          return { ...j, stages };
-        })
+        jobs: s.jobs.map((j) =>
+          j.id === jobId ? { ...j, stages: result.stages } : j
+        )
       }));
       persist(() => api.reorderStage(jobId, index, dir));
     },
@@ -376,13 +372,19 @@ export function useHiringStore(initial: HiringState): {
 
   const deleteStage = useCallback(
     (jobId: number, index: number) => {
-      if (!canDeleteStage(stateRef.current, jobId, index).ok) return;
+      const s0 = stateRef.current;
+      const job = s0.jobs.find((j) => j.id === jobId);
+      if (!job) return;
+      const stage = job.stages[index];
+      const hasCandidates = s0.candidates.some(
+        (c) => c.jobId === jobId && c.stage === stage
+      );
+      const result = removeStage(job.stages, index, hasCandidates);
+      if (!result.ok) return;
       setState((s) => ({
         ...s,
         jobs: s.jobs.map((j) =>
-          j.id === jobId
-            ? { ...j, stages: j.stages.filter((_, i) => i !== index) }
-            : j
+          j.id === jobId ? { ...j, stages: result.stages } : j
         )
       }));
       persist(() => api.deleteStage(jobId, index));

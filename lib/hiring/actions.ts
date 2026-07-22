@@ -10,7 +10,15 @@
 import { and, eq, ne, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db, jobs, candidates, feedback } from '@/lib/db';
-import { stageDeletable, validateStageName, MAX_FAVORITES } from './helpers';
+import {
+  validateStageName,
+  addStageToPipeline,
+  reorderStages,
+  removeStage,
+  placeInStage,
+  placeWithStatus,
+  MAX_FAVORITES
+} from './helpers';
 import { DEFAULT_STAGES } from './config';
 import type { Status } from './types';
 import {
@@ -122,10 +130,8 @@ export async function moveStage(idRaw: number, stageRaw: string) {
     .where(eq(candidates.id, id))
     .limit(1);
   if (!c) return;
-  let status: Status = c.status;
-  if (stage === 'Hired') status = 'hired';
-  else if (c.status === 'hired') status = 'active';
-  await db.update(candidates).set({ stage, status }).where(eq(candidates.id, id));
+  const placement = placeInStage(stage, c);
+  await db.update(candidates).set(placement).where(eq(candidates.id, id));
   revalidatePath('/');
 }
 
@@ -153,12 +159,9 @@ export async function setStatus(idRaw: number, statusRaw: Status) {
     .limit(1);
   if (!c) return;
   // Setting status to Hired moves the card into the Hired stage if one exists.
-  let stage = c.stage;
-  if (status === 'hired' && c.stage !== 'Hired') {
-    const stages = await loadJobStages(c.jobId);
-    if (stages?.includes('Hired')) stage = 'Hired';
-  }
-  await db.update(candidates).set({ status, stage }).where(eq(candidates.id, id));
+  const stages = status === 'hired' ? await loadJobStages(c.jobId) : null;
+  const placement = placeWithStatus(status, c, stages ?? []);
+  await db.update(candidates).set(placement).where(eq(candidates.id, id));
   revalidatePath('/');
 }
 
@@ -184,11 +187,9 @@ export async function addStage(jobIdRaw: number, nameRaw: string) {
   const jobId = zId.parse(jobIdRaw);
   const stages = await loadJobStages(jobId);
   if (!stages) return;
-  if (!validateStageName(stages, nameRaw).ok) return;
-  const name = nameRaw.trim();
-  const next = [...stages];
-  next.splice(next.length - 1, 0, name); // insert before the last stage
-  await db.update(jobs).set({ stages: next }).where(eq(jobs.id, jobId));
+  const result = addStageToPipeline(stages, nameRaw);
+  if (!result.ok) return;
+  await db.update(jobs).set({ stages: result.stages }).where(eq(jobs.id, jobId));
   revalidatePath('/');
 }
 
@@ -228,11 +229,9 @@ export async function reorderStage(
   const dir = zDir.parse(dirRaw);
   const stages = await loadJobStages(jobId);
   if (!stages) return;
-  const target = index + dir;
-  if (target < 0 || target >= stages.length) return;
-  const next = [...stages];
-  [next[index], next[target]] = [next[target], next[index]];
-  await db.update(jobs).set({ stages: next }).where(eq(jobs.id, jobId));
+  const result = reorderStages(stages, index, dir);
+  if (!result.ok) return;
+  await db.update(jobs).set({ stages: result.stages }).where(eq(jobs.id, jobId));
   revalidatePath('/');
 }
 
@@ -247,9 +246,8 @@ export async function deleteStage(jobIdRaw: number, indexRaw: number) {
     .select({ n: sql<number>`count(*)` })
     .from(candidates)
     .where(and(eq(candidates.jobId, jobId), eq(candidates.stage, stage)));
-  if (!stageDeletable(stages, Number(n) > 0).ok) return;
-  const next = [...stages];
-  next.splice(index, 1);
-  await db.update(jobs).set({ stages: next }).where(eq(jobs.id, jobId));
+  const result = removeStage(stages, index, Number(n) > 0);
+  if (!result.ok) return;
+  await db.update(jobs).set({ stages: result.stages }).where(eq(jobs.id, jobId));
   revalidatePath('/');
 }
