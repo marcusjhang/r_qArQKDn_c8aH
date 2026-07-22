@@ -70,6 +70,12 @@
   * {
     @apply border-border;
   }
+  /* Paint the background on the root element too, so overscroll / any area the
+     browser paints outside <body> (which is only min-h-screen) stays the same
+     colour instead of revealing a lighter canvas as bands at the top/bottom. */
+  html {
+    @apply bg-background;
+  }
   body {
     @apply bg-background text-foreground;
   }
