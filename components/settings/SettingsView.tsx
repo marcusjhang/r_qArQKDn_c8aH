@@ -1,27 +1,38 @@
 'use client';
 
-// Settings: manage the signup allowlist. Styled with the board's design system
-// (.ht-root) so it matches the rest of the app. Server actions are passed in
-// from the page (the @/app path isn't aliased).
+// Settings: manage the signup allowlist and candidate sources. Styled with the
+// board's design system (.ht-root) so it matches the rest of the app. Server
+// actions are passed in from the page (the @/app path isn't aliased).
 
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import TopBar from '@/components/hiring/TopBar';
 import ThemeToggle from './ThemeToggle';
+import SourcesPanel from './SourcesPanel';
 import '@/components/hiring/hiring.css';
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
+type SettingsResult = { ok: true } | { ok: false; error: string };
+
 export default function SettingsView({
   emails,
+  sources,
   userEmail,
   addEmail,
-  removeEmail
+  removeEmail,
+  addSource,
+  renameSource,
+  removeSource
 }: {
   emails: { id: number; email: string }[];
+  sources: { id: number; name: string }[];
   userEmail?: string | null;
   addEmail: (email: string) => Promise<void>;
   removeEmail: (id: number) => Promise<void>;
+  addSource: (name: string) => Promise<SettingsResult>;
+  renameSource: (id: number, name: string) => Promise<SettingsResult>;
+  removeSource: (id: number) => Promise<SettingsResult>;
 }) {
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
@@ -131,6 +142,13 @@ export default function SettingsView({
             ))}
           </ul>
         </section>
+
+        <SourcesPanel
+          sources={sources}
+          addSource={addSource}
+          renameSource={renameSource}
+          removeSource={removeSource}
+        />
       </div>
     </div>
   );
