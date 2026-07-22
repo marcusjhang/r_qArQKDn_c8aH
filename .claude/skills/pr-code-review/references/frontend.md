@@ -141,6 +141,12 @@ literal text, not just the markup around it.
 - **No em-dashes.** Do not use the em-dash (`—`) in user-facing copy. Flag any
   added string containing one and rewrite with a period, comma, or colon, or by
   splitting the sentence.
+- **Icons over emoji.** Prefer a `lucide-react` icon over an emoji in the UI —
+  it inherits `currentColor`, sizes with the text, and renders consistently
+  across platforms (see `components/hiring/ProfileLinks.tsx`, which imports
+  `Github` / `Linkedin` from `lucide-react`). Flag emoji added to labels,
+  headings, buttons, or messages and suggest the matching lucide icon; keep
+  emoji only where it is genuinely the content (e.g. user-entered text).
 
 ## General
 
