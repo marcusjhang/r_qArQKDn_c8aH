@@ -95,14 +95,14 @@ export default function SettingsView({
 
   return (
     <div className="ht-root ht-settings">
-      <TopBar subtitle="Settings" userEmail={userEmail}>
-        <Link className="linkbtn" href="/">
-          ← Dashboard
-        </Link>
-      </TopBar>
+      <TopBar subtitle="Settings" userEmail={userEmail} />
 
       <div className="settings-wrap">
         <div className="settings-inner">
+          <Link className="linkbtn settings-back" href="/">
+            ← Dashboard
+          </Link>
+
           <section className="settings-panel">
             <p className="settings-section-title">General</p>
             <div className="setting-row">

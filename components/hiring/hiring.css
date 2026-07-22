@@ -1019,6 +1019,14 @@
   flex-direction: column;
   gap: var(--space-4);
 }
+/* The back link scrolls with the content (no separate sub-nav strip), so the
+   scroll area starts right under the top bar. Left-aligned and nudged out to
+   the panel edge, with a little breathing room before the first panel. */
+.ht-root .settings-back {
+  align-self: flex-start;
+  margin-left: calc(-1 * var(--space-2));
+  margin-bottom: var(--space-2);
+}
 .ht-root .settings-panel {
   background: var(--surface);
   border: 1px solid var(--border);
