@@ -2,6 +2,14 @@
 
 This is a starter template. Edit anything freely as per the user requests.
 
+## Scoped guidance
+
+Several subdirectories carry their own `CLAUDE.md` with area-specific
+conventions, loaded automatically when working in that directory: `app/`,
+`lib/`, `lib/hiring/`, `lib/schema/`, `components/hiring/`, and `db/`. They point
+to the authoring skills in `.claude/skills/` (`auth`, `drizzle`,
+`server-actions`) for full recipes. `test/` is documented in `test/README.md`.
+
 ## Package manager
 
 Use **bun**, not npm.
