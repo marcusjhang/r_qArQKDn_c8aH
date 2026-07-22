@@ -26,6 +26,23 @@ export function agg(c: Candidate): number | null {
   return c.feedback.reduce((a, f) => a + f.rating, 0) / c.feedback.length;
 }
 
+/**
+ * The candidates rendered in one column: this stage's candidates, hiding
+ * rejected ones (see `isHiddenByDefault`) unless `showRejected`, with starred
+ * candidates floated to the top. The sort is stable, so creation order is
+ * preserved within each group. Extracted from the board so the filter+sort
+ * rule is pure and unit-testable rather than inlined in the render.
+ */
+export function selectStageCards(
+  candidates: Candidate[],
+  stage: string,
+  showRejected: boolean
+): Candidate[] {
+  return candidates
+    .filter((c) => c.stage === stage && (showRejected || !isHiddenByDefault(c)))
+    .sort((a, b) => Number(b.starred) - Number(a.starred));
+}
+
 /** Max length of a stage name (kept in sync with the DB/zod bound). */
 export const MAX_STAGE_NAME = 48;
 
