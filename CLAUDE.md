@@ -19,9 +19,25 @@ bun run db:generate  # generate migration after schema change
 ## Auth
 
 - The whole app is gated behind login — enforced by the `authorized` callback in
-  `lib/auth.ts` (middleware runs on every route; only `/login` is public).
-- Seeded login: `marcusajh0802@gmail.com` / `password` (override via `SEED_PASSWORD`; change before non-demo use).
+  `lib/auth.ts`, which is **deny-by-default**: only paths in `PUBLIC_PATHS` (just
+  `/login`) are reachable unauthenticated. Middleware runs on every matched route.
+- **RBAC:** `role` is `user` | `admin`. Admin-only surfaces (currently the
+  `/settings` allowlist) enforce it server-side via `requireAdmin()` in
+  `lib/auth.ts` — both the page (redirect) and each server action check it; the
+  UI just hides the entry point. Never trust a client-supplied role.
+- **Rate limiting:** `lib/rate-limit.ts` is a dependency-free, edge-safe in-memory
+  limiter. Applied to `POST /api/register` (per-IP) and credentials `authorize`
+  (per-email, reset on success). Swap in a shared store for multi-instance limits.
+- Seeded login: `marcusajh0802@gmail.com` / `password` (an `admin`; override via
+  `SEED_PASSWORD`; change before non-demo use).
 - Sign up via `/login` → `POST /api/register`, restricted to the allowlist managed in `/settings`.
+
+## Security checks
+
+- **Secrets:** `.env*` is gitignored (except `.env.example`, which holds only empty
+  placeholders). Run `bun run audit:secrets` to scan tracked files for plain-text
+  secrets; `bun run hooks:setup` installs the `.githooks/pre-commit` guard that
+  scans staged files on every commit.
 
 ## App
 

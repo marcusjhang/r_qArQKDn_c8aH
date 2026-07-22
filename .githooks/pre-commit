@@ -1,0 +1,4 @@
+#!/bin/sh
+# Block commits that would introduce plain-text secrets.
+# Enable once per clone: git config core.hooksPath .githooks
+exec npx tsx scripts/check-secrets.ts --staged

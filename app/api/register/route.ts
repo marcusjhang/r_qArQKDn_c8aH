@@ -3,9 +3,27 @@ import { db, users } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { isEmailAllowed, normalizeEmail } from '@/lib/allowlist';
+import { rateLimit, clientIp } from '@/lib/rate-limit';
+
+// Cap registration attempts per client IP to blunt allowlist enumeration and
+// automated signup abuse.
+const REGISTER_MAX_ATTEMPTS = 5;
+const REGISTER_WINDOW_MS = 15 * 60 * 1000;
 
 export async function POST(request: Request) {
   try {
+    const ip = clientIp(request.headers);
+    const rl = rateLimit(`register:${ip}`, {
+      limit: REGISTER_MAX_ATTEMPTS,
+      windowMs: REGISTER_WINDOW_MS
+    });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: 'Too many attempts. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': String(rl.retryAfter) } }
+      );
+    }
+
     const { name, email: rawEmail, password } = await request.json();
 
     if (!rawEmail || !password) {

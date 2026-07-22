@@ -19,10 +19,12 @@ import './hiring.css';
 
 export default function HiringApp({
   initial,
-  userEmail
+  userEmail,
+  isAdmin = false
 }: {
   initial: HiringState;
   userEmail?: string | null;
+  isAdmin?: boolean;
 }) {
   const { state, actions } = useHiringStore(initial);
   const [activeJob, setActiveJob] = useState<number>(state.jobs[0]?.id ?? 0);
@@ -69,7 +71,7 @@ export default function HiringApp({
       <TopBar
         subtitle="Pipeline Tracker"
         userEmail={userEmail}
-        nav={{ href: '/settings', label: '⚙ Settings' }}
+        nav={isAdmin ? { href: '/settings', label: '⚙ Settings' } : undefined}
       >
         <button className="btn primary" onClick={() => setCreatingJob(true)}>
           ＋ New job
