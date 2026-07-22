@@ -41,7 +41,7 @@ export default function Board({
       <div className="board">
         {job.stages.map((stage, index) => (
           <StageColumn
-            key={`${stage}-${index}`}
+            key={index}
             job={job}
             stage={stage}
             index={index}
