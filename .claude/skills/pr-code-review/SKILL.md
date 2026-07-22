@@ -123,8 +123,10 @@ State the intention-match verdict plainly: `matches`, `partial`, or `diverges`.
 ### Step 4 — Stack best-practice review (frontend / backend / types)
 
 Split the changed files by area and apply the matching checklist. Read the
-checklist file before reviewing that area — they hold the concrete, stack-
-specific rules:
+checklist file before reviewing that area. Each checklist has two layers —
+**framework-agnostic** principles (component design & accessibility for
+frontend; API/service design for backend) that apply in any stack, plus the
+**stack-specific** rules for this repo — apply both:
 
 - **Frontend** (`app/**`, `components/**`, `*.css`, `tailwind.config.ts`):
   → read `references/frontend.md`

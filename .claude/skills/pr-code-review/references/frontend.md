@@ -2,6 +2,71 @@
 
 Applies to `app/**`, `components/**`, `*.css`, `tailwind.config.ts`.
 
+This checklist has two layers: **framework-agnostic** principles (component
+design, accessibility) that hold in any UI stack, and **stack-specific** rules
+for this repo's React 19 / Next 15 / Tailwind setup. Apply both.
+
+## Component design (framework-agnostic)
+
+Component quality is the health of a frontend — most FE bugs and rework trace
+back to a component doing too much or exposing a confusing API. Review every
+new/changed component against these:
+
+- **Single responsibility.** A component should have one reason to change. A
+  date picker picks dates; it shouldn't also fetch data, own global state, and
+  fire analytics. Warning sign: one component fetches, stores, transforms, _and_
+  renders — split it.
+- **Separate presentation from logic.** Prefer "dumb" presentational components
+  that take data + callbacks via props, with logic lifted into hooks/services
+  (here: the store, server actions, queries). Flag side effects (API calls,
+  mutations) buried inside a display component.
+- **Composition over inheritance/config.** Build complex UI by composing small
+  pieces (`children`/slots), not by piling options onto one mega-component. Keep
+  base components unopinionated and compose the opinions around them.
+- **Minimal, predictable props API.** Watch for "prop soup" — many booleans and
+  rarely-used knobs. Fewer knobs = easier to use and harder to misuse. Group or
+  split responsibility when the prop list balloons. Provide safe defaults for
+  the common case.
+- **Explicit contract.** A component's inputs (props), outputs (well-named
+  callbacks with consistent payloads), and non-goals (e.g. "never mutates parent
+  state") should be clear. Flag callbacks that pass inconsistent/surprising args.
+- **State ownership is deliberate.** Decide controlled vs uncontrolled on
+  purpose. Keep truly-local UI state (a tooltip toggle) inside; lift state the
+  parent must orchestrate and notify via callbacks. Minimize internal state to
+  maximize reuse — and there must be a single source of truth (no duplicated
+  state that can drift).
+- **Low coupling, high cohesion.** No cross-feature reach-ins, no deep imports
+  into another module's internals, no circular dependencies. Business logic must
+  not leak into shared UI primitives.
+- **Reuse before rebuild.** A "generic" component must actually be generic; a new
+  component that duplicates an existing one (or a `components/ui/` primitive) is
+  a finding.
+- **Drop-in test.** Could a teammate drop this component into a new page,
+  configure it with a few props, and have it "just work"? If not, the API or the
+  coupling needs work.
+
+## Accessibility (framework-agnostic)
+
+Baseline a11y is not optional; most of it is free if you use the platform.
+
+- **Semantic HTML first.** Real elements for real roles: `<button>` for actions,
+  `<a>` for navigation, `<nav>`/`<main>`/`<header>` landmarks, one logical
+  heading progression, `<label>`-associated form fields. Flag click handlers on
+  `<div>`/`<span>` that should be a `<button>`.
+- **Keyboard operable.** Every interaction must work with Tab / Enter / Space /
+  Escape / arrows — no mouse-only controls. Custom widgets (menus, modals, tabs)
+  need explicit key handling; modals must trap focus and be escapable (no
+  keyboard trap).
+- **Visible focus.** Don't `outline: none` without an equally visible
+  replacement (≥3:1 contrast, ≥2px). Ensure focus isn't hidden behind sticky
+  headers/overlays.
+- **ARIA sparingly, and correct.** Only when semantic HTML can't express it;
+  keep dynamic states in sync (`aria-expanded`, `aria-selected`) and announce
+  async updates via `aria-live`/focus management. Wrong ARIA is worse than none.
+- **Perceivable.** Text contrast ≥4.5:1 (≥3:1 for large text), color is never
+  the _sole_ signal, images have meaningful `alt` (or `alt=""` when decorative),
+  and the UI stays usable at 200% zoom.
+
 ## Server vs Client Components
 
 - **Server by default.** A component should only carry `'use client'` when it

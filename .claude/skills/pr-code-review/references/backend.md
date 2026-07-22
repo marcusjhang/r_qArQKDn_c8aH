@@ -4,6 +4,51 @@ Applies to `lib/**/actions.ts`, `lib/**/queries.ts`, `app/**/route.ts`,
 `app/**/actions.ts`, `middleware.ts`, `lib/auth.ts`, `lib/db.ts`, `db/**`,
 `drizzle/**`.
 
+This checklist has two layers: **language-agnostic** service/API principles
+that hold on any backend, and **stack-specific** rules for this repo's server
+actions + Drizzle + next-auth setup. Apply both.
+
+## API & service design (language-agnostic)
+
+These apply to any endpoint or write path — server actions here, but the same
+for a REST/GraphQL/RPC handler:
+
+- **Correct method semantics.** Reads are safe and side-effect-free; a read must
+  never mutate. Match the verb to the operation (GET/READ = safe, PUT/DELETE =
+  idempotent, POST/CREATE = not). Flag a "get"/query that writes.
+- **Idempotency where retries happen.** Anything a client may retry (network
+  blips, optimistic UI resync, payment/order creation) should tolerate being
+  called twice without duplicating or corrupting data — via a natural key, an
+  idempotency token, upsert/`onConflict`, or a guard. Handle concurrent
+  duplicate requests, not just sequential ones. (This repo's seed and allowlist
+  inserts already model this.)
+- **Validate at the boundary.** Never trust caller input. Parse/validate every
+  request payload before use and reject invalid input clearly. Treat all
+  external input as untyped until validated.
+- **Meaningful status/outcome codes.** Don't collapse everything into
+  success-or-500. Distinguish caller error (4xx: 400 malformed, 401/403 auth,
+  404 missing, 409 conflict, 422 validation, 429 rate-limit) from server failure
+  (5xx). The code is a diagnostic contract — keep it honest.
+- **Structured error responses, no internal leakage.** Return a consistent error
+  shape (code + human message + a request/correlation id); never leak stack
+  traces, SQL, secrets, or internal table/field names to the client. Log the
+  detail server-side with structured context instead.
+- **Resilience.** Retries use backoff + jitter and honor any `Retry-After`;
+  transient vs permanent failures are distinguished. Don't retry a
+  non-idempotent op blindly.
+- **Contracts are sticky (Hyrum's Law).** Once a response shape, field name, or
+  status code is observable, someone depends on it. Flag breaking changes to an
+  existing surface (removed/renamed field, changed code) that ship without a
+  version/deprecation path.
+- **Consistency & domain naming.** One casing/pluralization/pagination
+  convention across endpoints. URLs/fields reflect domain concepts, not database
+  tables or internal architecture.
+- **Observability.** Errors and notable events are logged with enough structured
+  context (ids, not just free text) to trace one request end-to-end.
+- **Test the awkward paths.** Call idempotent endpoints twice and assert
+  identical outcomes; consider realistic data volumes (100 rows ≠ 100k) for
+  anything that lists or scans.
+
 ## Server actions — the single write path
 
 - Every mutation is a server action (`'use server'`). Flag a write performed
