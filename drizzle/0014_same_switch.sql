@@ -1,0 +1,2 @@
+CREATE UNIQUE INDEX "sources_name_lower_unique" ON "sources" USING btree (lower("name"));--> statement-breakpoint
+ALTER TABLE "feedback" ADD CONSTRAINT "feedback_candidate_by_user_unique" UNIQUE("candidate_id","by_user");

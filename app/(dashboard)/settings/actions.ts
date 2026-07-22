@@ -71,10 +71,12 @@ export async function renameSource(
   } catch {
     return { ok: false, error: 'Enter a source name (1–40 characters).' };
   }
+  // Case-insensitive clash check — matches the DB's lower(name) unique index so
+  // "LinkedIn" and "linkedin" are treated as the same source.
   const [clash] = await db
     .select({ id: sources.id })
     .from(sources)
-    .where(and(eq(sources.name, name), ne(sources.id, id)))
+    .where(and(sql`lower(${sources.name}) = lower(${name})`, ne(sources.id, id)))
     .limit(1);
   if (clash) {
     return { ok: false, error: 'That source already exists.' };

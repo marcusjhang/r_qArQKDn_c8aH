@@ -12,14 +12,27 @@ const RATING_ORDER: RatingValue[] = [1, 2, 3, 4];
 export default function AddFeedbackForm({
   resetKey,
   users,
+  currentUserId,
   onAdd
 }: {
   /** Identity of the open candidate — the draft resets when it changes. */
   resetKey: number | null;
+  /** Interviewers who haven't reviewed this candidate yet (one entry each). */
   users: User[];
+  /** The logged-in user's id — the default author when they can still review. */
+  currentUserId: number | null;
   onAdd: (entry: FeedbackEntry) => void;
 }) {
-  const fb = useFeedbackDraft(resetKey, users, onAdd);
+  const fb = useFeedbackDraft(resetKey, users, currentUserId, onAdd);
+
+  // Every interviewer has already reviewed this candidate — nothing to add.
+  if (users.length === 0) {
+    return (
+      <div className="add-fb">
+        <div className="fb-empty">Everyone has left feedback.</div>
+      </div>
+    );
+  }
 
   return (
     <div className="add-fb">

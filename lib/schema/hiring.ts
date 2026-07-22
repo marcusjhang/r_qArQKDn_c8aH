@@ -11,7 +11,9 @@ import {
   pgEnum,
   serial,
   boolean,
-  check
+  check,
+  unique,
+  uniqueIndex
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 import { STATUSES, type RatingValue } from '../hiring/primitives';
@@ -23,11 +25,21 @@ export const candidateStatusEnum = pgEnum('candidate_status', STATUSES);
 
 // Candidate sources (where a candidate came from) — a seeded lookup table, not
 // a hardcoded list, so the options are DB-driven like the users picklist.
-export const sources = pgTable('sources', {
-  id: serial('id').primaryKey(),
-  name: text('name').notNull().unique(),
-  createdAt: timestamp('created_at').defaultNow().notNull()
-});
+export const sources = pgTable(
+  'sources',
+  {
+    id: serial('id').primaryKey(),
+    name: text('name').notNull().unique(),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+  },
+  (t) => ({
+    // Case-insensitive uniqueness — "LinkedIn" and "linkedin" are the same
+    // source. Backs the client's case-insensitive dedup at the DB level.
+    nameLowerUnique: uniqueIndex('sources_name_lower_unique').on(
+      sql`lower(${t.name})`
+    )
+  })
+);
 
 // A job owns its own ordered, per-job stage list (Decision 1), stored as an
 // ordered JSON array of stage names so candidates can key off the stage name.
@@ -87,7 +99,13 @@ export const feedback = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull()
   },
   (t) => ({
-    ratingRange: check('rating_range', sql`${t.rating} between 1 and 4`)
+    ratingRange: check('rating_range', sql`${t.rating} between 1 and 4`),
+    // One entry per interviewer per candidate (Decision 7) — enforced, not just
+    // documented. Re-rating requires editing the existing entry, not a 2nd row.
+    oneByUserPerCandidate: unique('feedback_candidate_by_user_unique').on(
+      t.candidateId,
+      t.byUser
+    )
   })
 );
 
