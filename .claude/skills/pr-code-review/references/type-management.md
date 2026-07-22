@@ -55,6 +55,9 @@ and any `type`/`interface`/generic change anywhere.
 
 ## Model outcomes as discriminated unions, not optional-field bags
 
+> Where these are authored (the write-path helpers and the registration domain
+> service): the **`server-actions`** and **`auth`** skills.
+
 PRs #18 and #19 replaced loose `{ ok: boolean; reason?: string }` result bags
 with discriminated unions so the failure fields only exist on failure and the
 compiler forces callers to narrow:

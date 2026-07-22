@@ -19,6 +19,11 @@ A repeatable review pipeline for this repository. It is **stack-aware** (see the
 rather than re-deriving their heuristics: `code-review` and `simplify` for
 correctness and cleanup, `security-review` for auth / DB / secret risks.
 
+This is the **review** lens (what to flag). Its companions are the **authoring**
+skills — `drizzle`, `auth`, `server-actions` — which give the how-to recipes for
+the same components; the checklists here cross-link to them. See
+`.claude/skills/README.md` for the skill map.
+
 The default output is a single review report — reviewing is **read-only by
 default**: do not comment on the PR, apply fixes, or push commits unless asked.
 Every finding carries a **severity** (`Critical` / `High` / `Medium` / `Low`,

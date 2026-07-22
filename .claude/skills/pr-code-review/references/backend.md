@@ -55,6 +55,10 @@ for a REST/GraphQL/RPC handler:
 
 ## Server actions — the single write path
 
+> Authoring recipe for this path (new mutation: zod schema → optimistic store
+> action → `'use server'` action → revalidate → rollback): the **`server-actions`**
+> skill.
+
 - Every mutation is a server action (`'use server'`). Flag a write performed
   outside an action (e.g. a `route.ts` doing an ad-hoc DB write that the action
   layer should own).
@@ -212,6 +216,9 @@ know about). Watch for both:
   to exist in the live DB that the schema no longer models.
 
 ## Auth & API routes
+
+> Authoring recipes for the gate, the matcher, and registration/allowlist: the
+> **`auth`** skill (and `SECURITY.md` for policy).
 
 - The app is gated by the `authorized` callback in `lib/auth.ts` via
   `middleware.ts`; only `/login` is public. If a new route must be public, the
