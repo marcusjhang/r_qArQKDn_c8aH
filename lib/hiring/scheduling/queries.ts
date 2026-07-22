@@ -172,9 +172,12 @@ export async function getInterviewsForCandidate(
  * or pending with a time). Used by slot generation + panel suggestion.
  */
 export async function getBusyByFounder(
-  excludeInterviewId?: number
+  excludeInterviewId?: number,
+  // Accepts a transaction executor so the booking re-check reads busy times
+  // through the same code that generated the offered slots (no divergence).
+  exec: Pick<typeof db, 'query'> = db
 ): Promise<Record<string, Interval[]>> {
-  const rows = await db.query.interviews.findMany({
+  const rows = await exec.query.interviews.findMany({
     where: (i, { and: a, inArray, isNotNull }) =>
       a(inArray(i.status, ['scheduled', 'pending_booking']), isNotNull(i.startsAt)),
     with: { panel: { columns: { founderId: true } } }

@@ -13,7 +13,7 @@
 
 import { and, eq, ne, sql } from 'drizzle-orm';
 import { revalidateTag } from 'next/cache';
-import { db, jobs, candidates, feedback } from '@/lib/db';
+import { db, jobs, candidates, feedback, interviews } from '@/lib/db';
 import { BOARD_TAGS } from './cache';
 import {
   validateStageName,
@@ -274,13 +274,19 @@ export async function renameStage(
   if (!validateStageName(stages, nameRaw, index).ok) return;
   const next = [...stages];
   next[index] = name;
-  // Re-point candidates in the renamed column, atomically with the array update.
+  // Re-point candidates in the renamed column — and the interviews booked
+  // against the old stage name, so the touchpoint projection keeps matching
+  // (otherwise a rename orphans booked interviews and fires false warnings).
   await db.transaction(async (tx) => {
     await tx.update(jobs).set({ stages: next }).where(eq(jobs.id, jobId));
     await tx
       .update(candidates)
       .set({ stage: name })
       .where(and(eq(candidates.jobId, jobId), eq(candidates.stage, old)));
+    await tx
+      .update(interviews)
+      .set({ stageAtBooking: name })
+      .where(and(eq(interviews.jobId, jobId), eq(interviews.stageAtBooking, old)));
   });
   // The transaction renames the stage on the job and re-points every candidate
   // in the old column, so both reads are stale.

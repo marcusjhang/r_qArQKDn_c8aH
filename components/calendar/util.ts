@@ -3,24 +3,24 @@
 
 import {
   COMPANY_TZ,
-  FOUNDERS,
   INTERVIEWER_COLORS,
   INTERVIEWER_COLOR_FALLBACK
 } from '@/lib/hiring/config';
+import { founderById } from '@/lib/hiring/helpers';
 import { zonedTimeParts, weekdayOfYmd } from '@/lib/hiring/scheduling/tz';
 
 /** Display window for the day/week time grid. */
 export const DAY_START_MIN = 8 * 60; // 08:00
 export const DAY_END_MIN = 19 * 60; // 19:00
 
-export function founder(id: string) {
-  return FOUNDERS.find((f) => f.id === id);
-}
+// Name/initials go through the shared founderById (one unknown-id fallback for
+// the whole app — the board and the calendar can't disagree); color stays a
+// calendar concern.
 export function founderName(id: string): string {
-  return founder(id)?.name ?? id;
+  return founderById(id).name;
 }
 export function founderInitials(id: string): string {
-  return founder(id)?.initials ?? id.slice(0, 2).toUpperCase();
+  return founderById(id).initials;
 }
 export function founderColor(id: string): string {
   return INTERVIEWER_COLORS[id] ?? INTERVIEWER_COLOR_FALLBACK;

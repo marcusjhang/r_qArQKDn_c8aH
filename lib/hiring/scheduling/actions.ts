@@ -48,7 +48,6 @@ import {
   getInterviewerIds
 } from './queries';
 import { notifyScheduled } from '../notifications/queries';
-import type { Interval } from './intervals';
 import type { InterviewWithPanel, PanelPick, Slot } from './types';
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -70,28 +69,6 @@ async function reproject(tx: Tx, candidateId: number) {
 }
 
 /** Busy intervals per founder, read on a specific executor (db or tx). */
-async function loadBusy(
-  exec: Pick<typeof db, 'query'> | Tx,
-  excludeInterviewId?: number
-): Promise<Record<string, Interval[]>> {
-  const rows = await exec.query.interviews.findMany({
-    where: (i, { and, inArray, isNotNull }) =>
-      and(inArray(i.status, ['scheduled', 'pending_booking']), isNotNull(i.startsAt)),
-    with: { panel: { columns: { founderId: true } } }
-  });
-  const busy: Record<string, Interval[]> = {};
-  for (const r of rows) {
-    if (excludeInterviewId && r.id === excludeInterviewId) continue;
-    if (!r.startsAt || !r.endsAt) continue;
-    const iv: Interval = {
-      start: new Date(r.startsAt).getTime(),
-      end: new Date(r.endsAt).getTime()
-    };
-    for (const m of r.panel) (busy[m.founderId] ??= []).push(iv);
-  }
-  return busy;
-}
-
 async function loadCandidate(candidateId: number) {
   return db.query.candidates.findFirst({
     where: (c, { eq: e }) => e(c.id, candidateId),
@@ -230,7 +207,7 @@ export async function scheduleInterviewDirect(
   try {
     const interviewId = await db.transaction(
       async (tx) => {
-        const busy = await loadBusy(tx);
+        const busy = await getBusyByFounder(undefined, tx);
         const free = freeFoundersForSlot({
           founders: panel.map((p) => p.founderId),
           startMs,

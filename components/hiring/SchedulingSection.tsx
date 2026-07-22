@@ -66,6 +66,10 @@ export default function SchedulingSection({
     actions.resync();
   }
 
+  // Cancelled interviews are hidden from the list, so the manual fallback must
+  // key off the same live set — otherwise a candidate whose only interview was
+  // cancelled shows no interviews AND no manual control.
+  const liveInterviews = interviews.filter((iv) => iv.status !== 'cancelled');
   const schedStatus: ScheduleStatus | null = view.scheduleStatus ?? null;
   const scheduledDate = view.scheduledAt ? new Date(view.scheduledAt) : null;
   const completedDate = view.completedAt ? new Date(view.completedAt) : null;
@@ -86,11 +90,9 @@ export default function SchedulingSection({
         Interviews {flag && <span className="sched-flag">{flag}</span>}
       </span>
 
-      {interviews.filter((iv) => iv.status !== 'cancelled').length > 0 && (
+      {liveInterviews.length > 0 && (
         <ul className="iv-list">
-          {interviews
-            .filter((iv) => iv.status !== 'cancelled')
-            .map((iv) => (
+          {liveInterviews.map((iv) => (
               <li key={iv.id} className={`iv-item is-${iv.status}`}>
                 <div className="iv-item-main">
                   <span className="iv-item-when">
@@ -147,7 +149,7 @@ export default function SchedulingSection({
         </button>
       )}
 
-      {interviews.length === 0 && (
+      {liveInterviews.length === 0 && (
         <div className="sched-manual">
           <span className="label">Or set status manually</span>
           <div className="seg" role="group" aria-label="Touchpoint status">
