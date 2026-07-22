@@ -4,7 +4,7 @@
 // valid-by-construction selects instead of free-text prompts.
 
 import { useState } from 'react';
-import { FOUNDERS, SOURCES } from '@/lib/hiring/config';
+import { FOUNDERS, SOURCES } from '@/lib/hiring';
 import Modal from './Modal';
 
 export default function AddCandidateModal({

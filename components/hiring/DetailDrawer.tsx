@@ -6,10 +6,19 @@
 // visible behind the drawer so pipeline context is never lost.
 
 import { useEffect, useRef } from 'react';
-import { FOUNDERS, RATINGS, SOURCES, STATUS } from '@/lib/hiring/config';
-import { agg, founderById } from '@/lib/hiring/helpers';
-import type { HiringActions } from '@/lib/hiring/store';
-import type { Candidate, HiringState, RatingValue, Status } from '@/lib/hiring/types';
+import {
+  FOUNDERS,
+  RATINGS,
+  SOURCES,
+  STATUS,
+  agg,
+  founderById,
+  type HiringActions,
+  type Candidate,
+  type HiringState,
+  type RatingValue,
+  type Status
+} from '@/lib/hiring';
 import { useFeedbackDraft } from './useFeedbackDraft';
 
 const RATING_ORDER: RatingValue[] = [1, 2, 3, 4];

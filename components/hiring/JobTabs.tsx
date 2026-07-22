@@ -5,8 +5,7 @@
 // (pin as a tab) and delete jobs. The active job is always kept visible.
 
 import { useEffect, useRef, useState } from 'react';
-import { MAX_FAVORITES } from '@/lib/hiring/helpers';
-import type { Job } from '@/lib/hiring/types';
+import { MAX_FAVORITES, type Job } from '@/lib/hiring';
 
 const INLINE_CAP = 3;
 
