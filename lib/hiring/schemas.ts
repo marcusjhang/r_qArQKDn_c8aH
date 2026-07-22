@@ -3,15 +3,16 @@ import 'server-only';
 // Runtime validation for the server-action boundary. Server actions receive
 // serialized client input, so types alone are not enough — these zod schemas
 // enforce the same constraints at runtime. Everything is built from the single
-// sources: STATUSES / RATING_VALUES (primitives) and USERS / SOURCES (config).
+// sources: STATUSES / RATING_VALUES (primitives) and SOURCES (config). The
+// owner / feedback-author references are user ids, validated as ids here and
+// backed by a foreign key to the users table at the DB level.
 
 import { z } from 'zod';
 import { createInsertSchema } from 'drizzle-zod';
 import { candidates, feedback } from '@/lib/schema/hiring';
 import { STATUSES, RATING_VALUES, type RatingValue } from './primitives';
-import { USERS, SOURCES } from './config';
+import { SOURCES } from './config';
 
-const userIds = USERS.map((u) => u.id) as [string, ...string[]];
 const sourceNames = [...SOURCES] as [string, ...string[]];
 
 /* Scalar validators */
@@ -19,7 +20,6 @@ export const zId = z.number().int().positive();
 export const zIndex = z.number().int().min(0);
 export const zDir = z.union([z.literal(1), z.literal(-1)]);
 export const zStatus = z.enum(STATUSES);
-export const zOwner = z.enum(userIds);
 export const zSource = z.enum(sourceNames);
 export const zName = z.string().trim().min(1).max(120);
 export const zStageName = z.string().trim().min(1).max(48);
@@ -52,7 +52,8 @@ export const zRating = z
 export const candidateInsertSchema = createInsertSchema(candidates, {
   name: zName,
   source: zSource,
-  owner: zOwner,
+  // owner is a user id; the FK to users.id is the existence guard.
+  owner: zId,
   linkedinUrl: zProfileUrl,
   githubUrl: zProfileUrl
 }).pick({
@@ -69,7 +70,8 @@ export const candidateInsertSchema = createInsertSchema(candidates, {
 export const candidateEditSchema = candidateInsertSchema;
 
 export const feedbackInsertSchema = createInsertSchema(feedback, {
-  byUser: zOwner,
+  // byUser is a user id; the FK to users.id is the existence guard.
+  byUser: zId,
   rating: zRating,
   note: zNote
 }).pick({ byUser: true, rating: true, note: true });

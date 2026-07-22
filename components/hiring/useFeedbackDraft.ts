@@ -7,17 +7,17 @@
 // own.
 
 import { useEffect, useState } from 'react';
-import { USERS, type RatingValue } from '@/lib/hiring';
+import type { RatingValue, User } from '@/lib/hiring';
 
 export interface FeedbackEntry {
-  byUser: string;
+  byUser: number;
   rating: RatingValue;
   note: string;
 }
 
 export interface FeedbackDraft {
-  who: string;
-  setWho: (id: string) => void;
+  who: number;
+  setWho: (id: number) => void;
   rating: RatingValue | null;
   /** Select a rating and clear any pending validation error. */
   pickRating: (v: RatingValue) => void;
@@ -31,22 +31,26 @@ export interface FeedbackDraft {
 /**
  * @param resetKey  identity of the open candidate — the draft resets when it
  *                  changes (a new candidate, or the drawer closing).
+ * @param users     the selectable interviewers (from the DB) — the default
+ *                  author is the first one.
  * @param onSubmit  persists a valid entry (typically the store's addFeedback).
  */
 export function useFeedbackDraft(
   resetKey: number | null,
+  users: User[],
   onSubmit: (entry: FeedbackEntry) => void
 ): FeedbackDraft {
-  const [who, setWho] = useState<string>(USERS[0].id);
+  const [who, setWho] = useState<number>(users[0]?.id ?? 0);
   const [rating, setRating] = useState<RatingValue | null>(null);
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setWho(USERS[0].id);
+    setWho(users[0]?.id ?? 0);
     setRating(null);
     setNote('');
     setError('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
 
   function pickRating(v: RatingValue) {

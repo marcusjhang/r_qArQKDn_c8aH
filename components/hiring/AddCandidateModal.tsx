@@ -6,31 +6,34 @@
 
 import { useState } from 'react';
 import {
-  USERS,
   SOURCES,
   MAX_PROFILE_URL,
-  normalizeProfileUrl
+  normalizeProfileUrl,
+  displayName,
+  type User
 } from '@/lib/hiring';
 import Modal from './Modal';
 
 export default function AddCandidateModal({
   jobTitle,
+  users,
   onClose,
   onAdd
 }: {
   jobTitle: string;
+  users: User[];
   onClose: () => void;
   onAdd: (
     name: string,
     source: string,
-    owner: string,
+    owner: number,
     linkedinUrl: string | null,
     githubUrl: string | null
   ) => void;
 }) {
   const [name, setName] = useState('');
   const [source, setSource] = useState(SOURCES[0]);
-  const [owner, setOwner] = useState(USERS[0].id);
+  const [owner, setOwner] = useState<number>(users[0]?.id ?? 0);
   const [linkedin, setLinkedin] = useState('');
   const [github, setGithub] = useState('');
   const [error, setError] = useState('');
@@ -86,10 +89,13 @@ export default function AddCandidateModal({
           </div>
           <div className="field">
             <span className="label">Owner</span>
-            <select value={owner} onChange={(e) => setOwner(e.target.value)}>
-              {USERS.map((u) => (
+            <select
+              value={owner}
+              onChange={(e) => setOwner(Number(e.target.value))}
+            >
+              {users.map((u) => (
                 <option key={u.id} value={u.id}>
-                  {u.name}
+                  {displayName(u)}
                 </option>
               ))}
             </select>

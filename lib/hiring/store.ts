@@ -49,7 +49,7 @@ export interface HiringActions {
     jobId: number,
     name: string,
     source: string,
-    owner: string,
+    owner: number,
     linkedinUrl: string | null,
     githubUrl: string | null
   ) => void;
@@ -57,7 +57,7 @@ export interface HiringActions {
     id: number,
     name: string,
     source: string,
-    owner: string,
+    owner: number,
     linkedinUrl: string | null,
     githubUrl: string | null
   ) => void;
@@ -67,7 +67,7 @@ export interface HiringActions {
   setCandidateStarred: (id: number, starred: boolean) => void;
   addFeedback: (
     id: number,
-    entry: { byUser: string; rating: RatingValue; note: string }
+    entry: { byUser: number; rating: RatingValue; note: string }
   ) => void;
   renameStage: (jobId: number, index: number, name: string) => void;
   addStage: (jobId: number, name: string) => void;
@@ -170,7 +170,7 @@ export function useHiringStore(initial: HiringState): {
       jobId: number,
       name: string,
       source: string,
-      owner: string,
+      owner: number,
       linkedinUrl: string | null,
       githubUrl: string | null
     ) => {
@@ -211,7 +211,7 @@ export function useHiringStore(initial: HiringState): {
       id: number,
       name: string,
       source: string,
-      owner: string,
+      owner: number,
       linkedinUrl: string | null,
       githubUrl: string | null
     ) => {
@@ -271,7 +271,7 @@ export function useHiringStore(initial: HiringState): {
   );
 
   const addFeedback = useCallback(
-    (id: number, entry: { byUser: string; rating: RatingValue; note: string }) => {
+    (id: number, entry: { byUser: number; rating: RatingValue; note: string }) => {
       const temp = tempId.current--;
       dispatch({ type: 'addFeedback', id, tempId: temp, ...entry });
       persist(() =>

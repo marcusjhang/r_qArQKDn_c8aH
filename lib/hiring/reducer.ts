@@ -36,7 +36,7 @@ export type HiringEvent =
       jobId: number;
       name: string;
       source: string;
-      owner: string;
+      owner: number;
       linkedinUrl: string | null;
       githubUrl: string | null;
     }
@@ -47,7 +47,7 @@ export type HiringEvent =
       id: number;
       name: string;
       source: string;
-      owner: string;
+      owner: number;
       linkedinUrl: string | null;
       githubUrl: string | null;
     }
@@ -57,7 +57,7 @@ export type HiringEvent =
       type: 'addFeedback';
       id: number;
       tempId: number;
-      byUser: string;
+      byUser: number;
       rating: RatingValue;
       note: string;
     }

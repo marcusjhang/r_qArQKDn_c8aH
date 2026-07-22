@@ -73,7 +73,7 @@ export async function addCandidate(
   jobIdRaw: number,
   nameRaw: string,
   sourceRaw: string,
-  ownerRaw: string,
+  ownerRaw: number,
   linkedinUrlRaw: string | null = null,
   githubUrlRaw: string | null = null
 ): Promise<number | null> {
@@ -110,7 +110,7 @@ export async function editCandidate(
   idRaw: number,
   nameRaw: string,
   sourceRaw: string,
-  ownerRaw: string,
+  ownerRaw: number,
   linkedinUrlRaw: string | null,
   githubUrlRaw: string | null
 ) {
@@ -199,7 +199,7 @@ export async function setStatus(idRaw: number, statusRaw: Status) {
 
 export async function addFeedback(
   idRaw: number,
-  byUserRaw: string,
+  byUserRaw: number,
   ratingRaw: number,
   noteRaw: string
 ) {

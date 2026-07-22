@@ -131,6 +131,7 @@ export default function StageColumn({
             <CandidateCard
               key={c.id}
               candidate={c}
+              users={state.users}
               dragProps={dnd.cardProps(c.id)}
               onOpen={onOpen}
               onToggleStar={actions.setCandidateStarred}

@@ -15,6 +15,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 import { STATUSES, type RatingValue } from '../hiring/primitives';
+import { users } from './auth';
 
 // Orthogonal candidate status (Decision 3), built from the single-sourced
 // STATUSES tuple so the DB enum and the TS Status type can never diverge.
@@ -41,8 +42,10 @@ export const candidates = pgTable('candidates', {
     .references(() => jobs.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   stage: text('stage').notNull(),
-  // User id from the USERS config — the single accountable owner.
-  owner: text('owner').notNull(),
+  // The accountable owner — a user account (see lib/schema/auth.ts).
+  owner: integer('owner')
+    .notNull()
+    .references(() => users.id),
   source: text('source').notNull(),
   // Optional profile links (nullable — empty input stays NULL).
   linkedinUrl: text('linkedin_url'),
@@ -62,8 +65,10 @@ export const feedback = pgTable(
     candidateId: integer('candidate_id')
       .notNull()
       .references(() => candidates.id, { onDelete: 'cascade' }),
-    // User id of the interviewer.
-    byUser: text('by_user').notNull(),
+    // The interviewer — a user account (see lib/schema/auth.ts).
+    byUser: integer('by_user')
+      .notNull()
+      .references(() => users.id),
     // 4-point verdict rating (1 = Strong No … 4 = Strong Yes). $type pins the
     // column to RatingValue; the CHECK below backs that at the DB level.
     rating: integer('rating').$type<RatingValue>().notNull(),

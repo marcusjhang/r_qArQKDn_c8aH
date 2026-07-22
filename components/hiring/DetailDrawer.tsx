@@ -79,12 +79,18 @@ export default function DetailDrawer({
         />
 
         <div className="drawer-body">
-          <DetailForm view={view} actions={actions} resetKey={openId} />
+          <DetailForm
+            view={view}
+            actions={actions}
+            users={state.users}
+            resetKey={openId}
+          />
 
           <div className="feedback">
-            <FeedbackList view={view} />
+            <FeedbackList view={view} users={state.users} />
             <AddFeedbackForm
               resetKey={openId}
+              users={state.users}
               onAdd={(entry) => view && actions.addFeedback(view.id, entry)}
             />
           </div>

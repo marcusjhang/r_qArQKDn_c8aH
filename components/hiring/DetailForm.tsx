@@ -8,30 +8,33 @@
 
 import { useEffect, useState } from 'react';
 import {
-  USERS,
   SOURCES,
   STATUS,
   MAX_PROFILE_URL,
   normalizeProfileUrl,
+  displayName,
   type HiringActions,
   type Candidate,
-  type Status
+  type Status,
+  type User
 } from '@/lib/hiring';
 
 export default function DetailForm({
   view,
   actions,
+  users,
   resetKey
 }: {
   view: Candidate | null;
   actions: HiringActions;
+  users: User[];
   /** Identity of the open candidate (openId) — the form resets when it changes. */
   resetKey: number | null;
 }) {
   const [editing, setEditing] = useState(false);
   const [dName, setDName] = useState('');
   const [dSource, setDSource] = useState(SOURCES[0]);
-  const [dOwner, setDOwner] = useState(USERS[0].id);
+  const [dOwner, setDOwner] = useState<number>(users[0]?.id ?? 0);
   const [dLinkedin, setDLinkedin] = useState('');
   const [dGithub, setDGithub] = useState('');
   const [error, setError] = useState('');
@@ -39,7 +42,7 @@ export default function DetailForm({
   function seedDraft(c: Candidate | null) {
     setDName(c?.name ?? '');
     setDSource(c?.source ?? SOURCES[0]);
-    setDOwner(c?.owner ?? USERS[0].id);
+    setDOwner(c?.owner ?? users[0]?.id ?? 0);
     setDLinkedin(c?.linkedinUrl ?? '');
     setDGithub(c?.githubUrl ?? '');
     setError('');
@@ -100,7 +103,7 @@ export default function DetailForm({
   // Read-only fields reflect the live candidate; only edit mode uses the draft.
   const nameVal = editing ? dName : (view?.name ?? '');
   const sourceVal = editing ? dSource : (view?.source ?? SOURCES[0]);
-  const ownerVal = editing ? dOwner : (view?.owner ?? USERS[0].id);
+  const ownerVal = editing ? dOwner : (view?.owner ?? users[0]?.id ?? 0);
   const linkedinVal = editing ? dLinkedin : (view?.linkedinUrl ?? '');
   const githubVal = editing ? dGithub : (view?.githubUrl ?? '');
 
@@ -142,11 +145,11 @@ export default function DetailForm({
             <select
               value={ownerVal}
               disabled={!editing}
-              onChange={(e) => setDOwner(e.target.value)}
+              onChange={(e) => setDOwner(Number(e.target.value))}
             >
-              {USERS.map((u) => (
+              {users.map((u) => (
                 <option key={u.id} value={u.id}>
-                  {u.name}
+                  {displayName(u)}
                 </option>
               ))}
             </select>

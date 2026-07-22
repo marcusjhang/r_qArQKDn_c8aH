@@ -1,18 +1,12 @@
 // Reusable configuration for the Hiring Pipeline Tracker.
 //
 // This is the single place a new business adapts the tool: relabel the
-// users/owners, the candidate sources, the rating scale, the statuses,
-// or the default pipeline — no rendering code needs to change.
+// candidate sources, the rating scale, the statuses, or the default pipeline —
+// no rendering code needs to change. Owners / interviewers are NOT configured
+// here: they are the user accounts, read from the DB (see lib/hiring/service.ts
+// `loadUsers`), so seeded users and new sign-ups are automatically selectable.
 
-import type { RatingValue, Status, User } from './types';
-
-/** Owners / interviewers — the users who work the pipeline. */
-export const USERS: User[] = [
-  { id: 'ma', name: 'Marcus Ang', initials: 'MA' },
-  { id: 'bo', name: 'Ben Ong', initials: 'BO' },
-  { id: 'bc', name: 'Benedict Chan', initials: 'BC' },
-  { id: 'hl', name: 'Heng Hong Lee', initials: 'HL' }
-];
+import type { RatingValue, Status } from './types';
 
 /** Where candidates come from — reinforced by the source tag on each card. */
 export const SOURCES: string[] = ['LinkedIn', 'Referral', 'YC', 'Inbound', 'Otta'];

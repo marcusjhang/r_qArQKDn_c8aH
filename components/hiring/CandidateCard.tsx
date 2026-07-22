@@ -4,17 +4,25 @@
 // the board's useBoardDnd hook; clicking opens the detail drawer, and the star
 // toggles favourite status without opening it.
 
-import { userById, type Candidate } from '@/lib/hiring';
+import {
+  userById,
+  displayName,
+  initials,
+  type Candidate,
+  type User
+} from '@/lib/hiring';
 import RatingChip from './RatingChip';
 import ProfileLinks from './ProfileLinks';
 
 export default function CandidateCard({
   candidate,
+  users,
   dragProps,
   onOpen,
   onToggleStar
 }: {
   candidate: Candidate;
+  users: User[];
   dragProps: {
     draggable: true;
     onDragStart: (e: React.DragEvent<HTMLElement>) => void;
@@ -22,7 +30,7 @@ export default function CandidateCard({
   onOpen: (id: number) => void;
   onToggleStar: (id: number, starred: boolean) => void;
 }) {
-  const owner = userById(candidate.owner);
+  const owner = userById(users, candidate.owner);
   return (
     <div
       className={`card${candidate.starred ? ' starred' : ''}`}
@@ -47,8 +55,8 @@ export default function CandidateCard({
             linkedinUrl={candidate.linkedinUrl}
             githubUrl={candidate.githubUrl}
           />
-          <span className="avatar" title={owner.name}>
-            {owner.initials}
+          <span className="avatar" title={displayName(owner)}>
+            {initials(owner)}
           </span>
         </span>
       </div>

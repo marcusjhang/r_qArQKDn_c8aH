@@ -20,7 +20,7 @@ function candidate(over: Partial<Candidate> = {}): Candidate {
     jobId: 1,
     name: 'Ada',
     stage: 'Applied',
-    owner: 'bo',
+    owner: 1,
     source: 'LinkedIn',
     status: 'active',
     starred: false,

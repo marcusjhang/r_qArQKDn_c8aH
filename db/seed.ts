@@ -69,6 +69,19 @@ async function main() {
     console.log(`Skipping hiring seed: jobs table already has ${jobCount} rows.`);
   } else {
     console.log('Seeding hiring pipeline...');
+    // Owner / feedback authors are seed-referenced by email; resolve each to
+    // the account's serial id (the accounts were just created/updated above).
+    const userRows = await db
+      .select({ id: users.id, email: users.email })
+      .from(users);
+    const userIdByEmail = new Map(userRows.map((u) => [u.email, u.id]));
+    const resolveUser = (email: string): number => {
+      const id = userIdByEmail.get(email);
+      if (id === undefined) {
+        throw new Error(`Seed references unknown user email: ${email}`);
+      }
+      return id;
+    };
     // Insert jobs and map each seed slug to its generated id.
     const slugToId = new Map<string, number>();
     for (let i = 0; i < SEED_JOBS.length; i++) {
@@ -91,7 +104,7 @@ async function main() {
           jobId,
           name: c.name,
           stage: c.stage,
-          owner: c.owner,
+          owner: resolveUser(c.owner),
           source: c.source,
           status: c.status,
           starred: c.starred ?? false
@@ -102,7 +115,7 @@ async function main() {
         await db.insert(feedback).values(
           c.feedback.map((f) => ({
             candidateId: row.id,
-            byUser: f.by,
+            byUser: resolveUser(f.by),
             rating: f.v,
             note: f.note
           }))

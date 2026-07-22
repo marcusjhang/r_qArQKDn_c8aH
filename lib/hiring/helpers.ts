@@ -1,10 +1,29 @@
 // Pure, framework-free helpers over the hiring domain model.
 
-import { USERS } from './config';
 import type { Candidate, Job, RatingValue, Status, User } from './types';
 
-export function userById(id: string): User {
-  return USERS.find((u) => u.id === id) ?? USERS[0];
+/** Find a user in the board's user list by id (owner / feedback author). */
+export function userById(users: User[], id: number): User | undefined {
+  return users.find((u) => u.id === id);
+}
+
+/** Human label for a user: their name, falling back to the email. */
+export function displayName(user: User | undefined): string {
+  if (!user) return 'Unknown';
+  return user.name?.trim() || user.email;
+}
+
+/**
+ * Avatar initials for a user, derived from the display name: first letter of
+ * the first and last words (e.g. "Ben Ong" → "BO", "Heng Hong Lee" → "HL",
+ * single word → first two letters). Derived, never stored.
+ */
+export function initials(user: User | undefined): string {
+  const name = displayName(user);
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '?';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
 }
 
 /** Max length of a profile URL (kept in sync with the zProfileUrl bound). */

@@ -30,22 +30,27 @@ import type {
   SelectCandidate,
   SelectFeedback
 } from '@/lib/schema/hiring';
+import type { SelectUser } from '@/lib/schema/auth';
 import { BOARD_TAGS } from './cache';
 import type { RatingValue, Status } from './primitives';
 
 export type { Status, RatingValue } from './primitives';
 
-/** A user — an owner / interviewer. Pure domain concept, not a database row. */
+/**
+ * A user — an owner / interviewer. Projected from the account row (see
+ * lib/schema/auth.ts) so the picklist is the seeded/registered users, never a
+ * hardcoded list. Display name/initials are derived in helpers, not stored.
+ */
 export interface User {
-  id: string;
-  name: string;
-  initials: string;
+  id: number;
+  name: string | null;
+  email: string;
 }
 
 /** One interviewer's entry, trimmed to the fields the UI shows. */
 export interface Feedback {
   id: number;
-  byUser: string;
+  byUser: number;
   rating: RatingValue;
   note: string;
 }
@@ -56,7 +61,7 @@ export interface Candidate {
   jobId: number;
   name: string;
   stage: string;
-  owner: string;
+  owner: number;
   source: string;
   status: Status;
   starred: boolean;
@@ -77,6 +82,8 @@ export interface Job {
 export interface HiringState {
   jobs: Job[];
   candidates: Candidate[];
+  /** The users who can own candidates / leave feedback (seed + sign-ups). */
+  users: User[];
 }
 
 // Compile-time guard: every DTO must stay a faithful projection of its Drizzle
@@ -94,11 +101,13 @@ type _FeedbackConforms = Conforms<
   Feedback,
   Pick<SelectFeedback, keyof Feedback>
 >;
+type _UserConforms = Conforms<User, Pick<SelectUser, keyof User>>;
 
 /** The data dependency `getBoard` reads from. */
 export interface BoardReader {
   loadJobs(): Promise<Job[]>;
   loadCandidates(): Promise<Candidate[]>;
+  loadUsers(): Promise<User[]>;
 }
 
 // Drizzle-backed reader. `db` is imported lazily so that merely importing this
@@ -150,7 +159,17 @@ const drizzleReader: BoardReader = {
     },
     ['board:candidates'],
     { tags: [BOARD_TAGS.candidates] }
-  )
+  ),
+  // Users are read fresh (uncached): a brand-new sign-up must be selectable as
+  // an owner/interviewer on the very next board render, with no tag to
+  // invalidate from the registration path.
+  loadUsers: async (): Promise<User[]> => {
+    const { db } = await import('@/lib/db');
+    return db.query.users.findMany({
+      columns: { id: true, name: true, email: true },
+      orderBy: (u, { asc }) => [asc(u.name), asc(u.email)]
+    });
+  }
 };
 
 /**
@@ -161,12 +180,13 @@ const drizzleReader: BoardReader = {
 export async function getBoard(
   reader: BoardReader = drizzleReader
 ): Promise<HiringState> {
-  const [jobs, candidates] = await Promise.all([
+  const [jobs, candidates, users] = await Promise.all([
     reader.loadJobs(),
-    reader.loadCandidates()
+    reader.loadCandidates(),
+    reader.loadUsers()
   ]);
 
-  return { jobs, candidates };
+  return { jobs, candidates, users };
 }
 
 /** The hiring facade the app consumes. Group reads here as they are added. */
