@@ -1,6 +1,11 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  // The Lightsprint preview is served from *.lightsprint.ai and forwarded to the
+  // *.e2b.app sandbox, so the browser's origin differs from the dev server's.
+  // Next's dev server warns on (and will soon block) cross-origin requests to
+  // /_next/* resources unless those origins are allowlisted here.
+  allowedDevOrigins: ['*.lightsprint.ai', '*.e2b.app'],
   experimental: {
     // The Lightsprint preview proxy serves the app at *.lightsprint.ai but
     // forwards an `x-forwarded-host` of *.e2b.app (the underlying sandbox).
