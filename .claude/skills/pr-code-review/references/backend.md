@@ -71,10 +71,39 @@ for a REST/GraphQL/RPC handler:
   checks. Return early (`return`/`return null`) on guard failure rather than
   throwing when the failure is expected/benign.
 
+## Layering: thin adapters over server-only domain services
+
+The write path is layered so business rules live in a testable core, not in the
+transport. This is the split PR #19 established and it is now the expected shape:
+
+- **HTTP handlers are thin adapters.** An `app/api/**/route.ts` should parse the
+  request, call a `server-only` domain service, and map the result onto
+  `NextResponse` + status — nothing more. The account rules (required fields,
+  password length, allowlist, duplicate check, hashing, user creation) live in
+  `lib/registration.ts`, not in the handler. Flag a route handler that inlines
+  validation/business logic the domain layer should own, or that reaches for the
+  DB directly instead of going through the service.
+- **Domain services return a discriminated result, not exceptions-as-control.**
+  `registerUser` returns `{ ok: true } | { ok: false; error; status }` so the
+  domain owns the rule while the adapter owns the transport. Flag a service that
+  throws for an expected outcome the caller must branch on, or that returns a
+  loose `{ ok; error? }` bag instead of a discriminated union (see
+  `type-management.md`).
+- **Keep domains separate.** Auth/user concerns (`lib/registration.ts`,
+  `lib/allowlist.ts`) stay out of `lib/hiring/`, and a domain service must not
+  import `next/server` — that keeps it reusable and unit-testable without the
+  HTTP layer (see `testability.md`). Flag cross-domain reach-ins and a
+  `next/*` import creeping into a domain module.
+
 ## Queries — reads
 
 - Read modules are `import 'server-only'` (see `lib/hiring/queries.ts`). Flag a
   query module missing it, or a query imported into a client component.
+- **Reads are injectable for tests.** `getBoardData` takes a `BoardReader` with
+  the Drizzle reader as the default and imports `db` lazily, so it runs without a
+  live DB (see `testability.md`). Preserve this seam — flag a new query that
+  hard-codes the `db` singleton where the composition should accept an injected
+  reader, or a top-level `db` import that forces a client at module load.
 - Use Drizzle's relational query API with a `columns` allowlist so the result is
   exactly the UI type (`HiringState`) — **no casts, no manual grouping, no
   field renames**. Flag `as` casts used to force a query result into a type.
@@ -129,12 +158,59 @@ until **all three** agree. When reviewing any `lib/schema.ts` change, check:
   complete cleanly. If you can't run it, at minimum flag the seed as
   needs-verification in the report rather than assuming it's fine.
 
+## Dependency & migration hygiene
+
+Dependency upgrades are a health area (technical debt) — PR #13 bumped the
+Drizzle stack. Review a dependency bump like any other change:
+
+- **Keep tightly-coupled packages in lockstep.** `drizzle-orm` and `drizzle-kit`
+  must move together (their snapshot/type formats are paired); so must a
+  framework and its plugins. Flag one half of such a pair bumped alone.
+- **Regenerate what the tool owns.** After a Drizzle bump, `bun run db:generate`
+  must report a clean tree — a newer `drizzle-kit` may start tracking constraints
+  an older one didn't (0.31 tracks CHECKs), so a regenerated migration should be
+  in the diff. Flag a version bump that leaves `db:generate` dirty.
+- **Generated migrations stay idempotent.** A regenerated CHECK/enum migration
+  must be a safe no-op on a DB where an earlier hand-authored version already ran
+  — wrap it in the existing `duplicate_object` guard so `0000→latest` and
+  incremental setups both succeed.
+- **Verify, don't assume.** A dependency change is only reviewable if
+  `bun run typecheck`, `bun run test`, and `bun run build` are confirmed green
+  (and `db:generate` clean for a Drizzle bump). Flag a lockfile/manifest bump
+  with no verification evidence as `needs-verification`.
+
+## Dead code & schema/DB drift
+
+PR #25 removed an unused `role` column+enum that had been threaded through the
+schema, seed, and NextAuth session but was never used for any authorization
+decision — and the live DB had meanwhile drifted (an enum value the code didn't
+know about). Watch for both:
+
+- **Unused scaffolding is a finding, not neutral.** A column, enum, field, prop,
+  or export that is defined and propagated but never read for a decision is dead
+  weight that invites drift — flag it for removal rather than leaving it. When a
+  change removes such scaffolding, confirm it is pulled from **every** layer
+  (schema, module augmentation, auth callbacks, seed, migration) so nothing
+  dangles.
+- **Schema is the source of truth; reconcile the live DB.** A change that drops
+  or alters a column/enum must ship the `DROP COLUMN` / `DROP TYPE` / `ALTER`
+  migration that reconciles the already-migrated database, not just the
+  `lib/schema.ts` edit — otherwise the live DB and the schema diverge. Flag a
+  schema removal with no matching migration, and call out any value/column known
+  to exist in the live DB that the schema no longer models.
+
 ## Auth & API routes
 
 - The app is gated by the `authorized` callback in `lib/auth.ts` via
   `middleware.ts`; only `/login` is public. If a new route must be public, the
   middleware matcher / `authorized` logic must be updated deliberately — flag a
   new public surface that wasn't intended.
+- **Matcher exclusions must be anchored and precise** (PR #14). An `api/`
+  exclusion has to be anchored so a page route that merely *starts with* "api"
+  (e.g. a future `/api-docs`) is still gated, and the static-asset exclusion
+  should be exactly the public assets (images, fonts, `favicon`, `webmanifest`)
+  and no more. Flag a loose/unanchored matcher pattern that accidentally opens
+  page routes, or a narrowed one that starts gating a genuine static asset.
 - `app/api/**` route handlers must validate input, normalize where the rest of
   the app does (e.g. `normalizeEmail`), check the allowlist / authz explicitly,
   and return correct status codes (400/401/403/409/500) — see

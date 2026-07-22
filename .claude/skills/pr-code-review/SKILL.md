@@ -4,9 +4,10 @@ description: >-
   Structured, stack-aware review of the current PR / working diff. Reconstructs
   the PR's intention from its description and commit history, traces every
   changed symbol into a call graph, checks that the implementation actually
-  matches the stated intention, then runs frontend, backend, and type-management
-  best-practice checklists for this Next.js 15 + React 19 + Drizzle + next-auth
-  stack and delegates correctness/cleanup/security to the built-in code-review,
+  matches the stated intention, then runs frontend, backend, type-management,
+  and testability best-practice checklists for this Next.js 15 + React 19 +
+  Drizzle + next-auth stack and delegates correctness/cleanup/security to the
+  built-in code-review,
   simplify, and security-review skills. Use when asked to review a PR, review
   the diff, or check a change before merge.
 ---
@@ -61,10 +62,17 @@ Assign exactly one severity to **every** finding — the stack-checklist finding
   UI/domain types are _derived_ (`$inferSelect` + `Pick`), value-sets are
   single-sourced (`lib/hiring/primitives.ts`) and shared by the DB enum, the TS
   type, and the zod validator. `strict` is on.
-- **Tooling:** `bun` is the package manager. There is **no lint/test script** —
-  the type/build gate is `bun run build` (runs `tsc`) and formatting is
-  `prettier` (config in `package.json`: single quotes, 2-space, no trailing
-  commas, always-parens arrows).
+- **Testability:** business rules are extracted into pure, dependency-free
+  modules (`lib/hiring/helpers.ts`, `lib/registration.ts`) and I/O
+  is behind injectable seams (`getBoardData(reader)` in `lib/hiring/queries.ts`)
+  so the logic unit-tests without a live DB. Unit tests live in `test/unit/**`
+  (Vitest), an auth smoke test in `test/e2e/**` (Playwright); `server-only` is
+  aliased to an inert stub in `vitest.config.ts`.
+- **Tooling:** `bun` is the package manager. The gate is **`bun run typecheck`**
+  (`tsc --noEmit`), **`bun run test`** (Vitest unit suite), and
+  **`bun run build`**; `bun run test:e2e` runs the Playwright smoke test.
+  Formatting is `prettier` (config in `package.json`: single quotes, 2-space, no
+  trailing commas, always-parens arrows).
 
 ## Inputs
 
@@ -107,12 +115,16 @@ handler, query, schema table), trace how it is reached and what it reaches:
 
   ```
   UI event (components/**, 'use client')
-    → store action (lib/**/store.ts, optimistic)
-      → server action (lib/**/actions.ts, 'use server', zod-validated)
-        → Drizzle write (lib/db, lib/schema.ts)  → revalidatePath('/')
+    → orchestration hook (components/**/use*.ts, app/**/use*.ts)
+      → store action (lib/**/store.ts, optimistic; pure rules from helpers.ts)
+        → server action (lib/**/actions.ts, 'use server', zod-validated)
+          → Drizzle write (lib/db, lib/schema.ts)  → revalidatePath('/')
   Server Component / page (app/**)
-    → query (lib/**/queries.ts, 'server-only')
+    → query (lib/**/queries.ts, 'server-only', reads via injected reader)
       → Drizzle relational read → typed HiringState
+  HTTP route (app/api/**/route.ts, thin adapter)
+    → domain service (lib/registration.ts, 'server-only', returns discriminated result)
+      → Drizzle write → NextResponse(status)
   Request → middleware.ts → lib/auth.ts (authorized) → route/page
   ```
 
@@ -144,7 +156,7 @@ Cross the intention statement (Step 1) against the call graph and diff (Step 2):
 
 State the intention-match verdict plainly: `matches`, `partial`, or `diverges`.
 
-### Step 4 — Stack best-practice review (frontend / backend / types)
+### Step 4 — Stack best-practice review (frontend / backend / types / testability)
 
 Split the changed files by area and apply the matching checklist. Read the
 checklist file before reviewing that area. Each checklist has two layers —
@@ -161,6 +173,10 @@ frontend; API/service design for backend) that apply in any stack, plus the
 - **Types** (`lib/schema.ts`, `**/types.ts`, `**/primitives.ts`,
   `**/schemas.ts`, any `type`/`interface`/generic change): → read
   `references/type-management.md`
+- **Testability** (`test/**`, `vitest.config.ts`, `playwright.config.ts`, and
+  **any** change to business rules in `lib/**/helpers.ts`,
+  `lib/registration.ts`, or a query/action — a logic change is in scope here
+  even when no test file is touched): → read `references/testability.md`
 
 Record findings with `file:line`, a **severity** from the **Severity scale**
 (`Critical` / `High` / `Medium` / `Low`), and a concrete suggested fix. Every
@@ -237,9 +253,11 @@ findings only (never the `Low` / `false-positive` / `needs-verification` ones):
 - Apply the fixes to the working tree — reuse `code-review --fix` / `simplify`
   where a delegated finding produced the fix, and follow this repo's conventions
   (prettier config, the single write path, derived types) for hand-edits.
-- Re-run the type/build gate (`bun run build`, which runs `tsc`) and confirm it
-  is green before committing. If a fix touches `lib/schema.ts`, run
-  `bun run db:setup` per the backend checklist.
+- Re-run the full gate — **`bun run typecheck`, `bun run test`, and
+  `bun run build`** — and confirm all three are green before committing. If the
+  fix changed business logic, add/adjust the unit test that covers it (see
+  `references/testability.md`) rather than leaving the suite behind. If a fix
+  touches `lib/schema.ts`, run `bun run db:setup` per the backend checklist.
 - Commit on the current branch with a message that references the findings
   addressed, then push (`git push -u origin HEAD`). Do **not** open or merge a PR
   unless that was also requested.
