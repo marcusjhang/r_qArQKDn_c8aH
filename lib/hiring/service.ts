@@ -24,11 +24,13 @@ import 'server-only';
 // pass a fake reader with in-memory rows to exercise `getBoard`'s composition
 // without a live database or `DATABASE_URL`.
 
+import { unstable_cache } from 'next/cache';
 import type {
   SelectJob,
   SelectCandidate,
   SelectFeedback
 } from '@/lib/schema/hiring';
+import { BOARD_TAGS } from './cache';
 import type { RatingValue, Status } from './primitives';
 
 export type { Status, RatingValue } from './primitives';
@@ -100,36 +102,51 @@ export interface BoardReader {
 // Drizzle-backed reader. `db` is imported lazily so that merely importing this
 // module (e.g. from a unit test that injects a fake reader) does not construct
 // the postgres client or require DATABASE_URL to be set.
+//
+// Each read is wrapped in `unstable_cache` under a per-entity tag, so the
+// board's jobs and candidates are served from the Data Cache instead of hitting
+// Postgres on every request. The matching server action revalidates only the
+// tag(s) it mutated (see `actions.ts`), so a candidate edit never forces the
+// jobs list to be re-queried, and vice-versa. Only this production reader is
+// cached — a test-injected `BoardReader` runs uncached and untouched.
 const drizzleReader: BoardReader = {
-  async loadJobs() {
-    const { db } = await import('@/lib/db');
-    return db.query.jobs.findMany({
-      columns: { id: true, title: true, stages: true, starred: true },
-      orderBy: (j, { asc }) => [asc(j.position), asc(j.id)]
-    });
-  },
-  async loadCandidates() {
-    const { db } = await import('@/lib/db');
-    return db.query.candidates.findMany({
-      columns: {
-        id: true,
-        jobId: true,
-        name: true,
-        stage: true,
-        owner: true,
-        source: true,
-        status: true,
-        starred: true
-      },
-      with: {
-        feedback: {
-          columns: { id: true, byFounder: true, rating: true, note: true },
-          orderBy: (f, { asc }) => [asc(f.id)]
-        }
-      },
-      orderBy: (c, { asc }) => [asc(c.createdAt), asc(c.id)]
-    });
-  }
+  loadJobs: unstable_cache(
+    async (): Promise<Job[]> => {
+      const { db } = await import('@/lib/db');
+      return db.query.jobs.findMany({
+        columns: { id: true, title: true, stages: true, starred: true },
+        orderBy: (j, { asc }) => [asc(j.position), asc(j.id)]
+      });
+    },
+    ['board:jobs'],
+    { tags: [BOARD_TAGS.jobs] }
+  ),
+  loadCandidates: unstable_cache(
+    async (): Promise<Candidate[]> => {
+      const { db } = await import('@/lib/db');
+      return db.query.candidates.findMany({
+        columns: {
+          id: true,
+          jobId: true,
+          name: true,
+          stage: true,
+          owner: true,
+          source: true,
+          status: true,
+          starred: true
+        },
+        with: {
+          feedback: {
+            columns: { id: true, byFounder: true, rating: true, note: true },
+            orderBy: (f, { asc }) => [asc(f.id)]
+          }
+        },
+        orderBy: (c, { asc }) => [asc(c.createdAt), asc(c.id)]
+      });
+    },
+    ['board:candidates'],
+    { tags: [BOARD_TAGS.candidates] }
+  )
 };
 
 /**
