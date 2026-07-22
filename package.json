@@ -9,6 +9,7 @@
     "db:seed": "npx tsx db/seed.ts",
     "db:setup": "npm run db:migrate && npm run db:seed",
     "typecheck": "tsc --noEmit",
+    "detect:dead-code": "knip",
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:watch": "vitest",
@@ -54,6 +55,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
+    "knip": "^6.27.0",
     "vitest": "^4.1.10"
   }
 }
