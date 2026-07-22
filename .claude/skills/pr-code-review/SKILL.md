@@ -30,7 +30,9 @@ default.
 - **Backend:** Next.js server actions (`'use server'`) are the single write
   path; server-only reads via Drizzle's relational query API. Neon Postgres via
   Drizzle ORM. zod validates every action input. Auth.js (next-auth v5 beta)
-  gates the whole app in `middleware.ts` / `lib/auth.ts`.
+  gates the whole app in `middleware.ts` / `lib/auth.ts`. The DB is both migrated
+  and **seeded** on setup (`bun run db:setup` → `db:migrate` + `db:seed`), so a
+  schema change must keep the migration _and_ the seed in sync.
 - **Types:** the Drizzle schema (`lib/schema.ts`) is the single source of truth;
   UI/domain types are _derived_ (`$inferSelect` + `Pick`), value-sets are
   single-sourced (`lib/hiring/primitives.ts`) and shared by the DB enum, the TS
@@ -97,6 +99,11 @@ handler, query, schema table), trace how it is reached and what it reaches:
 - Flag anything the graph reveals: a client component importing server-only
   code, a write path that skips the zod-validated action, a query that isn't
   `server-only`, a mutation with no `revalidatePath`.
+- **Schema is a node too.** If the diff touches `lib/schema.ts`, follow its edges
+  to the migration (`drizzle/**`) and the seed (`db/seed.ts` +
+  `lib/hiring/seed.ts`) — a schema change that doesn't reach both is drift.
+  The DB is seeded on every boot (`bun run db:setup`), so a stale seed breaks
+  the environment, not just the migration. See `references/backend.md`.
 
 ### Step 3 — Verify intention matches implementation
 
@@ -122,8 +129,9 @@ specific rules:
 - **Frontend** (`app/**`, `components/**`, `*.css`, `tailwind.config.ts`):
   → read `references/frontend.md`
 - **Backend** (`lib/**/actions.ts`, `lib/**/queries.ts`, `app/**/route.ts`,
-  `app/**/actions.ts`, `middleware.ts`, `lib/auth.ts`, `lib/db.ts`, `db/**`,
-  `drizzle/**`): → read `references/backend.md`
+  `app/**/actions.ts`, `middleware.ts`, `lib/auth.ts`, `lib/db.ts`, `db/**`
+  (incl. `db/seed.ts`), `lib/**/seed.ts`, `drizzle/**`): → read
+  `references/backend.md`
 - **Types** (`lib/schema.ts`, `**/types.ts`, `**/primitives.ts`,
   `**/schemas.ts`, any `type`/`interface`/generic change): → read
   `references/type-management.md`

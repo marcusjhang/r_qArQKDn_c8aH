@@ -45,11 +45,44 @@ Applies to `lib/**/actions.ts`, `lib/**/queries.ts`, `app/**/route.ts`,
   concatenation into a query.
 - FK `onDelete` behaviour is intentional (the schema uses `cascade` for
   candidates/feedback). A new relation should declare its delete behaviour.
-- Schema changes must ship a generated migration: a change to `lib/schema.ts`
-  requires a matching `drizzle/**` migration (`bun run db:generate`). Flag a
-  schema edit with no migration in the diff.
+- Schema changes must ship a generated migration and a maintained seed — see
+  **Schema changes: migration + seed** below.
 - Prefer DB-level constraints for real invariants (e.g. the `rating` CHECK,
   `notNull`, `unique`) over app-only checks.
+
+## Schema changes: migration + seed
+
+The database is **seeded**, not just migrated: `bun run db:setup` runs
+`db:migrate` then `db:seed`. The seed has two halves — the runner `db/seed.ts`
+(insert order, idempotency) and the typed data in `lib/hiring/seed.ts`
+(`SEED_JOBS`, `SEED_CANDIDATES`). A change to `lib/schema.ts` is incomplete
+until **all three** agree. When reviewing any `lib/schema.ts` change, check:
+
+- **Migration present.** The schema change has a matching generated migration in
+  `drizzle/**` (`bun run db:generate`). Flag a schema edit with no migration in
+  the diff.
+- **Seed still inserts.** Any column the seeder writes must still be satisfiable:
+  - A new `notNull` column with no default breaks every insert in `db/seed.ts` —
+    the change must add a DB default, backfill in the migration, **or** add the
+    value to the seed inserts / `SEED_*` data.
+  - A renamed/removed column or table must be renamed/removed in both `db/seed.ts`
+    and `lib/hiring/seed.ts`. (`tsc` catches many of these because the seed data
+    is typed against the schema-derived types — but not raw
+    `.values({...})` keys, so read them.)
+  - A changed enum/value-set (see type-management) must be reflected in the
+    `SEED_*` data; values there are typed as `Status`/`RatingValue`, so a removed
+    value fails `tsc`, but a _new required_ one won't — confirm the seed still
+    represents the intended states.
+- **New table → seed it if it needs sample data.** Add inserts in **FK-safe
+  order** (the runner does users → allowlist → jobs → candidates → feedback);
+  a child row inserted before its parent will fail.
+- **Idempotency preserved.** `db:setup` is re-run on every sandbox boot, so seed
+  steps must be safely repeatable — follow the existing patterns
+  (`onConflictDoNothing`, create-or-update, or skip-if-rows-exist). Flag a new
+  seed insert that would throw or duplicate on a second run.
+- **Practical gate:** after a schema change, `bun run db:setup` must still
+  complete cleanly. If you can't run it, at minimum flag the seed as
+  needs-verification in the report rather than assuming it's fine.
 
 ## Auth & API routes
 
