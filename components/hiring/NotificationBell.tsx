@@ -1,9 +1,9 @@
 'use client';
 
-// In-app notification feed for candidate owners. Opening the bell sweeps
-// current warning states server-side, so it reflects the latest attention
-// items plus any 'scheduled' events. (Team-shared feed: each item is labelled
-// with the owner it's for, since logins aren't yet mapped to founder ids.)
+// In-app notification feed. Opening the bell sweeps current warning states
+// server-side, then shows the signed-in founder's own notifications (a
+// non-founder admin login sees the whole team feed, each row labelled with the
+// owner it's for).
 
 import { useEffect, useRef, useState } from 'react';
 import { founderById } from '@/lib/hiring/helpers';
@@ -31,9 +31,14 @@ function timeAgo(d: Date): string {
 export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<SelectNotification[]>([]);
+  const [scope, setScope] = useState<'own' | 'all'>('own');
   const ref = useRef<HTMLDivElement>(null);
 
-  const load = () => listNotifications().then(setItems);
+  const load = () =>
+    listNotifications().then((feed) => {
+      setItems(feed.items);
+      setScope(feed.scope);
+    });
 
   // Load on mount and whenever the panel is opened (re-runs the warning sweep).
   useEffect(() => {
@@ -110,7 +115,9 @@ export default function NotificationBell() {
                   <div className="notif-body">
                     <div className="notif-msg">{n.message}</div>
                     <div className="notif-meta">
-                      for {founderById(n.recipientFounderId).name} ·{' '}
+                      {scope === 'all'
+                        ? `for ${founderById(n.recipientFounderId).name} · `
+                        : ''}
                       {timeAgo(n.createdAt)}
                     </div>
                   </div>

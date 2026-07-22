@@ -19,6 +19,15 @@ export function founderById(id: string): Founder {
   return FOUNDERS.find((f) => f.id === id) ?? FOUNDERS[0];
 }
 
+/** Map a login email to its founder identity, or null if it isn't a founder. */
+export function founderByEmail(
+  email: string | null | undefined
+): Founder | null {
+  if (!email) return null;
+  const e = email.toLowerCase();
+  return FOUNDERS.find((f) => f.email?.toLowerCase() === e) ?? null;
+}
+
 /** Rejected and Hired are terminal — they're not part of the active pipeline. */
 export function isTerminal(c: Candidate): boolean {
   return c.status === 'rejected' || c.status === 'hired';

@@ -9,9 +9,19 @@ import type { InterviewType } from './primitives';
 
 /** Owners / interviewers. For Lightsprint: the three founders. */
 export const FOUNDERS: Founder[] = [
-  { id: 'bo', name: 'Ben Ong', initials: 'BO' },
-  { id: 'bc', name: 'Benedict Chan', initials: 'BC' },
-  { id: 'hl', name: 'Heng Hong Lee', initials: 'HL' }
+  { id: 'bo', name: 'Ben Ong', initials: 'BO', email: 'benong@lightsprint.ai' },
+  {
+    id: 'bc',
+    name: 'Benedict Chan',
+    initials: 'BC',
+    email: 'benchan@lightsprint.ai'
+  },
+  {
+    id: 'hl',
+    name: 'Heng Hong Lee',
+    initials: 'HL',
+    email: 'henghonglee@lightsprint.ai'
+  }
 ];
 
 /** Where candidates come from — reinforced by the source tag on each card. */

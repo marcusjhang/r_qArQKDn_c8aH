@@ -40,6 +40,8 @@ export interface Founder {
   id: string;
   name: string;
   initials: string;
+  /** Login email, used to map the signed-in user to their founder identity. */
+  email?: string;
 }
 
 /** One interviewer's entry, trimmed to the fields the UI shows. */

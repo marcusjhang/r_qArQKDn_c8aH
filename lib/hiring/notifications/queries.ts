@@ -79,9 +79,19 @@ export async function syncOwnerWarningNotifications(now: number) {
 }
 
 /** Sweep current warnings, then return the notification feed (newest first). */
-export async function getNotifications(): Promise<SelectNotification[]> {
+/**
+ * Sweep current warnings, then return the feed newest-first. When
+ * `recipientFounderId` is given, only that founder's notifications are returned
+ * (the sweep still runs over every candidate so all owners' rows stay fresh).
+ */
+export async function getNotifications(
+  recipientFounderId?: string
+): Promise<SelectNotification[]> {
   await syncOwnerWarningNotifications(Date.now());
   return db.query.notifications.findMany({
+    where: recipientFounderId
+      ? (n, { eq }) => eq(n.recipientFounderId, recipientFounderId)
+      : undefined,
     orderBy: (n, { desc }) => [desc(n.createdAt)],
     limit: 50
   });
