@@ -22,14 +22,17 @@ const zBody = z.string().trim().min(1).max(4000);
 const zMentionIds = z.array(z.number().int().positive()).max(50);
 
 /**
- * Resolve the signed-in account's numeric id, or null when not signed in.
- * Prefers the id carried on the session (set in the auth JWT callback) and only
- * falls back to an email lookup for sessions minted before that id existed.
+ * Resolve the signed-in user's numeric id, or null when not signed in.
+ *
+ * Resolves by email (the stable login identity) against the live users table
+ * rather than trusting `session.user.id` from the JWT: that id is captured at
+ * login and goes stale if the users table is ever rebuilt (e.g. a reseed
+ * renumbers the rows), which would otherwise insert a dangling author_id and
+ * trip the messages_author_id FK. Matches how the board resolves the current
+ * user (by email) everywhere else.
  */
 async function currentUserId(): Promise<number | null> {
   const session = await auth();
-  const id = Number(session?.user?.id);
-  if (Number.isInteger(id) && id > 0) return id;
   const email = session?.user?.email;
   if (!email) return null;
   const [u] = await db
