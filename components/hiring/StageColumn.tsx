@@ -19,7 +19,7 @@ import { useInlineEdit } from './hooks/useInlineEdit';
 import CandidateCard from './CandidateCard';
 import StageMenu from './StageMenu';
 
-export default function Column({
+export default function StageColumn({
   job,
   stage,
   index,

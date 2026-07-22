@@ -4,9 +4,9 @@
 // (Decision 5), drag-and-drop stage transitions, inline stage editing
 // (Decision 1) and the terminal-state filter (Decision 3).
 //
-// This file is now a thin layout: per-column rendering lives in Column, and the
-// stage/card logic is split across CandidateCard, StageMenu, AddStageGhost and
-// the useBoardDnd / useInlineEdit hooks.
+// This file is now a thin layout: per-column rendering lives in StageColumn, and
+// the stage/card logic is split across CandidateCard, StageMenu, AddStageForm
+// and the useBoardDnd / useInlineEdit hooks.
 
 import {
   selectStageCards,
@@ -14,8 +14,8 @@ import {
   type HiringState
 } from '@/lib/hiring';
 import { useBoardDnd } from './hooks/useBoardDnd';
-import Column from './Column';
-import AddStageGhost from './AddStageGhost';
+import StageColumn from './StageColumn';
+import AddStageForm from './AddStageForm';
 
 export default function Board({
   state,
@@ -40,7 +40,7 @@ export default function Board({
     <div className="board-scroll">
       <div className="board">
         {job.stages.map((stage, index) => (
-          <Column
+          <StageColumn
             key={`${stage}-${index}`}
             job={job}
             stage={stage}
@@ -52,7 +52,7 @@ export default function Board({
             onOpen={onOpen}
           />
         ))}
-        <AddStageGhost
+        <AddStageForm
           job={job}
           onAdd={(name) => actions.addStage(job.id, name)}
         />

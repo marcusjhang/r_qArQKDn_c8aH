@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { validateStageName, MAX_STAGE_NAME, type Job } from '@/lib/hiring';
 
-export default function AddStageGhost({
+export default function AddStageForm({
   job,
   onAdd
 }: {
