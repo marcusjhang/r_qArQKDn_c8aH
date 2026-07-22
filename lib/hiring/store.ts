@@ -48,7 +48,7 @@ export interface HiringActions {
   addCandidate: (
     jobId: number,
     name: string,
-    source: string,
+    source: number,
     owner: number,
     linkedinUrl: string | null,
     githubUrl: string | null
@@ -56,7 +56,7 @@ export interface HiringActions {
   editCandidate: (
     id: number,
     name: string,
-    source: string,
+    source: number,
     owner: number,
     linkedinUrl: string | null,
     githubUrl: string | null
@@ -169,7 +169,7 @@ export function useHiringStore(initial: HiringState): {
     (
       jobId: number,
       name: string,
-      source: string,
+      source: number,
       owner: number,
       linkedinUrl: string | null,
       githubUrl: string | null
@@ -210,7 +210,7 @@ export function useHiringStore(initial: HiringState): {
     (
       id: number,
       name: string,
-      source: string,
+      source: number,
       owner: number,
       linkedinUrl: string | null,
       githubUrl: string | null

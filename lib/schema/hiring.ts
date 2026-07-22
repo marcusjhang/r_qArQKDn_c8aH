@@ -21,6 +21,14 @@ import { users } from './auth';
 // STATUSES tuple so the DB enum and the TS Status type can never diverge.
 export const candidateStatusEnum = pgEnum('candidate_status', STATUSES);
 
+// Candidate sources (where a candidate came from) — a seeded lookup table, not
+// a hardcoded list, so the options are DB-driven like the users picklist.
+export const sources = pgTable('sources', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull().unique(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
 // A job owns its own ordered, per-job stage list (Decision 1), stored as an
 // ordered JSON array of stage names so candidates can key off the stage name.
 export const jobs = pgTable('jobs', {
@@ -46,7 +54,10 @@ export const candidates = pgTable('candidates', {
   owner: integer('owner')
     .notNull()
     .references(() => users.id),
-  source: text('source').notNull(),
+  // Where the candidate came from — a seeded source (see sources table above).
+  source: integer('source')
+    .notNull()
+    .references(() => sources.id),
   // Optional profile links (nullable — empty input stays NULL).
   linkedinUrl: text('linkedin_url'),
   githubUrl: text('github_url'),
@@ -83,6 +94,7 @@ export const feedback = pgTable(
 export type SelectJob = typeof jobs.$inferSelect;
 export type SelectCandidate = typeof candidates.$inferSelect;
 export type SelectFeedback = typeof feedback.$inferSelect;
+export type SelectSource = typeof sources.$inferSelect;
 
 /* ---------- Relations (enable the db.query relational API) ---------- */
 export const jobsRelations = relations(jobs, ({ many }) => ({

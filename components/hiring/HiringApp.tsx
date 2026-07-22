@@ -121,6 +121,7 @@ export default function HiringApp({
         <AddCandidateModal
           jobTitle={job.title}
           users={state.users}
+          sources={state.sources}
           onClose={() => setAddingCandidate(false)}
           onAdd={(name, source, owner, linkedinUrl, githubUrl) =>
             actions.addCandidate(

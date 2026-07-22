@@ -1,10 +1,15 @@
 // Pure, framework-free helpers over the hiring domain model.
 
-import type { Candidate, Job, RatingValue, Status, User } from './types';
+import type { Candidate, Job, RatingValue, Source, Status, User } from './types';
 
 /** Find a user in the board's user list by id (owner / feedback author). */
 export function userById(users: User[], id: number): User | undefined {
   return users.find((u) => u.id === id);
+}
+
+/** Display name for a candidate's source id, falling back when unknown. */
+export function sourceName(sources: Source[], id: number): string {
+  return sources.find((s) => s.id === id)?.name ?? 'Unknown';
 }
 
 /** Human label for a user: their name, falling back to the email. */

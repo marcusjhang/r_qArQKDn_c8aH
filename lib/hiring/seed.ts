@@ -23,6 +23,16 @@ const SEED_USER_EMAILS = {
 
 const { marcus, benOng, benChan, hengHongLee } = SEED_USER_EMAILS;
 
+// Canonical candidate sources, seeded into the `sources` table. The dropdown
+// options are read from that table (not this list), so this is only the seed.
+export const SEED_SOURCES: string[] = [
+  'LinkedIn',
+  'Referral',
+  'YC',
+  'Inbound',
+  'Otta'
+];
+
 export interface SeedJob {
   slug: string;
   title: string;

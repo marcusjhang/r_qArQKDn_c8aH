@@ -8,6 +8,7 @@
 
 export type {
   User,
+  Source,
   Feedback,
   Candidate,
   Job,

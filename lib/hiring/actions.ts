@@ -72,7 +72,7 @@ export async function createJob(titleRaw: string): Promise<number | null> {
 export async function addCandidate(
   jobIdRaw: number,
   nameRaw: string,
-  sourceRaw: string,
+  sourceRaw: number,
   ownerRaw: number,
   linkedinUrlRaw: string | null = null,
   githubUrlRaw: string | null = null
@@ -109,7 +109,7 @@ export async function addCandidate(
 export async function editCandidate(
   idRaw: number,
   nameRaw: string,
-  sourceRaw: string,
+  sourceRaw: number,
   ownerRaw: number,
   linkedinUrlRaw: string | null,
   githubUrlRaw: string | null

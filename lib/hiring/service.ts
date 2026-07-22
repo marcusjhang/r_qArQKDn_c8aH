@@ -28,7 +28,8 @@ import { unstable_cache } from 'next/cache';
 import type {
   SelectJob,
   SelectCandidate,
-  SelectFeedback
+  SelectFeedback,
+  SelectSource
 } from '@/lib/schema/hiring';
 import type { SelectUser } from '@/lib/schema/auth';
 import { BOARD_TAGS } from './cache';
@@ -47,6 +48,15 @@ export interface User {
   email: string;
 }
 
+/**
+ * A candidate source (where a candidate came from). Projected from the seeded
+ * `sources` table so the options are DB-driven, never a hardcoded list.
+ */
+export interface Source {
+  id: number;
+  name: string;
+}
+
 /** One interviewer's entry, trimmed to the fields the UI shows. */
 export interface Feedback {
   id: number;
@@ -62,7 +72,7 @@ export interface Candidate {
   name: string;
   stage: string;
   owner: number;
-  source: string;
+  source: number;
   status: Status;
   starred: boolean;
   linkedinUrl: string | null;
@@ -84,6 +94,8 @@ export interface HiringState {
   candidates: Candidate[];
   /** The users who can own candidates / leave feedback (seed + sign-ups). */
   users: User[];
+  /** The candidate sources available for the source picker (seeded). */
+  sources: Source[];
 }
 
 // Compile-time guard: every DTO must stay a faithful projection of its Drizzle
@@ -102,12 +114,14 @@ type _FeedbackConforms = Conforms<
   Pick<SelectFeedback, keyof Feedback>
 >;
 type _UserConforms = Conforms<User, Pick<SelectUser, keyof User>>;
+type _SourceConforms = Conforms<Source, Pick<SelectSource, keyof Source>>;
 
 /** The data dependency `getBoard` reads from. */
 export interface BoardReader {
   loadJobs(): Promise<Job[]>;
   loadCandidates(): Promise<Candidate[]>;
   loadUsers(): Promise<User[]>;
+  loadSources(): Promise<Source[]>;
 }
 
 // Drizzle-backed reader. `db` is imported lazily so that merely importing this
@@ -169,6 +183,15 @@ const drizzleReader: BoardReader = {
       columns: { id: true, name: true, email: true },
       orderBy: (u, { asc }) => [asc(u.name), asc(u.email)]
     });
+  },
+  // Sources are read fresh (uncached) too, so a newly seeded source is picker-
+  // ready on the next render — same rationale as loadUsers.
+  loadSources: async (): Promise<Source[]> => {
+    const { db } = await import('@/lib/db');
+    return db.query.sources.findMany({
+      columns: { id: true, name: true },
+      orderBy: (s, { asc }) => [asc(s.name)]
+    });
   }
 };
 
@@ -180,13 +203,14 @@ const drizzleReader: BoardReader = {
 export async function getBoard(
   reader: BoardReader = drizzleReader
 ): Promise<HiringState> {
-  const [jobs, candidates, users] = await Promise.all([
+  const [jobs, candidates, users, sources] = await Promise.all([
     reader.loadJobs(),
     reader.loadCandidates(),
-    reader.loadUsers()
+    reader.loadUsers(),
+    reader.loadSources()
   ]);
 
-  return { jobs, candidates, users };
+  return { jobs, candidates, users, sources };
 }
 
 /** The hiring facade the app consumes. Group reads here as they are added. */

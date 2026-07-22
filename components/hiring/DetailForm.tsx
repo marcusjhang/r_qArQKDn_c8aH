@@ -8,7 +8,6 @@
 
 import { useEffect, useState } from 'react';
 import {
-  SOURCES,
   STATUS,
   MAX_PROFILE_URL,
   normalizeProfileUrl,
@@ -16,24 +15,27 @@ import {
   type HiringActions,
   type Candidate,
   type Status,
-  type User
+  type User,
+  type Source
 } from '@/lib/hiring';
 
 export default function DetailForm({
   view,
   actions,
   users,
+  sources,
   resetKey
 }: {
   view: Candidate | null;
   actions: HiringActions;
   users: User[];
+  sources: Source[];
   /** Identity of the open candidate (openId) — the form resets when it changes. */
   resetKey: number | null;
 }) {
   const [editing, setEditing] = useState(false);
   const [dName, setDName] = useState('');
-  const [dSource, setDSource] = useState(SOURCES[0]);
+  const [dSource, setDSource] = useState<number>(sources[0]?.id ?? 0);
   const [dOwner, setDOwner] = useState<number>(users[0]?.id ?? 0);
   const [dLinkedin, setDLinkedin] = useState('');
   const [dGithub, setDGithub] = useState('');
@@ -41,7 +43,7 @@ export default function DetailForm({
 
   function seedDraft(c: Candidate | null) {
     setDName(c?.name ?? '');
-    setDSource(c?.source ?? SOURCES[0]);
+    setDSource(c?.source ?? sources[0]?.id ?? 0);
     setDOwner(c?.owner ?? users[0]?.id ?? 0);
     setDLinkedin(c?.linkedinUrl ?? '');
     setDGithub(c?.githubUrl ?? '');
@@ -102,7 +104,7 @@ export default function DetailForm({
 
   // Read-only fields reflect the live candidate; only edit mode uses the draft.
   const nameVal = editing ? dName : (view?.name ?? '');
-  const sourceVal = editing ? dSource : (view?.source ?? SOURCES[0]);
+  const sourceVal = editing ? dSource : (view?.source ?? sources[0]?.id ?? 0);
   const ownerVal = editing ? dOwner : (view?.owner ?? users[0]?.id ?? 0);
   const linkedinVal = editing ? dLinkedin : (view?.linkedinUrl ?? '');
   const githubVal = editing ? dGithub : (view?.githubUrl ?? '');
@@ -131,11 +133,11 @@ export default function DetailForm({
             <select
               value={sourceVal}
               disabled={!editing}
-              onChange={(e) => setDSource(e.target.value)}
+              onChange={(e) => setDSource(Number(e.target.value))}
             >
-              {SOURCES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
+              {sources.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
                 </option>
               ))}
             </select>

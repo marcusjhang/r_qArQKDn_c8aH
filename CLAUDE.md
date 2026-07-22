@@ -32,11 +32,14 @@ bun run db:generate  # generate migration after schema change
   interfaces are authored there and guarded against schema drift at compile
   time, and components import the UI types from `lib/hiring/types.ts`. Writes go
   through the zod-validated server actions in `lib/hiring/actions.ts`.
-- Owners / interviewers are **not** a hardcoded config — they are the `users`
-  accounts, loaded from the DB (`service.ts` `loadUsers`) into `HiringState.users`
-  and threaded to the pickers. A candidate's `owner` and a feedback entry's
-  `byUser` are integer FKs to `users.id`, so every seeded user and every new
-  sign-up is automatically selectable.
+- Owners / interviewers and candidate sources are **not** hardcoded configs —
+  they are DB-driven. Owners/interviewers are the `users` accounts (`service.ts`
+  `loadUsers`); sources are the seeded `sources` table (`loadSources`). Both are
+  loaded into `HiringState` (`users` / `sources`) and threaded to the pickers.
+  A candidate's `owner`/`source` and a feedback entry's `byUser` are integer FKs
+  (`users.id` / `sources.id`), so seeded rows and new sign-ups are automatically
+  selectable. `config.ts` keeps only the code-bound value-sets (rating scale,
+  status labels, default-stages template).
 
 ## Stack
 

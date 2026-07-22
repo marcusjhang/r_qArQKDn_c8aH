@@ -74,6 +74,7 @@ export default function DetailDrawer({
         <DetailHeader
           view={view}
           job={job}
+          sources={state.sources}
           onToggleStar={actions.setCandidateStarred}
           onClose={onClose}
         />
@@ -83,6 +84,7 @@ export default function DetailDrawer({
             view={view}
             actions={actions}
             users={state.users}
+            sources={state.sources}
             resetKey={openId}
           />
 

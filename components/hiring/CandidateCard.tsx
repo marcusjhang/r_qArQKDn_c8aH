@@ -8,8 +8,10 @@ import {
   userById,
   displayName,
   initials,
+  sourceName,
   type Candidate,
-  type User
+  type User,
+  type Source
 } from '@/lib/hiring';
 import RatingChip from './RatingChip';
 import ProfileLinks from './ProfileLinks';
@@ -17,12 +19,14 @@ import ProfileLinks from './ProfileLinks';
 export default function CandidateCard({
   candidate,
   users,
+  sources,
   dragProps,
   onOpen,
   onToggleStar
 }: {
   candidate: Candidate;
   users: User[];
+  sources: Source[];
   dragProps: {
     draggable: true;
     onDragStart: (e: React.DragEvent<HTMLElement>) => void;
@@ -62,7 +66,7 @@ export default function CandidateCard({
       </div>
       <div className="card-bottom">
         <RatingChip candidate={candidate} />
-        <span className="source-tag">{candidate.source}</span>
+        <span className="source-tag">{sourceName(sources, candidate.source)}</span>
       </div>
     </div>
   );

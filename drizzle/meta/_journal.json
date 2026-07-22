@@ -92,6 +92,13 @@
       "when": 1784700106492,
       "tag": "0012_nice_roland_deschain",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1784701099591,
+      "tag": "0013_secret_aaron_stack",
+      "breakpoints": true
     }
   ]
 }

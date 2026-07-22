@@ -1,10 +1,17 @@
 import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { users, jobs, candidates, feedback, allowedEmails } from '../lib/schema';
+import {
+  users,
+  jobs,
+  candidates,
+  feedback,
+  allowedEmails,
+  sources
+} from '../lib/schema';
 import { count, eq } from 'drizzle-orm';
 import { hash } from 'bcryptjs';
-import { SEED_JOBS, SEED_CANDIDATES } from '../lib/hiring/seed';
+import { SEED_JOBS, SEED_CANDIDATES, SEED_SOURCES } from '../lib/hiring/seed';
 
 const SEED_ALLOWED_EMAILS = [
   'benchan@lightsprint.ai',
@@ -61,6 +68,14 @@ async function main() {
   }
   console.log(`Ensured ${SEED_ALLOWED_EMAILS.length} allowlisted emails.`);
 
+  // Seed the candidate sources (idempotent via the unique name constraint).
+  // Always ensured — the source picklist is read from this table, so it must
+  // hold the canonical options even when the hiring pipeline seed is skipped.
+  for (const name of SEED_SOURCES) {
+    await db.insert(sources).values({ name }).onConflictDoNothing();
+  }
+  console.log(`Ensured ${SEED_SOURCES.length} candidate sources.`);
+
   // Seed the hiring pipeline (jobs → candidates → feedback), idempotently.
   const [{ value: jobCount }] = await db
     .select({ value: count() })
@@ -79,6 +94,18 @@ async function main() {
       const id = userIdByEmail.get(email);
       if (id === undefined) {
         throw new Error(`Seed references unknown user email: ${email}`);
+      }
+      return id;
+    };
+    // Candidates reference their source by name; resolve to the sources.id.
+    const sourceRows = await db
+      .select({ id: sources.id, name: sources.name })
+      .from(sources);
+    const sourceIdByName = new Map(sourceRows.map((s) => [s.name, s.id]));
+    const resolveSource = (name: string): number => {
+      const id = sourceIdByName.get(name);
+      if (id === undefined) {
+        throw new Error(`Seed references unknown source: ${name}`);
       }
       return id;
     };
@@ -105,7 +132,7 @@ async function main() {
           name: c.name,
           stage: c.stage,
           owner: resolveUser(c.owner),
-          source: c.source,
+          source: resolveSource(c.source),
           status: c.status,
           starred: c.starred ?? false
         })

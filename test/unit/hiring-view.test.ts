@@ -19,7 +19,7 @@ function candidate(over: Partial<Candidate> = {}): Candidate {
     name: 'Ada',
     stage: 'Applied',
     owner: 1,
-    source: 'LinkedIn',
+    source: 1,
     status: 'active',
     starred: false,
     linkedinUrl: null,

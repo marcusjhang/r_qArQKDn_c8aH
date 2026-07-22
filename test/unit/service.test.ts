@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getBoard, hiringService, type BoardReader } from '@/lib/hiring/service';
-import type { Candidate, Job, User } from '@/lib/hiring/types';
+import type { Candidate, Job, User, Source } from '@/lib/hiring/types';
 
 // Because getBoard reads through an injected BoardReader (rather than the db
 // singleton), it can be exercised with in-memory rows — no database, no
@@ -17,6 +17,7 @@ describe('getBoard', () => {
   const users: User[] = [
     { id: 1, name: 'Ben Ong', email: 'benong@lightsprint.ai' }
   ];
+  const sources: Source[] = [{ id: 5, name: 'Referral' }];
   const candidates: Candidate[] = [
     {
       id: 10,
@@ -24,7 +25,7 @@ describe('getBoard', () => {
       name: 'Ada',
       stage: 'Applied',
       owner: 1,
-      source: 'Referral',
+      source: 5,
       status: 'active',
       starred: false,
       linkedinUrl: null,
@@ -36,15 +37,16 @@ describe('getBoard', () => {
   const fakeReader: BoardReader = {
     loadJobs: async () => jobs,
     loadCandidates: async () => candidates,
-    loadUsers: async () => users
+    loadUsers: async () => users,
+    loadSources: async () => sources
   };
 
   it('composes the reader results into a HiringState payload', async () => {
     const state = await getBoard(fakeReader);
-    expect(state).toEqual({ jobs, candidates, users });
+    expect(state).toEqual({ jobs, candidates, users, sources });
   });
 
-  it('reads jobs, candidates and users concurrently from the reader', async () => {
+  it('reads jobs, candidates, users and sources concurrently from the reader', async () => {
     const calls: string[] = [];
     const reader: BoardReader = {
       loadJobs: async () => {
@@ -58,14 +60,18 @@ describe('getBoard', () => {
       loadUsers: async () => {
         calls.push('users');
         return users;
+      },
+      loadSources: async () => {
+        calls.push('sources');
+        return sources;
       }
     };
     await getBoard(reader);
-    expect(calls.sort()).toEqual(['candidates', 'jobs', 'users']);
+    expect(calls.sort()).toEqual(['candidates', 'jobs', 'sources', 'users']);
   });
 
   it('is exposed on the hiringService facade', async () => {
     const state = await hiringService.getBoard(fakeReader);
-    expect(state).toEqual({ jobs, candidates, users });
+    expect(state).toEqual({ jobs, candidates, users, sources });
   });
 });

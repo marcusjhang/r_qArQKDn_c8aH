@@ -35,7 +35,7 @@ export type HiringEvent =
       tempId: number;
       jobId: number;
       name: string;
-      source: string;
+      source: number;
       owner: number;
       linkedinUrl: string | null;
       githubUrl: string | null;
@@ -46,7 +46,7 @@ export type HiringEvent =
       type: 'editCandidate';
       id: number;
       name: string;
-      source: string;
+      source: number;
       owner: number;
       linkedinUrl: string | null;
       githubUrl: string | null;
