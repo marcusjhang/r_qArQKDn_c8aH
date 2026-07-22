@@ -251,6 +251,12 @@ export async function moveStage(idRaw: number, stageRaw: string) {
   if (!c) return;
   // Resolve "terminal" structurally (last stage), so auto-hire survives a rename.
   const stages = (await loadJobStages(c.jobId)) ?? [];
+  // Guard stage membership: the client only ever moves a card into one of its
+  // job's stages, but this action is the sole write path and can't trust that.
+  // Without the check a stray stage would strand the card in a non-existent
+  // column (no board column renders it), and a stray terminal stage would
+  // wrongly flip the status to hired (see placeInStage).
+  if (!stages.includes(stage)) return;
   const placement = placeInStage(stage, c, stages);
   await db.update(candidates).set(placement).where(eq(candidates.id, id));
   revalidateTag(BOARD_TAGS.candidates);
