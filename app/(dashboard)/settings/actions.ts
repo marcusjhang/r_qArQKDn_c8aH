@@ -7,7 +7,8 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { and, eq, ne, sql } from 'drizzle-orm';
 import { db, allowedEmails, candidates } from '@/lib/db';
-import { sources } from '@/lib/schema/hiring';
+import { sources, seniorityBands } from '@/lib/schema/hiring';
+import { MAX_YEARS_EXPERIENCE } from '@/lib/hiring/primitives';
 
 const zEmail = z
   .string()
@@ -16,6 +17,8 @@ const zEmail = z
   .transform((e) => e.toLowerCase());
 const zId = z.number().int().positive();
 const zSourceName = z.string().trim().min(1).max(40);
+const zBandLabel = z.string().trim().min(1).max(40);
+const zMinYears = z.number().int().min(0).max(MAX_YEARS_EXPERIENCE);
 
 /** Success, or a caller-facing message the settings UI renders inline. */
 export type SettingsResult = { ok: true } | { ok: false; error: string };
@@ -109,6 +112,91 @@ export async function removeSource(idRaw: number): Promise<SettingsResult> {
     };
   }
   await db.delete(sources).where(eq(sources.id, id));
+  revalidatePath('/settings');
+  return { ok: true };
+}
+
+/* ---------- Seniority bands ---------- */
+
+/**
+ * Add a seniority band (a years-of-experience → label tier). The threshold
+ * (minYears) is unique, so two bands can't start at the same year.
+ */
+export async function addBand(
+  labelRaw: string,
+  minYearsRaw: number
+): Promise<SettingsResult> {
+  let label: string;
+  let minYears: number;
+  try {
+    label = zBandLabel.parse(labelRaw);
+    minYears = zMinYears.parse(minYearsRaw);
+  } catch {
+    return {
+      ok: false,
+      error: `Enter a label (1–40 chars) and a threshold of 0–${MAX_YEARS_EXPERIENCE}.`
+    };
+  }
+  const inserted = await db
+    .insert(seniorityBands)
+    .values({ label, minYears })
+    .onConflictDoNothing()
+    .returning({ id: seniorityBands.id });
+  if (inserted.length === 0) {
+    return { ok: false, error: 'A band with that threshold already exists.' };
+  }
+  revalidatePath('/settings');
+  return { ok: true };
+}
+
+/**
+ * Update a band's label and/or threshold. Rejects a threshold already used by
+ * another band. Bands aren't referenced by candidates (seniority is derived),
+ * so editing only relabels/retiers — no candidate rows change.
+ */
+export async function updateBand(
+  idRaw: number,
+  labelRaw: string,
+  minYearsRaw: number
+): Promise<SettingsResult> {
+  let id: number;
+  let label: string;
+  let minYears: number;
+  try {
+    id = zId.parse(idRaw);
+    label = zBandLabel.parse(labelRaw);
+    minYears = zMinYears.parse(minYearsRaw);
+  } catch {
+    return {
+      ok: false,
+      error: `Enter a label (1–40 chars) and a threshold of 0–${MAX_YEARS_EXPERIENCE}.`
+    };
+  }
+  const [clash] = await db
+    .select({ id: seniorityBands.id })
+    .from(seniorityBands)
+    .where(and(eq(seniorityBands.minYears, minYears), ne(seniorityBands.id, id)))
+    .limit(1);
+  if (clash) {
+    return { ok: false, error: 'A band with that threshold already exists.' };
+  }
+  await db
+    .update(seniorityBands)
+    .set({ label, minYears })
+    .where(eq(seniorityBands.id, id));
+  revalidatePath('/settings');
+  return { ok: true };
+}
+
+/** Delete a band. Safe any time — candidates don't reference bands. */
+export async function removeBand(idRaw: number): Promise<SettingsResult> {
+  let id: number;
+  try {
+    id = zId.parse(idRaw);
+  } catch {
+    return { ok: false, error: 'Invalid band.' };
+  }
+  await db.delete(seniorityBands).where(eq(seniorityBands.id, id));
   revalidatePath('/settings');
   return { ok: true };
 }

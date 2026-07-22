@@ -7,11 +7,17 @@ import {
   candidates,
   feedback,
   allowedEmails,
-  sources
+  sources,
+  seniorityBands
 } from '../lib/schema';
 import { count, eq } from 'drizzle-orm';
 import { hash } from 'bcryptjs';
-import { SEED_JOBS, SEED_CANDIDATES, SEED_SOURCES } from '../lib/hiring/seed';
+import {
+  SEED_JOBS,
+  SEED_CANDIDATES,
+  SEED_SOURCES,
+  SEED_SENIORITY_BANDS
+} from '../lib/hiring/seed';
 
 const SEED_ALLOWED_EMAILS = [
   'benchan@lightsprint.ai',
@@ -76,6 +82,17 @@ async function main() {
   }
   console.log(`Ensured ${SEED_SOURCES.length} candidate sources.`);
 
+  // Seed the seniority bands (idempotent via the unique min_years constraint).
+  // The board reads this table for the years-of-experience → label mapping, so
+  // ensure the defaults exist even when the pipeline seed below is skipped.
+  for (const band of SEED_SENIORITY_BANDS) {
+    await db
+      .insert(seniorityBands)
+      .values({ label: band.label, minYears: band.minYears })
+      .onConflictDoNothing();
+  }
+  console.log(`Ensured ${SEED_SENIORITY_BANDS.length} seniority bands.`);
+
   // Seed the hiring pipeline (jobs → candidates → feedback), idempotently.
   const [{ value: jobCount }] = await db
     .select({ value: count() })
@@ -133,6 +150,7 @@ async function main() {
           stage: c.stage,
           owner: resolveUser(c.owner),
           source: resolveSource(c.source),
+          yearsExperience: c.yearsExperience,
           status: c.status,
           starred: c.starred ?? false
         })

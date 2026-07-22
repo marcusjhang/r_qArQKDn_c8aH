@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { getBoard, hiringService, type BoardReader } from '@/lib/hiring/service';
-import type { Candidate, Job, User, Source } from '@/lib/hiring/types';
+import type {
+  Candidate,
+  Job,
+  User,
+  Source,
+  SeniorityBand
+} from '@/lib/hiring/types';
 
 // Because getBoard reads through an injected BoardReader (rather than the db
 // singleton), it can be exercised with in-memory rows — no database, no
@@ -18,6 +24,10 @@ describe('getBoard', () => {
     { id: 1, name: 'Ben Ong', email: 'benong@lightsprint.ai' }
   ];
   const sources: Source[] = [{ id: 5, name: 'Referral' }];
+  const bands: SeniorityBand[] = [
+    { id: 1, label: 'Senior', minYears: 5 },
+    { id: 2, label: 'Junior', minYears: 0 }
+  ];
   const candidates: Candidate[] = [
     {
       id: 10,
@@ -26,6 +36,7 @@ describe('getBoard', () => {
       stage: 'Applied',
       owner: 1,
       source: 5,
+      yearsExperience: null,
       status: 'active',
       starred: false,
       linkedinUrl: null,
@@ -38,15 +49,16 @@ describe('getBoard', () => {
     loadJobs: async () => jobs,
     loadCandidates: async () => candidates,
     loadUsers: async () => users,
-    loadSources: async () => sources
+    loadSources: async () => sources,
+    loadBands: async () => bands
   };
 
   it('composes the reader results into a HiringState payload', async () => {
     const state = await getBoard(fakeReader);
-    expect(state).toEqual({ jobs, candidates, users, sources });
+    expect(state).toEqual({ jobs, candidates, users, sources, bands });
   });
 
-  it('reads jobs, candidates, users and sources concurrently from the reader', async () => {
+  it('reads jobs, candidates, users, sources and bands concurrently from the reader', async () => {
     const calls: string[] = [];
     const reader: BoardReader = {
       loadJobs: async () => {
@@ -64,14 +76,24 @@ describe('getBoard', () => {
       loadSources: async () => {
         calls.push('sources');
         return sources;
+      },
+      loadBands: async () => {
+        calls.push('bands');
+        return bands;
       }
     };
     await getBoard(reader);
-    expect(calls.sort()).toEqual(['candidates', 'jobs', 'sources', 'users']);
+    expect(calls.sort()).toEqual([
+      'bands',
+      'candidates',
+      'jobs',
+      'sources',
+      'users'
+    ]);
   });
 
   it('is exposed on the hiringService facade', async () => {
     const state = await hiringService.getBoard(fakeReader);
-    expect(state).toEqual({ jobs, candidates, users, sources });
+    expect(state).toEqual({ jobs, candidates, users, sources, bands });
   });
 });

@@ -159,15 +159,17 @@ export default function HiringApp({
           jobTitle={job.title}
           users={state.users}
           sources={state.sources}
+          bands={state.bands}
           onClose={() => setAddingCandidate(false)}
-          onAdd={(name, source, owner, linkedinUrl, githubUrl) =>
+          onAdd={(name, source, owner, linkedinUrl, githubUrl, yearsExperience) =>
             actions.addCandidate(
               job.id,
               name,
               source,
               owner,
               linkedinUrl,
-              githubUrl
+              githubUrl,
+              yearsExperience
             )
           }
         />

@@ -9,6 +9,7 @@ import Link from 'next/link';
 import TopBar from '@/components/hiring/TopBar';
 import ThemeToggle from './ThemeToggle';
 import SourcesPanel from './SourcesPanel';
+import SeniorityBandsPanel from './SeniorityBandsPanel';
 import '@/components/hiring/hiring.css';
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -18,21 +19,35 @@ type SettingsResult = { ok: true } | { ok: false; error: string };
 export default function SettingsView({
   emails,
   sources,
+  bands,
+  maxYears,
   userEmail,
   addEmail,
   removeEmail,
   addSource,
   renameSource,
-  removeSource
+  removeSource,
+  addBand,
+  updateBand,
+  removeBand
 }: {
   emails: { id: number; email: string }[];
   sources: { id: number; name: string }[];
+  bands: { id: number; label: string; minYears: number }[];
+  maxYears: number;
   userEmail?: string | null;
   addEmail: (email: string) => Promise<void>;
   removeEmail: (id: number) => Promise<void>;
   addSource: (name: string) => Promise<SettingsResult>;
   renameSource: (id: number, name: string) => Promise<SettingsResult>;
   removeSource: (id: number) => Promise<SettingsResult>;
+  addBand: (label: string, minYears: number) => Promise<SettingsResult>;
+  updateBand: (
+    id: number,
+    label: string,
+    minYears: number
+  ) => Promise<SettingsResult>;
+  removeBand: (id: number) => Promise<SettingsResult>;
 }) {
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
@@ -148,6 +163,14 @@ export default function SettingsView({
           addSource={addSource}
           renameSource={renameSource}
           removeSource={removeSource}
+        />
+
+        <SeniorityBandsPanel
+          bands={bands}
+          maxYears={maxYears}
+          addBand={addBand}
+          updateBand={updateBand}
+          removeBand={removeBand}
         />
       </div>
     </div>

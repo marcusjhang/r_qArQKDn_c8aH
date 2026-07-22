@@ -16,7 +16,11 @@ import {
   uniqueIndex
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
-import { STATUSES, type RatingValue } from '../hiring/primitives';
+import {
+  STATUSES,
+  MAX_YEARS_EXPERIENCE,
+  type RatingValue
+} from '../hiring/primitives';
 import { users } from './auth';
 
 // Orthogonal candidate status (Decision 3), built from the single-sourced
@@ -41,6 +45,18 @@ export const sources = pgTable(
   })
 );
 
+// Seniority bands — the configurable years-of-experience → label mapping,
+// managed from /settings and seeded in db/seed.ts. A candidate's band is
+// derived (never stored) by finding the highest `minYears` threshold its
+// yearsExperience meets (see seniorityFor). DB-driven like sources/users.
+export const seniorityBands = pgTable('seniority_bands', {
+  id: serial('id').primaryKey(),
+  label: text('label').notNull(),
+  // Inclusive lower bound in whole years; unique so thresholds can't collide.
+  minYears: integer('min_years').notNull().unique(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
 // A job owns its own ordered, per-job stage list (Decision 1), stored as an
 // ordered JSON array of stage names so candidates can key off the stage name.
 export const jobs = pgTable('jobs', {
@@ -55,30 +71,45 @@ export const jobs = pgTable('jobs', {
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
-export const candidates = pgTable('candidates', {
-  id: serial('id').primaryKey(),
-  jobId: integer('job_id')
-    .notNull()
-    .references(() => jobs.id, { onDelete: 'cascade' }),
-  name: text('name').notNull(),
-  stage: text('stage').notNull(),
-  // The accountable owner — a user account (see lib/schema/auth.ts).
-  owner: integer('owner')
-    .notNull()
-    .references(() => users.id),
-  // Where the candidate came from — a seeded source (see sources table above).
-  source: integer('source')
-    .notNull()
-    .references(() => sources.id),
-  // Optional profile links (nullable — empty input stays NULL).
-  linkedinUrl: text('linkedin_url'),
-  githubUrl: text('github_url'),
-  status: candidateStatusEnum('status').notNull().default('active'),
-  // Starred candidates float to the top of their column as highlighted
-  // standouts (unbounded — unlike starred jobs, they don't pin as tabs).
-  starred: boolean('starred').notNull().default(false),
-  createdAt: timestamp('created_at').defaultNow().notNull()
-});
+export const candidates = pgTable(
+  'candidates',
+  {
+    id: serial('id').primaryKey(),
+    jobId: integer('job_id')
+      .notNull()
+      .references(() => jobs.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    stage: text('stage').notNull(),
+    // The accountable owner — a user account (see lib/schema/auth.ts).
+    owner: integer('owner')
+      .notNull()
+      .references(() => users.id),
+    // Where the candidate came from — a seeded source (see sources table above).
+    source: integer('source')
+      .notNull()
+      .references(() => sources.id),
+    // Optional profile links (nullable — empty input stays NULL).
+    linkedinUrl: text('linkedin_url'),
+    githubUrl: text('github_url'),
+    // Seniority proxy: whole years of experience. Nullable — null means
+    // "unspecified" (the seniority band is derived from this in the UI). The
+    // CHECK below backs the 0–MAX bound at the DB level.
+    yearsExperience: integer('years_experience'),
+    status: candidateStatusEnum('status').notNull().default('active'),
+    // Starred candidates float to the top of their column as highlighted
+    // standouts (unbounded — unlike starred jobs, they don't pin as tabs).
+    starred: boolean('starred').notNull().default(false),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+  },
+  (t) => ({
+    yearsRange: check(
+      'years_experience_range',
+      sql`${t.yearsExperience} is null or ${t.yearsExperience} between 0 and ${sql.raw(
+        String(MAX_YEARS_EXPERIENCE)
+      )}`
+    )
+  })
+);
 
 // One entry per interviewer (Decision 7).
 export const feedback = pgTable(
@@ -146,6 +177,7 @@ export type SelectJob = typeof jobs.$inferSelect;
 export type SelectCandidate = typeof candidates.$inferSelect;
 export type SelectFeedback = typeof feedback.$inferSelect;
 export type SelectSource = typeof sources.$inferSelect;
+export type SelectSeniorityBand = typeof seniorityBands.$inferSelect;
 export type SelectMessage = typeof messages.$inferSelect;
 export type SelectMention = typeof mentions.$inferSelect;
 

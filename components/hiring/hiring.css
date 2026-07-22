@@ -370,12 +370,19 @@
   align-items: center;
   justify-content: space-between;
   gap: 6px;
+  /* Fixed-width columns can't fit every rating + seniority + source combo on
+     one line; let the tag group drop to a second row instead of overflowing. */
+  flex-wrap: wrap;
 }
 .ht-root .rating-chip {
   font-size: 10.5px;
   font-weight: 600;
   padding: 2px 8px;
   border-radius: var(--radius-pill);
+  /* Keep the verdict on one line ("Strong Yes" must not break mid-word) and
+     never shrink below its text — the sibling tags wrap to a new row instead. */
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 .ht-root .rating-chip.muted {
   background: var(--surface-2);
@@ -406,6 +413,23 @@
   font-size: 10px;
   color: var(--text-muted);
   background: var(--surface-2);
+  border-radius: 5px;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+.ht-root .card-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* Stay intact as a unit and wrap to the next row rather than shrink-clip. */
+  flex: 0 0 auto;
+}
+.ht-root .exp-tag {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--primary-weak);
+  border: 1px solid var(--primary-border);
   border-radius: 5px;
   padding: 2px 7px;
   white-space: nowrap;
@@ -545,6 +569,7 @@
 .ht-root select,
 .ht-root input[type='text'],
 .ht-root input[type='url'],
+.ht-root input[type='number'],
 .ht-root textarea {
   width: 100%;
   border: 1px solid var(--border-strong);
@@ -554,6 +579,16 @@
   font-size: 13px;
   color: var(--text);
   background: var(--surface);
+}
+/* Years-of-experience: a compact input with the seniority chip beside it. */
+.ht-root .years-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ht-root .years-row .years-input {
+  width: 96px;
+  flex: 0 0 auto;
 }
 .ht-root select:focus,
 .ht-root input:focus,
@@ -1016,6 +1051,20 @@
 /* Inline rename input in a source row — fills the row, matches the row height. */
 .ht-root .source-edit {
   flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: inherit;
+}
+/* Compact threshold input in the seniority-band edit row (the label input,
+   .source-edit, takes the remaining width). Selector is specific enough to
+   beat the shared `input[type='number']` width:100% rule. */
+.ht-root .email-row input.band-years-edit {
+  flex: 0 0 84px;
+  width: 84px;
   min-width: 0;
   font-size: 13px;
   padding: 6px 10px;

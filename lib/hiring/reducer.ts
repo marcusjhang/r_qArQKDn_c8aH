@@ -39,6 +39,7 @@ export type HiringEvent =
       owner: number;
       linkedinUrl: string | null;
       githubUrl: string | null;
+      yearsExperience: number | null;
     }
   | { type: 'reconcileCandidateId'; tempId: number; realId: number }
   | { type: 'moveStage'; id: number; stage: string }
@@ -50,6 +51,7 @@ export type HiringEvent =
       owner: number;
       linkedinUrl: string | null;
       githubUrl: string | null;
+      yearsExperience: number | null;
     }
   | { type: 'setStatus'; id: number; status: Status }
   | { type: 'setCandidateStarred'; id: number; starred: boolean }
@@ -155,6 +157,7 @@ export function hiringReducer(
             starred: false,
             linkedinUrl: event.linkedinUrl,
             githubUrl: event.githubUrl,
+            yearsExperience: event.yearsExperience,
             feedback: []
           }
         ]
@@ -182,7 +185,8 @@ export function hiringReducer(
         source: event.source,
         owner: event.owner,
         linkedinUrl: event.linkedinUrl,
-        githubUrl: event.githubUrl
+        githubUrl: event.githubUrl,
+        yearsExperience: event.yearsExperience
       }));
 
     case 'setStatus':

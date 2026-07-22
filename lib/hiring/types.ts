@@ -9,6 +9,7 @@
 export type {
   User,
   Source,
+  SeniorityBand,
   Feedback,
   Candidate,
   Job,
