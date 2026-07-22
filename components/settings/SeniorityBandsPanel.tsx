@@ -8,8 +8,7 @@
 // threshold) surface inline instead of throwing.
 
 import { useState, useTransition } from 'react';
-
-type Result = { ok: true } | { ok: false; error: string };
+import type { SettingsResult as Result } from '@/lib/settings-types';
 
 export default function SeniorityBandsPanel({
   bands,

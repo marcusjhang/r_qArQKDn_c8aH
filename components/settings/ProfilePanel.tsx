@@ -8,8 +8,7 @@
 
 import { useState, useTransition } from 'react';
 import { initials } from '@/lib/hiring';
-
-type Result = { ok: true } | { ok: false; error: string };
+import type { SettingsResult as Result } from '@/lib/settings-types';
 
 export default function ProfilePanel({
   firstName: initialFirst,
