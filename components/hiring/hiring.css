@@ -1125,10 +1125,27 @@
   gap: var(--space-3);
   background: var(--surface);
 }
+/* The card header doubles as the collapse toggle, so it's a full-width button
+   reset back to the card's own typography. */
 .ht-root .member-head {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ht-root .member-caret {
+  flex: 0 0 auto;
+  width: 12px;
+  font-size: 10px;
+  color: var(--text-muted);
 }
 .ht-root .member-id {
   min-width: 0;
