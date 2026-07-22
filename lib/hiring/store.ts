@@ -1,10 +1,17 @@
 'use client';
 
 // Client store for the board. State is seeded from the server (getBoardData)
-// and every mutation is applied optimistically, then persisted via a server
-// action. On a failed write we router.refresh() to resync from the database.
+// and every mutation is applied optimistically by dispatching a pure event to
+// the hiring reducer, then persisted via a server action. On a failed write we
+// router.refresh() and dispatch `reset` to resync from the database.
+//
+// This hook is the thin imperative shell: it holds the temp-id counter, gates
+// each mutation with the shared pure helpers (so a doomed change never hits the
+// server), dispatches the optimistic event, and wires the server action + error
+// recovery. Every state transition itself lives in ./reducer, consuming the
+// same helpers as the server actions, so the optimistic projection can't drift.
 
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   stageDeletable,
@@ -12,11 +19,9 @@ import {
   addStageToPipeline,
   reorderStages,
   removeStage,
-  placeInStage,
-  placeWithStatus,
   MAX_FAVORITES
 } from './helpers';
-import { DEFAULT_STAGES } from './config';
+import { hiringReducer } from './reducer';
 import * as api from './actions';
 import type { HiringState, RatingValue, Status } from './types';
 
@@ -66,7 +71,7 @@ export function useHiringStore(initial: HiringState): {
   state: HiringState;
   actions: HiringActions;
 } {
-  const [state, setState] = useState<HiringState>(initial);
+  const [state, dispatch] = useReducer(hiringReducer, initial);
   const router = useRouter();
   const [, startTransition] = useTransition();
   // Negative ids for optimistic rows until the server hands back a real one.
@@ -84,7 +89,7 @@ export function useHiringStore(initial: HiringState): {
   useEffect(() => {
     if (wantResync.current) {
       wantResync.current = false;
-      setState(initial);
+      dispatch({ type: 'reset', state: initial });
     }
   }, [initial]);
 
@@ -111,22 +116,13 @@ export function useHiringStore(initial: HiringState): {
       const trimmed = title.trim();
       if (!trimmed) return;
       const temp = tempId.current--;
-      setState((s) => ({
-        ...s,
-        jobs: [
-          ...s.jobs,
-          { id: temp, title: trimmed, stages: [...DEFAULT_STAGES], starred: false }
-        ]
-      }));
+      dispatch({ type: 'createJob', tempId: temp, title: trimmed });
       onReady(temp); // switch to the optimistic job immediately
       startTransition(async () => {
         try {
           const realId = await api.createJob(trimmed);
           if (realId != null) {
-            setState((s) => ({
-              ...s,
-              jobs: s.jobs.map((j) => (j.id === temp ? { ...j, id: realId } : j))
-            }));
+            dispatch({ type: 'reconcileJobId', tempId: temp, realId });
             onReady(realId); // re-point the board at the persisted id
           }
         } catch {
@@ -147,10 +143,7 @@ export function useHiringStore(initial: HiringState): {
       ) {
         return;
       }
-      setState((s) => ({
-        ...s,
-        jobs: s.jobs.map((j) => (j.id === jobId ? { ...j, starred } : j))
-      }));
+      dispatch({ type: 'setJobStarred', jobId, starred });
       persist(() => api.setJobStarred(jobId, starred));
     },
     [persist]
@@ -158,11 +151,7 @@ export function useHiringStore(initial: HiringState): {
 
   const deleteJob = useCallback(
     (jobId: number) => {
-      setState((s) => ({
-        ...s,
-        jobs: s.jobs.filter((j) => j.id !== jobId),
-        candidates: s.candidates.filter((c) => c.jobId !== jobId)
-      }));
+      dispatch({ type: 'deleteJob', jobId });
       persist(() => api.deleteJob(jobId));
     },
     [persist]
@@ -171,37 +160,19 @@ export function useHiringStore(initial: HiringState): {
   const addCandidate = useCallback(
     (jobId: number, name: string, source: string, owner: string) => {
       const temp = tempId.current--;
-      setState((s) => {
-        const job = s.jobs.find((j) => j.id === jobId);
-        if (!job) return s;
-        return {
-          ...s,
-          candidates: [
-            ...s.candidates,
-            {
-              id: temp,
-              jobId,
-              name,
-              stage: job.stages[0],
-              owner,
-              source,
-              status: 'active',
-              starred: false,
-              feedback: []
-            }
-          ]
-        };
+      dispatch({
+        type: 'addCandidate',
+        tempId: temp,
+        jobId,
+        name,
+        source,
+        owner
       });
       startTransition(async () => {
         try {
           const realId = await api.addCandidate(jobId, name, source, owner);
           if (realId != null) {
-            setState((s) => ({
-              ...s,
-              candidates: s.candidates.map((c) =>
-                c.id === temp ? { ...c, id: realId } : c
-              )
-            }));
+            dispatch({ type: 'reconcileCandidateId', tempId: temp, realId });
           }
         } catch {
           resync();
@@ -213,12 +184,7 @@ export function useHiringStore(initial: HiringState): {
 
   const moveTo = useCallback(
     (id: number, stage: string) => {
-      setState((s) => ({
-        ...s,
-        candidates: s.candidates.map((c) =>
-          c.id === id ? { ...c, ...placeInStage(stage, c) } : c
-        )
-      }));
+      dispatch({ type: 'moveStage', id, stage });
       persist(() => api.moveStage(id, stage));
     },
     [persist]
@@ -241,12 +207,7 @@ export function useHiringStore(initial: HiringState): {
 
   const setOwner = useCallback(
     (id: number, owner: string) => {
-      setState((s) => ({
-        ...s,
-        candidates: s.candidates.map((c) =>
-          c.id === id ? { ...c, owner } : c
-        )
-      }));
+      dispatch({ type: 'setOwner', id, owner });
       persist(() => api.setOwner(id, owner));
     },
     [persist]
@@ -254,12 +215,7 @@ export function useHiringStore(initial: HiringState): {
 
   const setSource = useCallback(
     (id: number, source: string) => {
-      setState((s) => ({
-        ...s,
-        candidates: s.candidates.map((c) =>
-          c.id === id ? { ...c, source } : c
-        )
-      }));
+      dispatch({ type: 'setSource', id, source });
       persist(() => api.setSource(id, source));
     },
     [persist]
@@ -267,14 +223,7 @@ export function useHiringStore(initial: HiringState): {
 
   const setStatus = useCallback(
     (id: number, status: Status) => {
-      setState((s) => ({
-        ...s,
-        candidates: s.candidates.map((c) => {
-          if (c.id !== id) return c;
-          const job = s.jobs.find((j) => j.id === c.jobId);
-          return { ...c, ...placeWithStatus(status, c, job?.stages ?? []) };
-        })
-      }));
+      dispatch({ type: 'setStatus', id, status });
       persist(() => api.setStatus(id, status));
     },
     [persist]
@@ -282,12 +231,7 @@ export function useHiringStore(initial: HiringState): {
 
   const setCandidateStarred = useCallback(
     (id: number, starred: boolean) => {
-      setState((s) => ({
-        ...s,
-        candidates: s.candidates.map((c) =>
-          c.id === id ? { ...c, starred } : c
-        )
-      }));
+      dispatch({ type: 'setCandidateStarred', id, starred });
       persist(() => api.setCandidateStarred(id, starred));
     },
     [persist]
@@ -296,14 +240,7 @@ export function useHiringStore(initial: HiringState): {
   const addFeedback = useCallback(
     (id: number, entry: { byFounder: string; rating: RatingValue; note: string }) => {
       const temp = tempId.current--;
-      setState((s) => ({
-        ...s,
-        candidates: s.candidates.map((c) =>
-          c.id === id
-            ? { ...c, feedback: [...c.feedback, { id: temp, ...entry }] }
-            : c
-        )
-      }));
+      dispatch({ type: 'addFeedback', id, tempId: temp, ...entry });
       persist(() =>
         api.addFeedback(id, entry.byFounder, entry.rating, entry.note)
       );
@@ -319,17 +256,7 @@ export function useHiringStore(initial: HiringState): {
       const old = job.stages[index];
       if (old === undefined || trimmed === old) return;
       if (!validateStageName(job.stages, name, index).ok) return;
-      setState((s) => ({
-        ...s,
-        jobs: s.jobs.map((j) =>
-          j.id === jobId
-            ? { ...j, stages: j.stages.map((st, i) => (i === index ? trimmed : st)) }
-            : j
-        ),
-        candidates: s.candidates.map((c) =>
-          c.jobId === jobId && c.stage === old ? { ...c, stage: trimmed } : c
-        )
-      }));
+      dispatch({ type: 'renameStage', jobId, index, name: trimmed });
       persist(() => api.renameStage(jobId, index, trimmed));
     },
     [persist]
@@ -339,15 +266,11 @@ export function useHiringStore(initial: HiringState): {
     (jobId: number, name: string) => {
       const job = stateRef.current.jobs.find((j) => j.id === jobId);
       if (!job) return;
-      const result = addStageToPipeline(job.stages, name);
-      if (!result.ok) return;
+      // Gate on the shared rule so a rejected name never hits the server; the
+      // reducer recomputes the same insertion from the same helper.
+      if (!addStageToPipeline(job.stages, name).ok) return;
       const trimmed = name.trim();
-      setState((s) => ({
-        ...s,
-        jobs: s.jobs.map((j) =>
-          j.id === jobId ? { ...j, stages: result.stages } : j
-        )
-      }));
+      dispatch({ type: 'addStage', jobId, name: trimmed });
       persist(() => api.addStage(jobId, trimmed));
     },
     [persist]
@@ -357,14 +280,8 @@ export function useHiringStore(initial: HiringState): {
     (jobId: number, index: number, dir: 1 | -1) => {
       const job = stateRef.current.jobs.find((j) => j.id === jobId);
       if (!job) return;
-      const result = reorderStages(job.stages, index, dir);
-      if (!result.ok) return;
-      setState((s) => ({
-        ...s,
-        jobs: s.jobs.map((j) =>
-          j.id === jobId ? { ...j, stages: result.stages } : j
-        )
-      }));
+      if (!reorderStages(job.stages, index, dir).ok) return;
+      dispatch({ type: 'reorderStage', jobId, index, dir });
       persist(() => api.reorderStage(jobId, index, dir));
     },
     [persist]
@@ -379,14 +296,8 @@ export function useHiringStore(initial: HiringState): {
       const hasCandidates = s0.candidates.some(
         (c) => c.jobId === jobId && c.stage === stage
       );
-      const result = removeStage(job.stages, index, hasCandidates);
-      if (!result.ok) return;
-      setState((s) => ({
-        ...s,
-        jobs: s.jobs.map((j) =>
-          j.id === jobId ? { ...j, stages: result.stages } : j
-        )
-      }));
+      if (!removeStage(job.stages, index, hasCandidates).ok) return;
+      dispatch({ type: 'deleteStage', jobId, index });
       persist(() => api.deleteStage(jobId, index));
     },
     [persist]
