@@ -2,14 +2,19 @@
 
 // Server actions — the single write path for the board. Each validates its
 // input at runtime (zod, from ./schemas), mutates Postgres, then revalidates
-// `/`. Mirrors the store's mutation surface one-to-one so the client can call
-// them optimistically. A parse failure throws → the store's resync() reverts
-// the optimistic change. (The whole app is gated by the auth middleware, so a
-// caller here is already an authenticated user.)
+// only the cache tag(s) whose rows it changed — `board:jobs`, `board:candidates`,
+// or both (see ./cache and the tagged reads in ./queries). Because these actions
+// are the board's sole write path, per-tag invalidation keeps the Data Cache
+// consistent without a cache-wide `revalidatePath('/')`. Mirrors the store's
+// mutation surface one-to-one so the client can call them optimistically. A
+// parse failure throws → the store's resync() reverts the optimistic change.
+// (The whole app is gated by the auth middleware, so a caller here is already
+// an authenticated user.)
 
 import { and, eq, ne, sql } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
+import { revalidateTag } from 'next/cache';
 import { db, jobs, candidates, feedback } from '@/lib/db';
+import { BOARD_TAGS } from './cache';
 import {
   validateStageName,
   addStageToPipeline,
@@ -60,7 +65,7 @@ export async function createJob(titleRaw: string): Promise<number | null> {
       position: Number(maxPos) + 1
     })
     .returning({ id: jobs.id });
-  revalidatePath('/');
+  revalidateTag(BOARD_TAGS.jobs);
   return row?.id ?? null;
 }
 
@@ -83,7 +88,7 @@ export async function addCandidate(
     .insert(candidates)
     .values({ jobId, name, stage: stages[0], owner, source, status: 'active' })
     .returning({ id: candidates.id });
-  revalidatePath('/');
+  revalidateTag(BOARD_TAGS.candidates);
   return row?.id ?? null;
 }
 
@@ -98,7 +103,7 @@ export async function setJobStarred(jobIdRaw: number, starred: boolean) {
     if (Number(n) >= MAX_FAVORITES) return;
   }
   await db.update(jobs).set({ starred: !!starred }).where(eq(jobs.id, jobId));
-  revalidatePath('/');
+  revalidateTag(BOARD_TAGS.jobs);
 }
 
 /**
@@ -111,14 +116,17 @@ export async function setCandidateStarred(idRaw: number, starred: boolean) {
     .update(candidates)
     .set({ starred: !!starred })
     .where(eq(candidates.id, id));
-  revalidatePath('/');
+  revalidateTag(BOARD_TAGS.candidates);
 }
 
 /** Delete a job; its candidates and feedback cascade via the FKs. */
 export async function deleteJob(jobIdRaw: number) {
   const jobId = zId.parse(jobIdRaw);
   await db.delete(jobs).where(eq(jobs.id, jobId));
-  revalidatePath('/');
+  // Candidates (and their feedback) cascade-delete with the job, so both the
+  // jobs and candidates reads are now stale.
+  revalidateTag(BOARD_TAGS.jobs);
+  revalidateTag(BOARD_TAGS.candidates);
 }
 
 export async function moveStage(idRaw: number, stageRaw: string) {
@@ -132,21 +140,21 @@ export async function moveStage(idRaw: number, stageRaw: string) {
   if (!c) return;
   const placement = placeInStage(stage, c);
   await db.update(candidates).set(placement).where(eq(candidates.id, id));
-  revalidatePath('/');
+  revalidateTag(BOARD_TAGS.candidates);
 }
 
 export async function setOwner(idRaw: number, ownerRaw: string) {
   const id = zId.parse(idRaw);
   const owner = zOwner.parse(ownerRaw);
   await db.update(candidates).set({ owner }).where(eq(candidates.id, id));
-  revalidatePath('/');
+  revalidateTag(BOARD_TAGS.candidates);
 }
 
 export async function setSource(idRaw: number, sourceRaw: string) {
   const id = zId.parse(idRaw);
   const source = zSource.parse(sourceRaw);
   await db.update(candidates).set({ source }).where(eq(candidates.id, id));
-  revalidatePath('/');
+  revalidateTag(BOARD_TAGS.candidates);
 }
 
 export async function setStatus(idRaw: number, statusRaw: Status) {
@@ -162,7 +170,7 @@ export async function setStatus(idRaw: number, statusRaw: Status) {
   const stages = status === 'hired' ? await loadJobStages(c.jobId) : null;
   const placement = placeWithStatus(status, c, stages ?? []);
   await db.update(candidates).set(placement).where(eq(candidates.id, id));
-  revalidatePath('/');
+  revalidateTag(BOARD_TAGS.candidates);
 }
 
 export async function addFeedback(
@@ -180,7 +188,8 @@ export async function addFeedback(
   await db
     .insert(feedback)
     .values({ candidateId: id, byFounder, rating, note });
-  revalidatePath('/');
+  // Feedback is nested inside the candidates read, so invalidate that tag.
+  revalidateTag(BOARD_TAGS.candidates);
 }
 
 export async function addStage(jobIdRaw: number, nameRaw: string) {
@@ -189,8 +198,11 @@ export async function addStage(jobIdRaw: number, nameRaw: string) {
   if (!stages) return;
   const result = addStageToPipeline(stages, nameRaw);
   if (!result.ok) return;
-  await db.update(jobs).set({ stages: result.stages }).where(eq(jobs.id, jobId));
-  revalidatePath('/');
+  await db
+    .update(jobs)
+    .set({ stages: result.stages })
+    .where(eq(jobs.id, jobId));
+  revalidateTag(BOARD_TAGS.jobs);
 }
 
 export async function renameStage(
@@ -216,7 +228,10 @@ export async function renameStage(
       .set({ stage: name })
       .where(and(eq(candidates.jobId, jobId), eq(candidates.stage, old)));
   });
-  revalidatePath('/');
+  // The transaction renames the stage on the job and re-points every candidate
+  // in the old column, so both reads are stale.
+  revalidateTag(BOARD_TAGS.jobs);
+  revalidateTag(BOARD_TAGS.candidates);
 }
 
 export async function reorderStage(
@@ -231,8 +246,11 @@ export async function reorderStage(
   if (!stages) return;
   const result = reorderStages(stages, index, dir);
   if (!result.ok) return;
-  await db.update(jobs).set({ stages: result.stages }).where(eq(jobs.id, jobId));
-  revalidatePath('/');
+  await db
+    .update(jobs)
+    .set({ stages: result.stages })
+    .where(eq(jobs.id, jobId));
+  revalidateTag(BOARD_TAGS.jobs);
 }
 
 export async function deleteStage(jobIdRaw: number, indexRaw: number) {
@@ -248,6 +266,10 @@ export async function deleteStage(jobIdRaw: number, indexRaw: number) {
     .where(and(eq(candidates.jobId, jobId), eq(candidates.stage, stage)));
   const result = removeStage(stages, index, Number(n) > 0);
   if (!result.ok) return;
-  await db.update(jobs).set({ stages: result.stages }).where(eq(jobs.id, jobId));
-  revalidatePath('/');
+  // removeStage only succeeds on an empty column, so no candidate rows change.
+  await db
+    .update(jobs)
+    .set({ stages: result.stages })
+    .where(eq(jobs.id, jobId));
+  revalidateTag(BOARD_TAGS.jobs);
 }
