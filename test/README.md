@@ -12,11 +12,28 @@ the dependency-injected `getBoard` reader in `lib/hiring/service.ts`.
 ```bash
 bun run test           # run the unit suite once
 bun run test:unit      # alias for the above
+bun run test:coverage  # run once with a v8 coverage report (text + lcov)
 bun run test:watch     # watch mode
 ```
 
 Config: `vitest.config.ts` (Node environment, `@/` path aliases mirrored from
 `tsconfig.json`, `server-only` aliased to `test/stubs/server-only.ts`).
+
+## Coverage per PR — Codecov
+
+`bun run test:coverage` writes an `lcov.info` (plus an HTML report) into the
+git-ignored `coverage/` directory using the v8 provider. Coverage is scoped to
+the framework-free business logic under `lib/` (UI, generated, schema, and
+config files are excluded — see `coverage.include`/`exclude` in
+`vitest.config.ts`).
+
+In CI, `.github/workflows/ci.yml` runs this on every pull request and uploads
+`coverage/lcov.info` to [Codecov](https://about.codecov.io/). Codecov then posts
+a PR comment and two status checks — **project** (whole-codebase %) and
+**patch** (coverage of just the lines the PR changed). Both are `informational`
+today (they report but don't block merges); tune the gates in `codecov.yml` at
+the repo root. Private repos additionally need a `CODECOV_TOKEN` in the repo's
+GitHub Actions secrets.
 
 ## End-to-end tests — Playwright (`test/e2e/`)
 
