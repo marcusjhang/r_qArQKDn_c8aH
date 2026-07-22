@@ -1,3 +1,5 @@
+'use server';
+
 // Manage the signup allowlist and candidate sources from /settings. The whole
 // app is gated by the auth middleware, so callers here are authenticated users.
 
