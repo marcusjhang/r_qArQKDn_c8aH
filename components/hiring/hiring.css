@@ -374,6 +374,17 @@
      one line; let the tag group drop to a second row instead of overflowing. */
   flex-wrap: wrap;
 }
+.ht-root .card-bottom-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+/* On a card the status pill sits beside the rating chip — match its compact size. */
+.ht-root .card-bottom-left .status-pill {
+  font-size: 10.5px;
+  padding: 2px 8px;
+}
 .ht-root .rating-chip {
   font-size: 10.5px;
   font-weight: 600;

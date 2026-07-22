@@ -10,6 +10,7 @@ import TopBar from '@/components/hiring/TopBar';
 import ThemeToggle from './ThemeToggle';
 import SourcesPanel from './SourcesPanel';
 import SeniorityBandsPanel from './SeniorityBandsPanel';
+import ProfilePanel from './ProfilePanel';
 import '@/components/hiring/hiring.css';
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -21,7 +22,9 @@ export default function SettingsView({
   sources,
   bands,
   maxYears,
+  profile,
   userEmail,
+  updateProfile,
   addEmail,
   removeEmail,
   addSource,
@@ -35,7 +38,9 @@ export default function SettingsView({
   sources: { id: number; name: string }[];
   bands: { id: number; label: string; minYears: number }[];
   maxYears: number;
+  profile: { firstName: string; lastName: string };
   userEmail?: string | null;
+  updateProfile: (firstName: string, lastName: string) => Promise<SettingsResult>;
   addEmail: (email: string) => Promise<void>;
   removeEmail: (id: number) => Promise<void>;
   addSource: (name: string) => Promise<SettingsResult>;
@@ -106,6 +111,13 @@ export default function SettingsView({
             <ThemeToggle />
           </div>
         </section>
+
+        <ProfilePanel
+          firstName={profile.firstName}
+          lastName={profile.lastName}
+          email={userEmail}
+          updateProfile={updateProfile}
+        />
 
         <section className="settings-panel">
           <div>

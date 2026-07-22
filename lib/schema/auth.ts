@@ -7,6 +7,11 @@ import { pgTable, text, timestamp, serial, varchar } from 'drizzle-orm/pg-core';
 // Auth accounts (used by lib/auth.ts to gate the app).
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
+  // Discrete first/last names, editable from /settings. `name` is the combined
+  // display value kept in sync on edit; avatar initials derive from it (first
+  // word + last word) — see lib/hiring/helpers.ts `initials`.
+  firstName: varchar('first_name', { length: 50 }),
+  lastName: varchar('last_name', { length: 50 }),
   name: varchar('name', { length: 100 }),
   email: varchar('email', { length: 255 }).notNull().unique(),
   passwordHash: text('password_hash').notNull(),

@@ -6,9 +6,10 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { and, eq, ne, sql } from 'drizzle-orm';
-import { db, allowedEmails, candidates } from '@/lib/db';
+import { db, allowedEmails, candidates, users } from '@/lib/db';
 import { sources, seniorityBands } from '@/lib/schema/hiring';
 import { MAX_YEARS_EXPERIENCE } from '@/lib/hiring/primitives';
+import { auth } from '@/lib/auth';
 
 const zEmail = z
   .string()
@@ -19,9 +20,51 @@ const zId = z.number().int().positive();
 const zSourceName = z.string().trim().min(1).max(40);
 const zBandLabel = z.string().trim().min(1).max(40);
 const zMinYears = z.number().int().min(0).max(MAX_YEARS_EXPERIENCE);
+// First/last are optional (some people go by one name); each capped to the
+// column width. Trimmed before storing.
+const zName = z.string().trim().max(50);
 
 /** Success, or a caller-facing message the settings UI renders inline. */
 export type SettingsResult = { ok: true } | { ok: false; error: string };
+
+/* ---------- Current account profile ---------- */
+
+/**
+ * Update the signed-in user's first/last name. The discrete columns are the
+ * edited source of truth; the combined `name` is recomputed so everything that
+ * reads it (login session, avatar initials — first word + last word) stays in
+ * sync. Revalidates the board too, since owner initials render from `name`.
+ */
+export async function updateProfile(
+  firstNameRaw: string,
+  lastNameRaw: string
+): Promise<SettingsResult> {
+  let firstName: string;
+  let lastName: string;
+  try {
+    firstName = zName.parse(firstNameRaw);
+    lastName = zName.parse(lastNameRaw);
+  } catch {
+    return { ok: false, error: 'Names must be 50 characters or fewer.' };
+  }
+  if (!firstName && !lastName) {
+    return { ok: false, error: 'Enter a first or last name.' };
+  }
+
+  const session = await auth();
+  const id = Number(session?.user?.id);
+  if (!id) return { ok: false, error: 'Not signed in.' };
+
+  const name = [firstName, lastName].filter(Boolean).join(' ') || null;
+  await db
+    .update(users)
+    .set({ firstName: firstName || null, lastName: lastName || null, name })
+    .where(eq(users.id, id));
+
+  revalidatePath('/settings');
+  revalidatePath('/');
+  return { ok: true };
+}
 
 export async function addAllowedEmail(emailRaw: string) {
   const email = zEmail.parse(emailRaw);
