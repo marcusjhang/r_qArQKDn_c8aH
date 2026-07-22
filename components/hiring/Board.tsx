@@ -240,7 +240,7 @@ function Column({
               index={index}
               stagesLen={job.stages.length}
               canDelete={del.ok}
-              deleteReason={del.reason}
+              deleteReason={del.ok ? undefined : del.reason}
               onRename={() => {
                 setMenuOpen(false);
                 startRename();
