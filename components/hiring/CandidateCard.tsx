@@ -10,6 +10,7 @@ import {
   initials,
   sourceName,
   seniorityFor,
+  STATUS,
   type Candidate,
   type User,
   type Source,
@@ -70,7 +71,15 @@ export default function CandidateCard({
         </span>
       </div>
       <div className="card-bottom">
-        <RatingChip candidate={candidate} />
+        <span className="card-bottom-left">
+          <RatingChip candidate={candidate} />
+          <span
+            className={`status-pill st-${candidate.status}`}
+            title={`Status: ${STATUS[candidate.status]}`}
+          >
+            {STATUS[candidate.status]}
+          </span>
+        </span>
         <span className="card-tags">
           {seniority && (
             <span

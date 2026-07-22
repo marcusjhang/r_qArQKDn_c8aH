@@ -11,8 +11,10 @@ import { signIn } from 'next-auth/react';
 
 export interface LoginForm {
   isSignUp: boolean;
-  name: string;
-  setName: (v: string) => void;
+  firstName: string;
+  setFirstName: (v: string) => void;
+  lastName: string;
+  setLastName: (v: string) => void;
   email: string;
   setEmail: (v: string) => void;
   password: string;
@@ -27,7 +29,8 @@ export interface LoginForm {
 export function useLoginForm(): LoginForm {
   const router = useRouter();
   const [isSignUp, setIsSignUp] = useState(false);
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -43,7 +46,7 @@ export function useLoginForm(): LoginForm {
         const res = await fetch('/api/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, password })
+          body: JSON.stringify({ firstName, lastName, email, password })
         });
 
         if (!res.ok) {
@@ -81,8 +84,10 @@ export function useLoginForm(): LoginForm {
 
   return {
     isSignUp,
-    name,
-    setName,
+    firstName,
+    setFirstName,
+    lastName,
+    setLastName,
     email,
     setEmail,
     password,

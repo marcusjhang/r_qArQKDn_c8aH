@@ -50,12 +50,17 @@ function toChatMessage(m: {
   authorId: number;
   body: string;
   createdAt: Date;
-  author: { name: string | null; email: string } | null;
-  mentions: { user: { id: number; name: string | null; email: string } | null }[];
+  author: { firstName: string | null; lastName: string | null; email: string } | null;
+  mentions: {
+    user: {
+      id: number;
+      firstName: string | null;
+      lastName: string | null;
+      email: string;
+    } | null;
+  }[];
 }): ChatMessage {
-  const author = m.author
-    ? { id: m.authorId, name: m.author.name, email: m.author.email }
-    : undefined;
+  const author = m.author ?? undefined;
   return {
     id: m.id,
     candidateId: m.candidateId,
@@ -78,9 +83,13 @@ export async function loadThread(candidateIdRaw: number): Promise<ChatMessage[]>
     where: (msg, { eq }) => eq(msg.candidateId, candidateId),
     orderBy: (msg) => [asc(msg.createdAt), asc(msg.id)],
     with: {
-      author: { columns: { name: true, email: true } },
+      author: { columns: { firstName: true, lastName: true, email: true } },
       mentions: {
-        with: { user: { columns: { id: true, name: true, email: true } } }
+        with: {
+          user: {
+            columns: { id: true, firstName: true, lastName: true, email: true }
+          }
+        }
       }
     }
   });
@@ -132,9 +141,13 @@ export async function postMessage(
     where: (msg, { eq }) => eq(msg.id, newId),
     limit: 1,
     with: {
-      author: { columns: { name: true, email: true } },
+      author: { columns: { firstName: true, lastName: true, email: true } },
       mentions: {
-        with: { user: { columns: { id: true, name: true, email: true } } }
+        with: {
+          user: {
+            columns: { id: true, firstName: true, lastName: true, email: true }
+          }
+        }
       }
     }
   });
