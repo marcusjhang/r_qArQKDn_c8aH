@@ -25,6 +25,17 @@ export const STATUS: Record<Status, string> = {
   hired: 'Hired'
 };
 
+/**
+ * Seniority bands derived from a candidate's years of experience. The helper
+ * seniorityFor() sorts these high-to-low, so authoring order here doesn't
+ * matter — relabeling tiers or shifting thresholds needs no rendering change.
+ */
+export const SENIORITY_BANDS: { label: string; minYears: number }[] = [
+  { label: 'Senior', minYears: 5 },
+  { label: 'Mid', minYears: 2 },
+  { label: 'Junior', minYears: 0 }
+];
+
 /** Default seed pipeline (Decision 2). Editable per job after boot. */
 export const DEFAULT_STAGES: string[] = [
   'Applied',

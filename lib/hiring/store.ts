@@ -51,7 +51,8 @@ export interface HiringActions {
     source: number,
     owner: number,
     linkedinUrl: string | null,
-    githubUrl: string | null
+    githubUrl: string | null,
+    yearsExperience: number | null
   ) => void;
   editCandidate: (
     id: number,
@@ -59,7 +60,8 @@ export interface HiringActions {
     source: number,
     owner: number,
     linkedinUrl: string | null,
-    githubUrl: string | null
+    githubUrl: string | null,
+    yearsExperience: number | null
   ) => void;
   moveTo: (id: number, stage: string) => void;
   advance: (id: number, dir: 1 | -1) => void;
@@ -172,7 +174,8 @@ export function useHiringStore(initial: HiringState): {
       source: number,
       owner: number,
       linkedinUrl: string | null,
-      githubUrl: string | null
+      githubUrl: string | null,
+      yearsExperience: number | null
     ) => {
       const temp = tempId.current--;
       dispatch({
@@ -183,7 +186,8 @@ export function useHiringStore(initial: HiringState): {
         source,
         owner,
         linkedinUrl,
-        githubUrl
+        githubUrl,
+        yearsExperience
       });
       startTransition(async () => {
         try {
@@ -193,7 +197,8 @@ export function useHiringStore(initial: HiringState): {
             source,
             owner,
             linkedinUrl,
-            githubUrl
+            githubUrl,
+            yearsExperience
           );
           if (realId != null) {
             dispatch({ type: 'reconcileCandidateId', tempId: temp, realId });
@@ -213,7 +218,8 @@ export function useHiringStore(initial: HiringState): {
       source: number,
       owner: number,
       linkedinUrl: string | null,
-      githubUrl: string | null
+      githubUrl: string | null,
+      yearsExperience: number | null
     ) => {
       dispatch({
         type: 'editCandidate',
@@ -222,10 +228,19 @@ export function useHiringStore(initial: HiringState): {
         source,
         owner,
         linkedinUrl,
-        githubUrl
+        githubUrl,
+        yearsExperience
       });
       persist(() =>
-        api.editCandidate(id, name, source, owner, linkedinUrl, githubUrl)
+        api.editCandidate(
+          id,
+          name,
+          source,
+          owner,
+          linkedinUrl,
+          githubUrl,
+          yearsExperience
+        )
       );
     },
     [persist]

@@ -75,16 +75,18 @@ export async function addCandidate(
   sourceRaw: number,
   ownerRaw: number,
   linkedinUrlRaw: string | null = null,
-  githubUrlRaw: string | null = null
+  githubUrlRaw: string | null = null,
+  yearsExperienceRaw: number | null = null
 ): Promise<number | null> {
   const jobId = zId.parse(jobIdRaw);
-  const { name, source, owner, linkedinUrl, githubUrl } =
+  const { name, source, owner, linkedinUrl, githubUrl, yearsExperience } =
     candidateInsertSchema.parse({
       name: nameRaw,
       source: sourceRaw,
       owner: ownerRaw,
       linkedinUrl: linkedinUrlRaw,
-      githubUrl: githubUrlRaw
+      githubUrl: githubUrlRaw,
+      yearsExperience: yearsExperienceRaw
     });
   const stages = await loadJobStages(jobId);
   if (!stages) return null;
@@ -98,6 +100,7 @@ export async function addCandidate(
       source,
       linkedinUrl,
       githubUrl,
+      yearsExperience,
       status: 'active'
     })
     .returning({ id: candidates.id });
@@ -105,27 +108,32 @@ export async function addCandidate(
   return row?.id ?? null;
 }
 
-/** Edit a candidate's core details: name, source, owner + the profile links. */
+/**
+ * Edit a candidate's core details: name, source, owner, the profile links, and
+ * years of experience (which drives the seniority band).
+ */
 export async function editCandidate(
   idRaw: number,
   nameRaw: string,
   sourceRaw: number,
   ownerRaw: number,
   linkedinUrlRaw: string | null,
-  githubUrlRaw: string | null
+  githubUrlRaw: string | null,
+  yearsExperienceRaw: number | null
 ) {
   const id = zId.parse(idRaw);
-  const { name, source, owner, linkedinUrl, githubUrl } =
+  const { name, source, owner, linkedinUrl, githubUrl, yearsExperience } =
     candidateEditSchema.parse({
       name: nameRaw,
       source: sourceRaw,
       owner: ownerRaw,
       linkedinUrl: linkedinUrlRaw,
-      githubUrl: githubUrlRaw
+      githubUrl: githubUrlRaw,
+      yearsExperience: yearsExperienceRaw
     });
   await db
     .update(candidates)
-    .set({ name, source, owner, linkedinUrl, githubUrl })
+    .set({ name, source, owner, linkedinUrl, githubUrl, yearsExperience })
     .where(eq(candidates.id, id));
   revalidateTag(BOARD_TAGS.candidates);
 }

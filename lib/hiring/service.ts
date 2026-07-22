@@ -29,7 +29,8 @@ import type {
   SelectJob,
   SelectCandidate,
   SelectFeedback,
-  SelectSource
+  SelectSource,
+  SelectSeniorityBand
 } from '@/lib/schema/hiring';
 import type { SelectUser } from '@/lib/schema/auth';
 import { BOARD_TAGS } from './cache';
@@ -57,6 +58,17 @@ export interface Source {
   name: string;
 }
 
+/**
+ * A seniority band (the configurable years-of-experience → label mapping).
+ * Projected from the seeded `seniority_bands` table so the tiers are DB-driven
+ * and editable in /settings, never a hardcoded list.
+ */
+export interface SeniorityBand {
+  id: number;
+  label: string;
+  minYears: number;
+}
+
 /** One interviewer's entry, trimmed to the fields the UI shows. */
 export interface Feedback {
   id: number;
@@ -73,6 +85,7 @@ export interface Candidate {
   stage: string;
   owner: number;
   source: number;
+  yearsExperience: number | null;
   status: Status;
   starred: boolean;
   linkedinUrl: string | null;
@@ -96,6 +109,8 @@ export interface HiringState {
   users: User[];
   /** The candidate sources available for the source picker (seeded). */
   sources: Source[];
+  /** The configurable seniority bands (years-of-experience → label mapping). */
+  bands: SeniorityBand[];
 }
 
 // Compile-time guard: every DTO must stay a faithful projection of its Drizzle
@@ -115,6 +130,10 @@ type _FeedbackConforms = Conforms<
 >;
 type _UserConforms = Conforms<User, Pick<SelectUser, keyof User>>;
 type _SourceConforms = Conforms<Source, Pick<SelectSource, keyof Source>>;
+type _SeniorityBandConforms = Conforms<
+  SeniorityBand,
+  Pick<SelectSeniorityBand, keyof SeniorityBand>
+>;
 
 /** The data dependency `getBoard` reads from. */
 export interface BoardReader {
@@ -122,6 +141,7 @@ export interface BoardReader {
   loadCandidates(): Promise<Candidate[]>;
   loadUsers(): Promise<User[]>;
   loadSources(): Promise<Source[]>;
+  loadBands(): Promise<SeniorityBand[]>;
 }
 
 // Drizzle-backed reader. `db` is imported lazily so that merely importing this
@@ -157,6 +177,7 @@ const drizzleReader: BoardReader = {
           stage: true,
           owner: true,
           source: true,
+          yearsExperience: true,
           status: true,
           starred: true,
           linkedinUrl: true,
@@ -192,6 +213,16 @@ const drizzleReader: BoardReader = {
       columns: { id: true, name: true },
       orderBy: (s, { asc }) => [asc(s.name)]
     });
+  },
+  // Bands are read fresh (uncached) so an edit in /settings is reflected on the
+  // next board render. Ordered high-to-low so seniorityFor's first-match scan is
+  // correct without a client-side re-sort.
+  loadBands: async (): Promise<SeniorityBand[]> => {
+    const { db } = await import('@/lib/db');
+    return db.query.seniorityBands.findMany({
+      columns: { id: true, label: true, minYears: true },
+      orderBy: (b, { desc }) => [desc(b.minYears)]
+    });
   }
 };
 
@@ -203,14 +234,15 @@ const drizzleReader: BoardReader = {
 export async function getBoard(
   reader: BoardReader = drizzleReader
 ): Promise<HiringState> {
-  const [jobs, candidates, users, sources] = await Promise.all([
+  const [jobs, candidates, users, sources, bands] = await Promise.all([
     reader.loadJobs(),
     reader.loadCandidates(),
     reader.loadUsers(),
-    reader.loadSources()
+    reader.loadSources(),
+    reader.loadBands()
   ]);
 
-  return { jobs, candidates, users, sources };
+  return { jobs, candidates, users, sources, bands };
 }
 
 /** The hiring facade the app consumes. Group reads here as they are added. */

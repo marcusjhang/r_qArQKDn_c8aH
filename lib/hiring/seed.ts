@@ -9,8 +9,11 @@
 // feedback authors are referenced by the user's EMAIL (a stable, readable key);
 // the seeder resolves each email to the seeded account's serial id.
 
-import { DEFAULT_STAGES } from './config';
+import { DEFAULT_STAGES, SENIORITY_BANDS } from './config';
 import type { RatingValue, Status } from './types';
+
+/** Default seniority bands seeded into the (editable) seniority_bands table. */
+export const SEED_SENIORITY_BANDS = SENIORITY_BANDS;
 
 // The seeded users, referenced by email so the demo assignments read clearly
 // and stay in lockstep with the accounts created in db/seed.ts.
@@ -53,6 +56,8 @@ export interface SeedCandidate {
   /** Owner's email (resolved to a user id by the seeder). */
   owner: string;
   source: string;
+  // Years of experience (seniority proxy); null = unspecified.
+  yearsExperience: number | null;
   status: Status;
   starred?: boolean;
   feedback: SeedFeedback[];
@@ -72,6 +77,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     stage: 'Screen',
     owner: benOng,
     source: 'LinkedIn',
+    yearsExperience: 6,
     status: 'active',
     starred: true,
     feedback: [
@@ -85,6 +91,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     stage: 'Applied',
     owner: benChan,
     source: 'Referral',
+    yearsExperience: 3,
     status: 'active',
     feedback: []
   },
@@ -94,6 +101,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     stage: 'Interview',
     owner: hengHongLee,
     source: 'YC',
+    yearsExperience: 9,
     status: 'active',
     starred: true,
     feedback: [
@@ -107,6 +115,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     stage: 'Applied',
     owner: marcus,
     source: 'Inbound',
+    yearsExperience: 1,
     status: 'active',
     feedback: []
   },
@@ -116,6 +125,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     stage: 'Offer',
     owner: benChan,
     source: 'Referral',
+    yearsExperience: 12,
     status: 'active',
     feedback: [
       { by: benOng, v: 4, note: 'Best onsite so far.' },
@@ -130,6 +140,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     stage: 'Screen',
     owner: hengHongLee,
     source: 'LinkedIn',
+    yearsExperience: 2,
     status: 'rejected',
     feedback: [
       { by: hengHongLee, v: 2, note: 'Experience did not match the role level.' }
@@ -141,6 +152,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     stage: 'Hired',
     owner: benOng,
     source: 'Referral',
+    yearsExperience: 8,
     status: 'hired',
     feedback: [
       { by: benOng, v: 4, note: 'Accepted — starting next month.' },
@@ -154,6 +166,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     stage: 'Applied',
     owner: benChan,
     source: 'Otta',
+    yearsExperience: 4,
     status: 'active',
     feedback: []
   },
@@ -163,6 +176,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     stage: 'Interview',
     owner: hengHongLee,
     source: 'LinkedIn',
+    yearsExperience: 7,
     status: 'active',
     feedback: [
       { by: hengHongLee, v: 3, note: 'Strong portfolio, thoughtful about systems.' }
@@ -174,6 +188,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     stage: 'Screen',
     owner: benOng,
     source: 'Referral',
+    yearsExperience: null,
     status: 'onhold',
     feedback: [
       { by: benOng, v: 3, note: 'Promising — paused while we align on level.' }
@@ -186,6 +201,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     stage: 'Applied',
     owner: benChan,
     source: 'Inbound',
+    yearsExperience: 5,
     status: 'active',
     feedback: []
   },
@@ -195,6 +211,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     stage: 'Interview',
     owner: hengHongLee,
     source: 'LinkedIn',
+    yearsExperience: 10,
     status: 'active',
     feedback: [
       { by: hengHongLee, v: 4, note: 'Rare combo of GTM + technical depth.' }

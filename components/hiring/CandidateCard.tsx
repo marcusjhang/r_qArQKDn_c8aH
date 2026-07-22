@@ -9,9 +9,11 @@ import {
   displayName,
   initials,
   sourceName,
+  seniorityFor,
   type Candidate,
   type User,
-  type Source
+  type Source,
+  type SeniorityBand
 } from '@/lib/hiring';
 import RatingChip from './RatingChip';
 import ProfileLinks from './ProfileLinks';
@@ -20,6 +22,7 @@ export default function CandidateCard({
   candidate,
   users,
   sources,
+  bands,
   dragProps,
   onOpen,
   onToggleStar
@@ -27,6 +30,7 @@ export default function CandidateCard({
   candidate: Candidate;
   users: User[];
   sources: Source[];
+  bands: SeniorityBand[];
   dragProps: {
     draggable: true;
     onDragStart: (e: React.DragEvent<HTMLElement>) => void;
@@ -35,6 +39,7 @@ export default function CandidateCard({
   onToggleStar: (id: number, starred: boolean) => void;
 }) {
   const owner = userById(users, candidate.owner);
+  const seniority = seniorityFor(bands, candidate.yearsExperience);
   return (
     <div
       className={`card${candidate.starred ? ' starred' : ''}`}
@@ -66,7 +71,19 @@ export default function CandidateCard({
       </div>
       <div className="card-bottom">
         <RatingChip candidate={candidate} />
-        <span className="source-tag">{sourceName(sources, candidate.source)}</span>
+        <span className="card-tags">
+          {seniority && (
+            <span
+              className="exp-tag"
+              title={`${candidate.yearsExperience} years of experience`}
+            >
+              {seniority} · {candidate.yearsExperience}y
+            </span>
+          )}
+          <span className="source-tag">
+            {sourceName(sources, candidate.source)}
+          </span>
+        </span>
       </div>
     </div>
   );

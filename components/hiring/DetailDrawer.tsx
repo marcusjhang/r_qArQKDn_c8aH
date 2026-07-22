@@ -95,6 +95,7 @@ export default function DetailDrawer({
             actions={actions}
             users={state.users}
             sources={state.sources}
+            bands={state.bands}
             resetKey={openId}
           />
 

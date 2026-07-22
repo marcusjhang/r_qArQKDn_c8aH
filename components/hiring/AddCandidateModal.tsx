@@ -2,15 +2,20 @@
 
 // Add-candidate form (Decision 6): name + source + owner in one step, with
 // valid-by-construction selects instead of free-text prompts. LinkedIn and
-// GitHub URLs are optional; blank inputs are stored as NULL.
+// GitHub URLs are optional; blank inputs are stored as NULL. Years of
+// experience is optional too and drives the seniority band shown on the card.
 
 import { useState } from 'react';
 import {
   MAX_PROFILE_URL,
   normalizeProfileUrl,
+  MAX_YEARS_EXPERIENCE,
+  parseYearsInput,
+  seniorityFor,
   displayName,
   type User,
-  type Source
+  type Source,
+  type SeniorityBand
 } from '@/lib/hiring';
 import Modal from './Modal';
 
@@ -18,19 +23,22 @@ export default function AddCandidateModal({
   jobTitle,
   users,
   sources,
+  bands,
   onClose,
   onAdd
 }: {
   jobTitle: string;
   users: User[];
   sources: Source[];
+  bands: SeniorityBand[];
   onClose: () => void;
   onAdd: (
     name: string,
     source: number,
     owner: number,
     linkedinUrl: string | null,
-    githubUrl: string | null
+    githubUrl: string | null,
+    yearsExperience: number | null
   ) => void;
 }) {
   const [name, setName] = useState('');
@@ -38,7 +46,12 @@ export default function AddCandidateModal({
   const [owner, setOwner] = useState<number>(users[0]?.id ?? 0);
   const [linkedin, setLinkedin] = useState('');
   const [github, setGithub] = useState('');
+  // Empty string = unspecified; otherwise a whole number of years.
+  const [years, setYears] = useState('');
   const [error, setError] = useState('');
+
+  const parsedYears = parseYearsInput(years);
+  const seniority = seniorityFor(bands, parsedYears.value);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -57,7 +70,13 @@ export default function AddCandidateModal({
       setError('GitHub must be a valid http(s) URL.');
       return;
     }
-    onAdd(trimmed, source, owner, li.value, gh.value);
+    if (!parsedYears.ok) {
+      setError(
+        `Years of experience must be a whole number 0–${MAX_YEARS_EXPERIENCE}.`
+      );
+      return;
+    }
+    onAdd(trimmed, source, owner, li.value, gh.value, parsedYears.value);
     onClose();
   }
 
@@ -104,6 +123,25 @@ export default function AddCandidateModal({
                 </option>
               ))}
             </select>
+          </div>
+        </div>
+        <div className="field">
+          <span className="label">Years of experience</span>
+          <div className="years-row">
+            <input
+              className="years-input"
+              type="number"
+              min={0}
+              max={MAX_YEARS_EXPERIENCE}
+              step={1}
+              value={years}
+              onChange={(e) => {
+                setYears(e.target.value);
+                setError('');
+              }}
+              placeholder="Optional — e.g. 5"
+            />
+            {seniority && <span className="exp-tag">{seniority}</span>}
           </div>
         </div>
         <div className="field">

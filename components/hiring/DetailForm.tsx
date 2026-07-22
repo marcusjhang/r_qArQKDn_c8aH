@@ -1,35 +1,46 @@
 'use client';
 
 // Candidate details in the drawer, laid out like the add-candidate form:
-// Name, Source + Owner, and the optional LinkedIn / GitHub links. The section
-// is read-only until Edit is pressed, then Save/Cancel; one editCandidate call
-// persists all five fields. Status stays a separate, always-live control (it's
-// a pipeline action, not part of the candidate's identity).
+// Name, Source + Owner, years of experience, and the optional LinkedIn / GitHub
+// links. The section is read-only until Edit is pressed, then Save/Cancel; one
+// editCandidate call persists all fields. Status stays a separate, always-live
+// control (it's a pipeline action, not part of the candidate's identity).
 
 import { useEffect, useState } from 'react';
 import {
   STATUS,
   MAX_PROFILE_URL,
   normalizeProfileUrl,
+  MAX_YEARS_EXPERIENCE,
+  parseYearsInput,
+  seniorityFor,
   displayName,
   type HiringActions,
   type Candidate,
   type Status,
   type User,
-  type Source
+  type Source,
+  type SeniorityBand
 } from '@/lib/hiring';
+
+/** Canonical text form of a stored years value (null → empty string). */
+function yearsToText(years: number | null | undefined): string {
+  return years == null ? '' : String(years);
+}
 
 export default function DetailForm({
   view,
   actions,
   users,
   sources,
+  bands,
   resetKey
 }: {
   view: Candidate | null;
   actions: HiringActions;
   users: User[];
   sources: Source[];
+  bands: SeniorityBand[];
   /** Identity of the open candidate (openId) — the form resets when it changes. */
   resetKey: number | null;
 }) {
@@ -39,6 +50,7 @@ export default function DetailForm({
   const [dOwner, setDOwner] = useState<number>(users[0]?.id ?? 0);
   const [dLinkedin, setDLinkedin] = useState('');
   const [dGithub, setDGithub] = useState('');
+  const [dYears, setDYears] = useState('');
   const [error, setError] = useState('');
 
   function seedDraft(c: Candidate | null) {
@@ -47,6 +59,7 @@ export default function DetailForm({
     setDOwner(c?.owner ?? users[0]?.id ?? 0);
     setDLinkedin(c?.linkedinUrl ?? '');
     setDGithub(c?.githubUrl ?? '');
+    setDYears(yearsToText(c?.yearsExperience));
     setError('');
   }
 
@@ -68,7 +81,8 @@ export default function DetailForm({
       dSource !== view.source ||
       dOwner !== view.owner ||
       dLinkedin.trim() !== (view.linkedinUrl ?? '') ||
-      dGithub.trim() !== (view.githubUrl ?? ''));
+      dGithub.trim() !== (view.githubUrl ?? '') ||
+      dYears.trim() !== yearsToText(view.yearsExperience));
 
   function startEdit() {
     seedDraft(view);
@@ -97,7 +111,22 @@ export default function DetailForm({
       setError('GitHub must be a valid http(s) URL.');
       return;
     }
-    actions.editCandidate(view.id, name, dSource, dOwner, li.value, gh.value);
+    const years = parseYearsInput(dYears);
+    if (!years.ok) {
+      setError(
+        `Years of experience must be a whole number 0–${MAX_YEARS_EXPERIENCE}.`
+      );
+      return;
+    }
+    actions.editCandidate(
+      view.id,
+      name,
+      dSource,
+      dOwner,
+      li.value,
+      gh.value,
+      years.value
+    );
     setError('');
     setEditing(false);
   }
@@ -108,6 +137,12 @@ export default function DetailForm({
   const ownerVal = editing ? dOwner : (view?.owner ?? users[0]?.id ?? 0);
   const linkedinVal = editing ? dLinkedin : (view?.linkedinUrl ?? '');
   const githubVal = editing ? dGithub : (view?.githubUrl ?? '');
+  const yearsVal = editing ? dYears : yearsToText(view?.yearsExperience);
+  // Seniority reflects the value being shown (draft while editing, else live).
+  const seniority = seniorityFor(
+    bands,
+    editing ? parseYearsInput(dYears).value : (view?.yearsExperience ?? null)
+  );
 
   return (
     <>
@@ -155,6 +190,26 @@ export default function DetailForm({
                 </option>
               ))}
             </select>
+          </div>
+        </div>
+        <div className="field">
+          <span className="label">Years of experience</span>
+          <div className="years-row">
+            <input
+              className="years-input"
+              type="number"
+              min={0}
+              max={MAX_YEARS_EXPERIENCE}
+              step={1}
+              value={yearsVal}
+              disabled={!editing}
+              onChange={(e) => {
+                setDYears(e.target.value);
+                setError('');
+              }}
+              placeholder="Unspecified"
+            />
+            {seniority && <span className="exp-tag">{seniority}</span>}
           </div>
         </div>
         <div className="field">

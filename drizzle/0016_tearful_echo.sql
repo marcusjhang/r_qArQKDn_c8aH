@@ -1,0 +1,2 @@
+ALTER TABLE "candidates" ADD COLUMN "years_experience" integer;--> statement-breakpoint
+ALTER TABLE "candidates" ADD CONSTRAINT "years_experience_range" CHECK ("candidates"."years_experience" is null or "candidates"."years_experience" between 0 and 60);

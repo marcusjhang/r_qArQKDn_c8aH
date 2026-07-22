@@ -10,7 +10,12 @@ import 'server-only';
 import { z } from 'zod';
 import { createInsertSchema } from 'drizzle-zod';
 import { candidates, feedback } from '@/lib/schema/hiring';
-import { STATUSES, RATING_VALUES, type RatingValue } from './primitives';
+import {
+  STATUSES,
+  RATING_VALUES,
+  MAX_YEARS_EXPERIENCE,
+  type RatingValue
+} from './primitives';
 
 /* Scalar validators */
 export const zId = z.number().int().positive();
@@ -36,6 +41,12 @@ export const zProfileUrl = z.preprocess(
     })
     .nullable()
 );
+export const zYears = z
+  .number()
+  .int()
+  .min(0)
+  .max(MAX_YEARS_EXPERIENCE)
+  .nullable();
 export const zRating = z
   .number()
   .int()
@@ -51,13 +62,15 @@ export const candidateInsertSchema = createInsertSchema(candidates, {
   source: zId,
   owner: zId,
   linkedinUrl: zProfileUrl,
-  githubUrl: zProfileUrl
+  githubUrl: zProfileUrl,
+  yearsExperience: zYears
 }).pick({
   name: true,
   source: true,
   owner: true,
   linkedinUrl: true,
-  githubUrl: true
+  githubUrl: true,
+  yearsExperience: true
 });
 
 // The detail drawer's Edit form validates the same fields as creation, so it
