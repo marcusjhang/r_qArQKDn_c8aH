@@ -6,9 +6,7 @@
 // over it so pipeline context stays on screen.
 
 import { useEffect, useState } from 'react';
-import { isTerminal } from '@/lib/hiring/helpers';
-import { useHiringStore } from '@/lib/hiring/store';
-import type { HiringState } from '@/lib/hiring/types';
+import { isTerminal, useHiringStore, type HiringState } from '@/lib/hiring';
 import Board from './Board';
 import DetailDrawer from './DetailDrawer';
 import AddCandidateModal from './AddCandidateModal';

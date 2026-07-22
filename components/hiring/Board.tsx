@@ -5,16 +5,19 @@
 // (Decision 1) and the terminal-state filter (Decision 3).
 
 import { useEffect, useRef, useState } from 'react';
-import { RATINGS } from '@/lib/hiring/config';
 import {
+  RATINGS,
   agg,
   founderById,
   selectStageCards,
   validateStageName,
-  MAX_STAGE_NAME
-} from '@/lib/hiring/helpers';
-import { canDeleteStage, type HiringActions } from '@/lib/hiring/store';
-import type { Candidate, HiringState, Job } from '@/lib/hiring/types';
+  MAX_STAGE_NAME,
+  canDeleteStage,
+  type HiringActions,
+  type Candidate,
+  type HiringState,
+  type Job
+} from '@/lib/hiring';
 
 function RatingChip({ candidate }: { candidate: Candidate }) {
   const a = agg(candidate);

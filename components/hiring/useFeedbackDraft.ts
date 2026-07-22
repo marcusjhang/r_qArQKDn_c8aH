@@ -7,8 +7,7 @@
 // own.
 
 import { useEffect, useState } from 'react';
-import { FOUNDERS } from '@/lib/hiring/config';
-import type { RatingValue } from '@/lib/hiring/types';
+import { FOUNDERS, type RatingValue } from '@/lib/hiring';
 
 export interface FeedbackEntry {
   byFounder: string;

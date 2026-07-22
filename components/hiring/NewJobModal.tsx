@@ -4,7 +4,7 @@
 // stages; the board switches to it once created.
 
 import { useState } from 'react';
-import { DEFAULT_STAGES } from '@/lib/hiring/config';
+import { DEFAULT_STAGES } from '@/lib/hiring';
 import Modal from './Modal';
 
 export default function NewJobModal({
