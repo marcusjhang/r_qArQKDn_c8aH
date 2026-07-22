@@ -22,7 +22,9 @@
   --radius-pill: 999px;
   --shadow: 0 6px 20px rgba(16, 24, 40, 0.1);
   --shadow-drawer: -12px 0 32px rgba(16, 24, 40, 0.16);
-  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -996,10 +998,19 @@
 }
 
 /* Settings page */
+/* Settings scrolls at full viewport width so its scrollbar sits at the right
+   edge of the screen; the content inside stays centered (.settings-inner).
+   `.ht-settings` lifts the board's centered max-width for this page only. */
+.ht-root.ht-settings {
+  max-width: none;
+}
 .ht-root .settings-wrap {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  width: 100%;
+}
+.ht-root .settings-inner {
   padding: var(--space-5) var(--space-4);
   max-width: 640px;
   margin-inline: auto;
@@ -1104,13 +1115,20 @@
   --primary-border: #6d4e22;
   --shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
   --shadow-drawer: -12px 0 32px rgba(0, 0, 0, 0.55);
-  --syes-fg: #79e0a6; --syes-bg: #123123;
-  --yes-fg: #7fd0a0; --yes-bg: #122a1d;
-  --no-fg: #f0b46a; --no-bg: #33260f;
-  --sno-fg: #f19a92; --sno-bg: #361b19;
-  --hold-fg: #e6c06a; --hold-bg: #31260f;
-  --rej-fg: #f19a92; --rej-bg: #361b19;
-  --hired-fg: #79e0a6; --hired-bg: #123123;
+  --syes-fg: #79e0a6;
+  --syes-bg: #123123;
+  --yes-fg: #7fd0a0;
+  --yes-bg: #122a1d;
+  --no-fg: #f0b46a;
+  --no-bg: #33260f;
+  --sno-fg: #f19a92;
+  --sno-bg: #361b19;
+  --hold-fg: #e6c06a;
+  --hold-bg: #31260f;
+  --rej-fg: #f19a92;
+  --rej-bg: #361b19;
+  --hired-fg: #79e0a6;
+  --hired-bg: #123123;
 }
 
 /* ---------- Account dropdown (topbar) ---------- */
