@@ -70,8 +70,9 @@ export default function ProfilePanel({
           {preview}
         </span>
         <div className="field" style={{ flex: '1 1 160px' }}>
-          <span className="label">First name</span>
+          <label className="label" htmlFor="profile-first-name">First name</label>
           <input
+            id="profile-first-name"
             type="text"
             placeholder="First"
             maxLength={50}
@@ -84,8 +85,9 @@ export default function ProfilePanel({
           />
         </div>
         <div className="field" style={{ flex: '1 1 160px' }}>
-          <span className="label">Last name</span>
+          <label className="label" htmlFor="profile-last-name">Last name</label>
           <input
+            id="profile-last-name"
             type="text"
             placeholder="Last"
             maxLength={50}
