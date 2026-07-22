@@ -16,7 +16,7 @@ const SEED_ALLOWED_EMAILS = [
 // Login accounts created on seed. Override the shared password via SEED_PASSWORD.
 const SEED_PASSWORD = process.env.SEED_PASSWORD ?? 'password';
 const SEED_ACCOUNTS = [
-  { email: 'marcusajh0802@gmail.com', name: 'Marcus Ang', role: 'admin' as const }
+  { email: 'marcusajh0802@gmail.com', name: 'Marcus Ang' }
 ];
 
 async function main() {
@@ -27,7 +27,7 @@ async function main() {
   const client = postgres(process.env.DATABASE_URL);
   const db = drizzle(client);
 
-  // Seed login accounts (idempotent: create, or reset password/role if present).
+  // Seed login accounts (idempotent: create, or reset password if present).
   const passwordHash = await hash(SEED_PASSWORD, 12);
   for (const acc of SEED_ACCOUNTS) {
     const [existing] = await db
@@ -38,15 +38,14 @@ async function main() {
     if (existing) {
       await db
         .update(users)
-        .set({ passwordHash, role: acc.role, name: acc.name })
+        .set({ passwordHash, name: acc.name })
         .where(eq(users.email, acc.email));
       console.log(`Updated login account ${acc.email}.`);
     } else {
       await db.insert(users).values({
         name: acc.name,
         email: acc.email,
-        passwordHash,
-        role: acc.role
+        passwordHash
       });
       console.log(`Seeded login account ${acc.email}.`);
     }
