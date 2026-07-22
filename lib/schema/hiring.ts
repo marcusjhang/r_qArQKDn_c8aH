@@ -11,14 +11,35 @@ import {
   pgEnum,
   serial,
   boolean,
-  check
+  check,
+  unique,
+  uniqueIndex
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 import { STATUSES, type RatingValue } from '../hiring/primitives';
+import { users } from './auth';
 
 // Orthogonal candidate status (Decision 3), built from the single-sourced
 // STATUSES tuple so the DB enum and the TS Status type can never diverge.
 export const candidateStatusEnum = pgEnum('candidate_status', STATUSES);
+
+// Candidate sources (where a candidate came from) — a seeded lookup table, not
+// a hardcoded list, so the options are DB-driven like the users picklist.
+export const sources = pgTable(
+  'sources',
+  {
+    id: serial('id').primaryKey(),
+    name: text('name').notNull().unique(),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+  },
+  (t) => ({
+    // Case-insensitive uniqueness — "LinkedIn" and "linkedin" are the same
+    // source. Backs the client's case-insensitive dedup at the DB level.
+    nameLowerUnique: uniqueIndex('sources_name_lower_unique').on(
+      sql`lower(${t.name})`
+    )
+  })
+);
 
 // A job owns its own ordered, per-job stage list (Decision 1), stored as an
 // ordered JSON array of stage names so candidates can key off the stage name.
@@ -41,9 +62,14 @@ export const candidates = pgTable('candidates', {
     .references(() => jobs.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   stage: text('stage').notNull(),
-  // Founder id from the FOUNDERS config — the single accountable owner.
-  owner: text('owner').notNull(),
-  source: text('source').notNull(),
+  // The accountable owner — a user account (see lib/schema/auth.ts).
+  owner: integer('owner')
+    .notNull()
+    .references(() => users.id),
+  // Where the candidate came from — a seeded source (see sources table above).
+  source: integer('source')
+    .notNull()
+    .references(() => sources.id),
   // Optional profile links (nullable — empty input stays NULL).
   linkedinUrl: text('linkedin_url'),
   githubUrl: text('github_url'),
@@ -62,8 +88,10 @@ export const feedback = pgTable(
     candidateId: integer('candidate_id')
       .notNull()
       .references(() => candidates.id, { onDelete: 'cascade' }),
-    // Founder id of the interviewer.
-    byFounder: text('by_founder').notNull(),
+    // The interviewer — a user account (see lib/schema/auth.ts).
+    byUser: integer('by_user')
+      .notNull()
+      .references(() => users.id),
     // 4-point verdict rating (1 = Strong No … 4 = Strong Yes). $type pins the
     // column to RatingValue; the CHECK below backs that at the DB level.
     rating: integer('rating').$type<RatingValue>().notNull(),
@@ -71,13 +99,20 @@ export const feedback = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull()
   },
   (t) => ({
-    ratingRange: check('rating_range', sql`${t.rating} between 1 and 4`)
+    ratingRange: check('rating_range', sql`${t.rating} between 1 and 4`),
+    // One entry per interviewer per candidate (Decision 7) — enforced, not just
+    // documented. Re-rating requires editing the existing entry, not a 2nd row.
+    oneByUserPerCandidate: unique('feedback_candidate_by_user_unique').on(
+      t.candidateId,
+      t.byUser
+    )
   })
 );
 
 export type SelectJob = typeof jobs.$inferSelect;
 export type SelectCandidate = typeof candidates.$inferSelect;
 export type SelectFeedback = typeof feedback.$inferSelect;
+export type SelectSource = typeof sources.$inferSelect;
 
 /* ---------- Relations (enable the db.query relational API) ---------- */
 export const jobsRelations = relations(jobs, ({ many }) => ({

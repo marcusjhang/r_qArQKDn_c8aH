@@ -4,17 +4,29 @@
 // the board's useBoardDnd hook; clicking opens the detail drawer, and the star
 // toggles favourite status without opening it.
 
-import { founderById, type Candidate } from '@/lib/hiring';
+import {
+  userById,
+  displayName,
+  initials,
+  sourceName,
+  type Candidate,
+  type User,
+  type Source
+} from '@/lib/hiring';
 import RatingChip from './RatingChip';
 import ProfileLinks from './ProfileLinks';
 
 export default function CandidateCard({
   candidate,
+  users,
+  sources,
   dragProps,
   onOpen,
   onToggleStar
 }: {
   candidate: Candidate;
+  users: User[];
+  sources: Source[];
   dragProps: {
     draggable: true;
     onDragStart: (e: React.DragEvent<HTMLElement>) => void;
@@ -22,7 +34,7 @@ export default function CandidateCard({
   onOpen: (id: number) => void;
   onToggleStar: (id: number, starred: boolean) => void;
 }) {
-  const owner = founderById(candidate.owner);
+  const owner = userById(users, candidate.owner);
   return (
     <div
       className={`card${candidate.starred ? ' starred' : ''}`}
@@ -47,14 +59,14 @@ export default function CandidateCard({
             linkedinUrl={candidate.linkedinUrl}
             githubUrl={candidate.githubUrl}
           />
-          <span className="avatar" title={owner.name}>
-            {owner.initials}
+          <span className="avatar" title={displayName(owner)}>
+            {initials(owner)}
           </span>
         </span>
       </div>
       <div className="card-bottom">
         <RatingChip candidate={candidate} />
-        <span className="source-tag">{candidate.source}</span>
+        <span className="source-tag">{sourceName(sources, candidate.source)}</span>
       </div>
     </div>
   );

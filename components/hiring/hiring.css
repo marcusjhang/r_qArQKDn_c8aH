@@ -1008,9 +1008,21 @@
 .ht-root .email-addr {
   font-size: 13px;
   min-width: 0;
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* Inline rename input in a source row — fills the row, matches the row height. */
+.ht-root .source-edit {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: inherit;
 }
 .ht-root .email-empty {
   font-size: 12.5px;

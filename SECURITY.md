@@ -11,7 +11,7 @@
   - `DATABASE_URL` — Postgres connection string (**required**).
   - `AUTH_SECRET` — Auth.js signing/encryption secret (**required**). Generate
     with `openssl rand -base64 32`.
-  - `SEED_PASSWORD` — password for the seeded admin account (**optional**;
+  - `SEED_PASSWORD` — shared password for the seeded accounts (**optional**;
     defaults to `password` — see below).
 - Lightsprint-managed repos receive `DATABASE_URL` and `AUTH_SECRET`
   automatically; no manual setup is needed for those.
@@ -33,12 +33,12 @@ force-push — but rotation is the primary defense; assume the old value is publ
 
 ## Default seed credentials
 
-`bun run db:seed` creates an admin account whose password comes from
-`SEED_PASSWORD`, falling back to the well-known default `password`. This is a
-demo convenience only.
+`bun run db:seed` creates the seeded accounts, all sharing a password that comes
+from `SEED_PASSWORD`, falling back to the well-known default `password`. This is
+a demo convenience only.
 
 **Before any non-demo use:** set a strong `SEED_PASSWORD` (or change the seeded
-account's password after seeding). Do not deploy with the default in place.
+accounts' passwords after seeding). Do not deploy with the default in place.
 
 ## Authentication model
 

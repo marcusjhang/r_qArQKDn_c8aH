@@ -21,11 +21,13 @@ export default function DetailDrawer({
   state,
   actions,
   openId,
+  currentUserId,
   onClose
 }: {
   state: HiringState;
   actions: HiringActions;
   openId: number | null;
+  currentUserId: number | null;
   onClose: () => void;
 }) {
   const candidate =
@@ -51,6 +53,11 @@ export default function DetailDrawer({
 
   const job = view ? state.jobs.find((j) => j.id === view.jobId) : undefined;
 
+  // One feedback entry per interviewer (enforced by a DB unique constraint), so
+  // only offer users who haven't reviewed this candidate yet.
+  const reviewedIds = new Set((view?.feedback ?? []).map((f) => f.byUser));
+  const availableUsers = state.users.filter((u) => !reviewedIds.has(u.id));
+
   // Moving a candidate's stage returns you to the board so the move is visible.
   function moveAndClose(dir: 1 | -1) {
     if (!view) return;
@@ -74,17 +81,26 @@ export default function DetailDrawer({
         <DetailHeader
           view={view}
           job={job}
+          sources={state.sources}
           onToggleStar={actions.setCandidateStarred}
           onClose={onClose}
         />
 
         <div className="drawer-body">
-          <DetailForm view={view} actions={actions} resetKey={openId} />
+          <DetailForm
+            view={view}
+            actions={actions}
+            users={state.users}
+            sources={state.sources}
+            resetKey={openId}
+          />
 
           <div className="feedback">
-            <FeedbackList view={view} />
+            <FeedbackList view={view} users={state.users} />
             <AddFeedbackForm
               resetKey={openId}
+              users={availableUsers}
+              currentUserId={currentUserId}
               onAdd={(entry) => view && actions.addFeedback(view.id, entry)}
             />
           </div>

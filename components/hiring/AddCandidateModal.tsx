@@ -6,31 +6,36 @@
 
 import { useState } from 'react';
 import {
-  FOUNDERS,
-  SOURCES,
   MAX_PROFILE_URL,
-  normalizeProfileUrl
+  normalizeProfileUrl,
+  displayName,
+  type User,
+  type Source
 } from '@/lib/hiring';
 import Modal from './Modal';
 
 export default function AddCandidateModal({
   jobTitle,
+  users,
+  sources,
   onClose,
   onAdd
 }: {
   jobTitle: string;
+  users: User[];
+  sources: Source[];
   onClose: () => void;
   onAdd: (
     name: string,
-    source: string,
-    owner: string,
+    source: number,
+    owner: number,
     linkedinUrl: string | null,
     githubUrl: string | null
   ) => void;
 }) {
   const [name, setName] = useState('');
-  const [source, setSource] = useState(SOURCES[0]);
-  const [owner, setOwner] = useState(FOUNDERS[0].id);
+  const [source, setSource] = useState<number>(sources[0]?.id ?? 0);
+  const [owner, setOwner] = useState<number>(users[0]?.id ?? 0);
   const [linkedin, setLinkedin] = useState('');
   const [github, setGithub] = useState('');
   const [error, setError] = useState('');
@@ -76,20 +81,26 @@ export default function AddCandidateModal({
         <div className="field-row">
           <div className="field">
             <span className="label">Source</span>
-            <select value={source} onChange={(e) => setSource(e.target.value)}>
-              {SOURCES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
+            <select
+              value={source}
+              onChange={(e) => setSource(Number(e.target.value))}
+            >
+              {sources.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
                 </option>
               ))}
             </select>
           </div>
           <div className="field">
             <span className="label">Owner</span>
-            <select value={owner} onChange={(e) => setOwner(e.target.value)}>
-              {FOUNDERS.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
+            <select
+              value={owner}
+              onChange={(e) => setOwner(Number(e.target.value))}
+            >
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {displayName(u)}
                 </option>
               ))}
             </select>

@@ -44,6 +44,11 @@ export default function HiringApp({
 
   const job = state.jobs.find((j) => j.id === activeJob) ?? state.jobs[0];
 
+  // The logged-in user's id (matched by email) — used to default the feedback
+  // author to whoever is actually leaving the review.
+  const currentUserId =
+    state.users.find((u) => u.email === userEmail)?.id ?? null;
+
   // Thin adapter so JobTabs keeps its (jobId) => number prop contract.
   const jobLiveCount = (jobId: number) => liveCount(state.candidates, jobId);
 
@@ -114,12 +119,15 @@ export default function HiringApp({
         state={state}
         actions={actions}
         openId={openId}
+        currentUserId={currentUserId}
         onClose={() => setOpenId(null)}
       />
 
       {addingCandidate && job && (
         <AddCandidateModal
           jobTitle={job.title}
+          users={state.users}
+          sources={state.sources}
           onClose={() => setAddingCandidate(false)}
           onAdd={(name, source, owner, linkedinUrl, githubUrl) =>
             actions.addCandidate(

@@ -3,17 +3,19 @@
 // Drawer header: favourite star, candidate name + job/source subline, and the
 // close control.
 
-import type { Candidate, Job } from '@/lib/hiring';
+import { sourceName, type Candidate, type Job, type Source } from '@/lib/hiring';
 import ProfileLinks from './ProfileLinks';
 
 export default function DetailHeader({
   view,
   job,
+  sources,
   onToggleStar,
   onClose
 }: {
   view: Candidate | null;
   job: Job | undefined;
+  sources: Source[];
   onToggleStar: (id: number, starred: boolean) => void;
   onClose: () => void;
 }) {
@@ -30,7 +32,7 @@ export default function DetailHeader({
       <div className="who">
         <h2>{view?.name ?? '—'}</h2>
         <div className="sub">
-          {view && job ? `${job.title} · ${view.source}` : ''}
+          {view && job ? `${job.title} · ${sourceName(sources, view.source)}` : ''}
         </div>
         {view && (
           <ProfileLinks

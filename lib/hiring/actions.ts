@@ -72,8 +72,8 @@ export async function createJob(titleRaw: string): Promise<number | null> {
 export async function addCandidate(
   jobIdRaw: number,
   nameRaw: string,
-  sourceRaw: string,
-  ownerRaw: string,
+  sourceRaw: number,
+  ownerRaw: number,
   linkedinUrlRaw: string | null = null,
   githubUrlRaw: string | null = null
 ): Promise<number | null> {
@@ -109,8 +109,8 @@ export async function addCandidate(
 export async function editCandidate(
   idRaw: number,
   nameRaw: string,
-  sourceRaw: string,
-  ownerRaw: string,
+  sourceRaw: number,
+  ownerRaw: number,
   linkedinUrlRaw: string | null,
   githubUrlRaw: string | null
 ) {
@@ -199,19 +199,19 @@ export async function setStatus(idRaw: number, statusRaw: Status) {
 
 export async function addFeedback(
   idRaw: number,
-  byFounderRaw: string,
+  byUserRaw: number,
   ratingRaw: number,
   noteRaw: string
 ) {
   const id = zId.parse(idRaw);
-  const { byFounder, rating, note } = feedbackInsertSchema.parse({
-    byFounder: byFounderRaw,
+  const { byUser, rating, note } = feedbackInsertSchema.parse({
+    byUser: byUserRaw,
     rating: ratingRaw,
     note: noteRaw ?? ''
   });
   await db
     .insert(feedback)
-    .values({ candidateId: id, byFounder, rating, note });
+    .values({ candidateId: id, byUser, rating, note });
   // Feedback is nested inside the candidates read, so invalidate that tag.
   revalidateTag(BOARD_TAGS.candidates);
 }

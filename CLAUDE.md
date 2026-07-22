@@ -28,7 +28,7 @@ bun run db:generate  # generate migration after schema change
 
 - The whole app is gated behind login — enforced by the `authorized` callback in
   `lib/auth.ts` (middleware runs on every route; only `/login` is public).
-- Seeded login: `marcusajh0802@gmail.com` / `password` (override via `SEED_PASSWORD`; change before non-demo use).
+- Seeded logins: four accounts (`marcusajh0802@gmail.com`, `benong@lightsprint.ai`, `benchan@lightsprint.ai`, `henghonglee@lightsprint.ai`), all with password `password` (override via `SEED_PASSWORD`; change before non-demo use).
 - Sign up via `/login` → `POST /api/register`, restricted to the allowlist managed in `/settings`.
 
 ## App
@@ -40,6 +40,14 @@ bun run db:generate  # generate migration after schema change
   interfaces are authored there and guarded against schema drift at compile
   time, and components import the UI types from `lib/hiring/types.ts`. Writes go
   through the zod-validated server actions in `lib/hiring/actions.ts`.
+- Owners / interviewers and candidate sources are **not** hardcoded configs —
+  they are DB-driven. Owners/interviewers are the `users` accounts (`service.ts`
+  `loadUsers`); sources are the seeded `sources` table (`loadSources`). Both are
+  loaded into `HiringState` (`users` / `sources`) and threaded to the pickers.
+  A candidate's `owner`/`source` and a feedback entry's `byUser` are integer FKs
+  (`users.id` / `sources.id`), so seeded rows and new sign-ups are automatically
+  selectable. `config.ts` keeps only the code-bound value-sets (rating scale,
+  status labels, default-stages template).
 
 ## Stack
 

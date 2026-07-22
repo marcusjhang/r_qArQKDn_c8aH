@@ -6,12 +6,21 @@
 import {
   RATINGS,
   agg,
-  founderById,
+  userById,
+  displayName,
+  initials,
   roundedRating,
-  type Candidate
+  type Candidate,
+  type User
 } from '@/lib/hiring';
 
-export default function FeedbackList({ view }: { view: Candidate | null }) {
+export default function FeedbackList({
+  view,
+  users
+}: {
+  view: Candidate | null;
+  users: User[];
+}) {
   const a = view ? agg(view) : null;
   const aRounded = roundedRating(a);
   return (
@@ -38,12 +47,12 @@ export default function FeedbackList({ view }: { view: Candidate | null }) {
           <div className="feedback">
             {view.feedback.map((f, i) => {
               const r = RATINGS[f.rating];
-              const fo = founderById(f.byFounder);
+              const fo = userById(users, f.byUser);
               return (
                 <div className="fb-entry" key={i}>
                   <div className="fb-top">
-                    <span className="avatar">{fo.initials}</span>
-                    <span className="fb-who">{fo.name}</span>
+                    <span className="avatar">{initials(fo)}</span>
+                    <span className="fb-who">{displayName(fo)}</span>
                     <span
                       className={`rating-chip ${r.cls}`}
                       style={{ marginLeft: 'auto' }}

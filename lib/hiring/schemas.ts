@@ -2,25 +2,21 @@ import 'server-only';
 
 // Runtime validation for the server-action boundary. Server actions receive
 // serialized client input, so types alone are not enough — these zod schemas
-// enforce the same constraints at runtime. Everything is built from the single
-// sources: STATUSES / RATING_VALUES (primitives) and FOUNDERS / SOURCES (config).
+// enforce the same constraints at runtime. Value-sets come from the single
+// source STATUSES / RATING_VALUES (primitives). The owner, feedback-author, and
+// source references are ids, validated as ids here and backed by foreign keys
+// (users / sources) at the DB level.
 
 import { z } from 'zod';
 import { createInsertSchema } from 'drizzle-zod';
 import { candidates, feedback } from '@/lib/schema/hiring';
 import { STATUSES, RATING_VALUES, type RatingValue } from './primitives';
-import { FOUNDERS, SOURCES } from './config';
-
-const founderIds = FOUNDERS.map((f) => f.id) as [string, ...string[]];
-const sourceNames = [...SOURCES] as [string, ...string[]];
 
 /* Scalar validators */
 export const zId = z.number().int().positive();
 export const zIndex = z.number().int().min(0);
 export const zDir = z.union([z.literal(1), z.literal(-1)]);
 export const zStatus = z.enum(STATUSES);
-export const zOwner = z.enum(founderIds);
-export const zSource = z.enum(sourceNames);
 export const zName = z.string().trim().min(1).max(120);
 export const zStageName = z.string().trim().min(1).max(48);
 export const zJobTitle = z.string().trim().min(1).max(80);
@@ -51,8 +47,9 @@ export const zRating = z
 /* Insert shapes derived from the tables via drizzle-zod, refined to app rules */
 export const candidateInsertSchema = createInsertSchema(candidates, {
   name: zName,
-  source: zSource,
-  owner: zOwner,
+  // source is a sources.id; owner is a users.id — the FKs are the existence guards.
+  source: zId,
+  owner: zId,
   linkedinUrl: zProfileUrl,
   githubUrl: zProfileUrl
 }).pick({
@@ -69,7 +66,8 @@ export const candidateInsertSchema = createInsertSchema(candidates, {
 export const candidateEditSchema = candidateInsertSchema;
 
 export const feedbackInsertSchema = createInsertSchema(feedback, {
-  byFounder: zOwner,
+  // byUser is a user id; the FK to users.id is the existence guard.
+  byUser: zId,
   rating: zRating,
   note: zNote
-}).pick({ byFounder: true, rating: true, note: true });
+}).pick({ byUser: true, rating: true, note: true });

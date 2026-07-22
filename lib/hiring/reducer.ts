@@ -35,8 +35,8 @@ export type HiringEvent =
       tempId: number;
       jobId: number;
       name: string;
-      source: string;
-      owner: string;
+      source: number;
+      owner: number;
       linkedinUrl: string | null;
       githubUrl: string | null;
     }
@@ -46,8 +46,8 @@ export type HiringEvent =
       type: 'editCandidate';
       id: number;
       name: string;
-      source: string;
-      owner: string;
+      source: number;
+      owner: number;
       linkedinUrl: string | null;
       githubUrl: string | null;
     }
@@ -57,7 +57,7 @@ export type HiringEvent =
       type: 'addFeedback';
       id: number;
       tempId: number;
-      byFounder: string;
+      byUser: number;
       rating: RatingValue;
       note: string;
     }
@@ -204,7 +204,7 @@ export function hiringReducer(
           ...c.feedback,
           {
             id: event.tempId,
-            byFounder: event.byFounder,
+            byUser: event.byUser,
             rating: event.rating,
             note: event.note
           }
