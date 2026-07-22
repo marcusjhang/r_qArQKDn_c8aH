@@ -8,7 +8,7 @@ description: >-
   adding a protected or public route, extending the allowlist/registration flow,
   and keeping SECURITY.md in sync. Use whenever a task touches lib/auth.ts,
   middleware.ts, lib/allowlist.ts, lib/registration.ts, app/api/register/**,
-  app/login/**, the /settings allowlist UI, SEED_PASSWORD/auth env vars, or
+  app/login/**, the /members allowlist UI, SEED_PASSWORD/auth env vars, or
   SECURITY.md. For *reviewing* auth changes, use the pr-code-review skill
   (references/backend.md → "Auth & API routes") — this skill is for authoring
   them.
@@ -82,7 +82,7 @@ Signup is allowlist-restricted and lives behind a thin HTTP adapter:
   the route.
 - **The allowlist is `lib/allowlist.ts`** (`'server-only'`): `normalizeEmail`
   (trim + lowercase — use it everywhere an email is compared/stored),
-  `isEmailAllowed`, `getAllowedEmails`. The set is managed on `/settings`.
+  `isEmailAllowed`, `getAllowedEmails`. The set is managed on `/members`.
 - The client login/signup orchestration (register → `signIn` → redirect) lives
   in `app/login/useLoginForm.ts`, not in the page — see the `server-actions` /
   frontend guidance for the hook pattern.

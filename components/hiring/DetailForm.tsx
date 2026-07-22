@@ -11,6 +11,8 @@ import {
   STATUS,
   MAX_PROFILE_URL,
   normalizeProfileUrl,
+  LINKEDIN_URL_PLACEHOLDER,
+  GITHUB_URL_PLACEHOLDER,
   MAX_YEARS_EXPERIENCE,
   parseYearsInput,
   seniorityFor,
@@ -223,7 +225,7 @@ export default function DetailForm({
               setDLinkedin(e.target.value);
               setError('');
             }}
-            placeholder="https://www.linkedin.com/in/…"
+            placeholder={LINKEDIN_URL_PLACEHOLDER}
           />
         </div>
         <div className="field">
@@ -237,7 +239,7 @@ export default function DetailForm({
               setDGithub(e.target.value);
               setError('');
             }}
-            placeholder="https://github.com/…"
+            placeholder={GITHUB_URL_PLACEHOLDER}
           />
         </div>
         {editing && error && <div className="form-error">{error}</div>}

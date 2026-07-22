@@ -9,7 +9,9 @@ Next.js 15 App Router (Turbopack, React Server Components by default).
   excludes `api/`, `_next/*`, and static assets — everything else must reach the
   gate. Only `/login` is public.
 - `(dashboard)/` — the authenticated app (route group, no URL segment). `page.tsx`
-  is the hiring board `/`; `settings/` holds the allowlist UI + its `actions.ts`.
+  is the hiring board `/`; `settings/` holds appearance/profile/sources/bands; and
+  `members/` holds the members directory (per-member activity history) + the
+  signup allowlist UI, each with its own `actions.ts`.
 - `login/` — the public sign-in / sign-up page.
 - `api/auth/[...nextauth]/` — NextAuth handlers. `api/register/` — self-guarded
   registration (checks the allowlist itself; excluded from the middleware gate).

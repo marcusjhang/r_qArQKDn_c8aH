@@ -1,7 +1,7 @@
 import 'server-only';
 
 // Signup allowlist. Only emails present here may register (enforced in
-// /api/register); the set is managed on the /settings page.
+// /api/register); the set is managed on the /members page.
 
 import { asc, eq } from 'drizzle-orm';
 import { db, allowedEmails } from '@/lib/db';

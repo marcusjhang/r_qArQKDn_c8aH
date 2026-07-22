@@ -64,6 +64,11 @@ export function initials(user: NameParts | undefined): string {
 /** Max length of a profile URL (kept in sync with the zProfileUrl bound). */
 export const MAX_PROFILE_URL = 500;
 
+/** Placeholder hints for the optional profile-link inputs, shared by the add-
+ * and edit-candidate forms so the two can't drift. */
+export const LINKEDIN_URL_PLACEHOLDER = 'https://www.linkedin.com/in/…';
+export const GITHUB_URL_PLACEHOLDER = 'https://github.com/…';
+
 /**
  * Client-side mirror of the server's zProfileUrl rule: a blank/whitespace value
  * is a valid "no link" (→ null); anything else must be an http(s) URL of at
