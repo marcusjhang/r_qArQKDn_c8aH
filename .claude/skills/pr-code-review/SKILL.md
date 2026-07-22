@@ -69,7 +69,7 @@ Assign exactly one severity to **every** finding — the stack-checklist finding
   type, and the zod validator. `strict` is on.
 - **Testability:** business rules are extracted into pure, dependency-free
   modules (`lib/hiring/helpers.ts`, `lib/registration.ts`) and I/O
-  is behind injectable seams (`getBoardData(reader)` in `lib/hiring/queries.ts`)
+  is behind injectable seams (`getBoard(reader)` in `lib/hiring/service.ts`)
   so the logic unit-tests without a live DB. Unit tests live in `test/unit/**`
   (Vitest), an auth smoke test in `test/e2e/**` (Playwright); `server-only` is
   aliased to an inert stub in `vitest.config.ts`.
@@ -127,7 +127,7 @@ handler, query, schema table), trace how it is reached and what it reaches:
         → server action (lib/**/actions.ts, 'use server', zod-validated)
           → Drizzle write (lib/db, lib/schema.ts)  → revalidatePath('/')
   Server Component / page (app/**)
-    → query (lib/**/queries.ts, 'server-only', reads via injected reader)
+    → read facade (lib/hiring/service.ts, 'server-only', reads via injected reader)
       → Drizzle relational read → typed HiringState
   HTTP route (app/api/**/route.ts, thin adapter)
     → domain service (lib/registration.ts, 'server-only', returns discriminated result)
@@ -173,7 +173,7 @@ frontend; API/service design for backend) that apply in any stack, plus the
 
 - **Frontend** (`app/**`, `components/**`, `*.css`, `tailwind.config.ts`):
   → read `references/frontend.md`
-- **Backend** (`lib/**/actions.ts`, `lib/**/queries.ts`, `app/**/route.ts`,
+- **Backend** (`lib/**/actions.ts`, `lib/hiring/service.ts`, `app/**/route.ts`,
   `app/**/actions.ts`, `middleware.ts`, `lib/auth.ts`, `lib/db.ts`, `db/**`
   (incl. `db/seed.ts`), `lib/**/seed.ts`, `drizzle/**`): → read
   `references/backend.md`

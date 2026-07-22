@@ -50,8 +50,8 @@ Playwright smoke, `server-only` stub, injected readers).
   components **consume** these rather than re-implementing them — that is what
   removed the old client/server duplication (PRs #18, #19, #23). Flag a change
   that re-inlines one of these rules or forks a second copy of it.
-- **Injected readers/services.** `getBoardData(reader: BoardReader = drizzleReader)`
-  in `lib/hiring/queries.ts` reads through an interface; the Drizzle-backed reader
+- **Injected readers/services.** `getBoard(reader: BoardReader = drizzleReader)`
+  in `lib/hiring/service.ts` reads through an interface; the Drizzle-backed reader
   is the default and imports `@/lib/db` **lazily** so importing the module doesn't
   require `DATABASE_URL`. Tests pass a fake reader with in-memory rows. Preserve
   this seam — flag a new query that hard-codes `db` where the composition should

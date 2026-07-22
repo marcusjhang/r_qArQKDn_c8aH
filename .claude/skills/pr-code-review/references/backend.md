@@ -1,6 +1,6 @@
 # Backend checklist (server actions + Drizzle + zod + next-auth)
 
-Applies to `lib/**/actions.ts`, `lib/**/queries.ts`, `app/**/route.ts`,
+Applies to `lib/**/actions.ts`, `lib/hiring/service.ts`, `app/**/route.ts`,
 `app/**/actions.ts`, `middleware.ts`, `lib/auth.ts`, `lib/db.ts`, `db/**`,
 `drizzle/**`.
 
@@ -105,9 +105,9 @@ transport. This is the split PR #19 established and it is now the expected shape
 
 ## Queries — reads
 
-- Read modules are `import 'server-only'` (see `lib/hiring/queries.ts`). Flag a
+- Read modules are `import 'server-only'` (see `lib/hiring/service.ts`). Flag a
   query module missing it, or a query imported into a client component.
-- **Reads are injectable for tests.** `getBoardData` takes a `BoardReader` with
+- **Reads are injectable for tests.** `getBoard` takes a `BoardReader` with
   the Drizzle reader as the default and imports `db` lazily, so it runs without a
   live DB (see `testability.md`). Preserve this seam — flag a new query that
   hard-codes the `db` singleton where the composition should accept an injected
@@ -115,7 +115,7 @@ transport. This is the split PR #19 established and it is now the expected shape
 - Use Drizzle's relational query API with a `columns` allowlist so the result is
   exactly the UI type (`HiringState`) — **no casts, no manual grouping, no
   field renames**. Flag `as` casts used to force a query result into a type.
-- Parallelize independent reads with `Promise.all` (as `getBoardData` does)
+- Parallelize independent reads with `Promise.all` (as `getBoard` does)
   rather than awaiting sequentially.
 - Watch for N+1s: prefer a single relational query with `with:` over per-row
   follow-up queries in a loop.
