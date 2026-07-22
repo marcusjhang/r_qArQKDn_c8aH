@@ -1,9 +1,10 @@
 'use server';
 
 // Manage the signed-in profile, candidate sources, and seniority bands from
-// /settings. The whole app is gated by the auth middleware, so callers here are
-// authenticated users. (The signup allowlist is managed from /members — see
-// app/(dashboard)/members/actions.ts.)
+// /settings. The middleware only gates *page* routes; a Server Action can be
+// POSTed to the public /login route by action id and skip that gate, so each
+// action confirms the session itself via signedInUserId(). (The signup
+// allowlist is managed from /members — see app/(dashboard)/members/actions.ts.)
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
@@ -24,6 +25,17 @@ const zName = z.string().trim().max(50);
 /** Success, or a caller-facing message the settings UI renders inline. */
 export type SettingsResult = { ok: true } | { ok: false; error: string };
 
+/**
+ * Auth guard for these actions: the signed-in user's id, or null when there is
+ * no session. Returned (not thrown) so callers keep the SettingsResult contract
+ * the UI renders inline. See the file header for why the middleware gate does
+ * not cover Server Actions.
+ */
+async function signedInUserId(): Promise<number | null> {
+  const session = await auth();
+  return Number(session?.user?.id) || null;
+}
+
 /* ---------- Current account profile ---------- */
 
 /**
@@ -36,6 +48,9 @@ export async function updateProfile(
   firstNameRaw: string,
   lastNameRaw: string
 ): Promise<SettingsResult> {
+  const id = await signedInUserId();
+  if (!id) return { ok: false, error: 'Not signed in.' };
+
   let firstName: string;
   let lastName: string;
   try {
@@ -47,10 +62,6 @@ export async function updateProfile(
   if (!firstName && !lastName) {
     return { ok: false, error: 'Enter a first or last name.' };
   }
-
-  const session = await auth();
-  const id = Number(session?.user?.id);
-  if (!id) return { ok: false, error: 'Not signed in.' };
 
   await db
     .update(users)
@@ -66,6 +77,7 @@ export async function updateProfile(
 
 /** Add a candidate source. Duplicate names are rejected (unique by name). */
 export async function addSource(nameRaw: string): Promise<SettingsResult> {
+  if (!(await signedInUserId())) return { ok: false, error: 'Not signed in.' };
   let name: string;
   try {
     name = zSourceName.parse(nameRaw);
@@ -92,6 +104,7 @@ export async function renameSource(
   idRaw: number,
   nameRaw: string
 ): Promise<SettingsResult> {
+  if (!(await signedInUserId())) return { ok: false, error: 'Not signed in.' };
   let id: number;
   let name: string;
   try {
@@ -120,6 +133,7 @@ export async function renameSource(
  * otherwise reject the delete) — the caller must reassign those candidates first.
  */
 export async function removeSource(idRaw: number): Promise<SettingsResult> {
+  if (!(await signedInUserId())) return { ok: false, error: 'Not signed in.' };
   let id: number;
   try {
     id = zId.parse(idRaw);
@@ -152,6 +166,7 @@ export async function addBand(
   labelRaw: string,
   minYearsRaw: number
 ): Promise<SettingsResult> {
+  if (!(await signedInUserId())) return { ok: false, error: 'Not signed in.' };
   let label: string;
   let minYears: number;
   try {
@@ -185,6 +200,7 @@ export async function updateBand(
   labelRaw: string,
   minYearsRaw: number
 ): Promise<SettingsResult> {
+  if (!(await signedInUserId())) return { ok: false, error: 'Not signed in.' };
   let id: number;
   let label: string;
   let minYears: number;
@@ -216,6 +232,7 @@ export async function updateBand(
 
 /** Delete a band. Safe any time — candidates don't reference bands. */
 export async function removeBand(idRaw: number): Promise<SettingsResult> {
+  if (!(await signedInUserId())) return { ok: false, error: 'Not signed in.' };
   let id: number;
   try {
     id = zId.parse(idRaw);
