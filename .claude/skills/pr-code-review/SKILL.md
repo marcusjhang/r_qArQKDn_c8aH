@@ -180,9 +180,17 @@ focused:
 2. **`simplify`** — quality-only pass for reuse/altitude cleanups on the changed
    code (no bug hunting). Useful for the FE components and the store.
 3. **`security-review`** — run whenever the diff touches `lib/auth.ts`,
-   `middleware.ts`, `app/api/**`, server actions, `lib/db.ts`, `.env*`, or the
-   allowlist. This is the backend/security lens: authz gaps, injection,
-   secret leakage, missing input validation.
+   `middleware.ts`, `app/api/**`, server actions, `lib/db.ts`, `.env*`,
+   `.gitignore`, or the allowlist. This is the backend/security lens: authz
+   gaps, injection, secret leakage, missing input validation. When any of these
+   change, also read `SECURITY.md` and check the diff against the documented
+   policy — the auth model (whole app gated in `middleware.ts` / `lib/auth.ts`,
+   only `/login` public), secret management (secrets only in git-ignored `.env`,
+   `.env.example` holds placeholders only, rotate anything ever committed), and
+   the default-seed-password warning. Flag any change that contradicts
+   `SECURITY.md`, and flag `SECURITY.md` itself going stale when the code it
+   describes changes (e.g. the matcher exclusions or the env-var list drift out
+   of sync with `.env.example`).
 
 Fold their findings into the report under the relevant area, de-duplicating
 against your Step 4 findings. Attribute each finding to the skill that raised it.
