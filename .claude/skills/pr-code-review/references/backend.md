@@ -8,6 +8,10 @@ This checklist has two layers: **language-agnostic** service/API principles
 that hold on any backend, and **stack-specific** rules for this repo's server
 actions + Drizzle + next-auth setup. Apply both.
 
+> Reviewing Drizzle/DB work is the flag-list below. For the *authoring* recipes
+> it mirrors (schema change → generate → seed → setup, writing reads/actions,
+> idempotent migrations, drizzle-* upgrades), see the **`drizzle`** skill.
+
 ## API & service design (language-agnostic)
 
 These apply to any endpoint or write path — server actions here, but the same
