@@ -203,9 +203,13 @@ export default function DetailForm({
         </div>
       </div>
 
-      <div className="field-row">
-        <div className="field">
-          <span className="label">Status</span>
+      <div className="field">
+        <span className="label">Status</span>
+        <div className="status-control">
+          <span
+            className={`status-dot st-${view?.status ?? 'active'}`}
+            aria-hidden
+          />
           <select
             value={view?.status ?? 'active'}
             onChange={(e) =>
@@ -218,16 +222,6 @@ export default function DetailForm({
               </option>
             ))}
           </select>
-        </div>
-        <div className="field">
-          <span className="label">Current status</span>
-          <div>
-            {view && (
-              <span className={`status-pill st-${view.status}`}>
-                {STATUS[view.status]}
-              </span>
-            )}
-          </div>
         </div>
       </div>
     </>

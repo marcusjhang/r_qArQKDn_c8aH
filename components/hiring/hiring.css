@@ -653,6 +653,37 @@
   color: var(--hired-fg);
 }
 
+/* Status control: a solid colour dot beside the status dropdown (replaces the
+   separate "current status" pill). Dot colours reuse the status foregrounds. */
+.ht-root .status-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ht-root .status-control select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ht-root .status-dot {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.ht-root .status-dot.st-active {
+  background: var(--primary);
+}
+.ht-root .status-dot.st-onhold {
+  background: var(--hold-fg);
+}
+.ht-root .status-dot.st-rejected {
+  background: var(--rej-fg);
+}
+.ht-root .status-dot.st-hired {
+  background: var(--hired-fg);
+}
+
 .ht-root .section-title {
   font-size: 12px;
   font-weight: 700;
