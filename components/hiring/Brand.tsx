@@ -1,6 +1,8 @@
-// Shared top-left brand mark: the Lightsprint icon + wordmark. Used by the board
-// and settings top bars so they stay consistent. Plain (non-client) component —
+// Shared top-left brand mark: the app icon + wordmark. Used by the board and
+// settings top bars so they stay consistent. Plain (non-client) component —
 // just markup — safe to render inside the client shells.
+
+import { APP_NAME } from '@/lib/hiring/config';
 
 export default function Brand({ subtitle }: { subtitle: string }) {
   return (
@@ -8,7 +10,7 @@ export default function Brand({ subtitle }: { subtitle: string }) {
       <img
         className="logo"
         src="/lightsprint-icon.svg"
-        alt="Lightsprint"
+        alt={APP_NAME}
         width={22}
         height={22}
       />
