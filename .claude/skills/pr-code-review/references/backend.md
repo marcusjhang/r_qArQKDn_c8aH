@@ -192,6 +192,14 @@ know about). Watch for both:
   change removes such scaffolding, confirm it is pulled from **every** layer
   (schema, module augmentation, auth callbacks, seed, migration) so nothing
   dangles.
+- **Let `knip` find it.** `bun run detect:dead-code` (Step 5) mechanically
+  reports unused files, exports, and dependencies — this is the primary detector
+  for this section. Focus on what the diff *newly* orphans (an export stranded by
+  a refactor, an added-but-unused dependency), not the pre-existing backlog.
+  Remove genuinely-dead items (and `bun remove` any dependency they pulled in);
+  only deliberately silence a real public-API/framework/config entry in
+  `knip.json` with a stated reason — never grow the ignore list to bury live dead
+  code.
 - **Schema is the source of truth; reconcile the live DB.** A change that drops
   or alters a column/enum must ship the `DROP COLUMN` / `DROP TYPE` / `ALTER`
   migration that reconciles the already-migrated database, not just the

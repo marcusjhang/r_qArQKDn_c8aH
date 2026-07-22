@@ -71,6 +71,8 @@ Assign exactly one severity to **every** finding — the stack-checklist finding
 - **Tooling:** `bun` is the package manager. The gate is **`bun run typecheck`**
   (`tsc --noEmit`), **`bun run test`** (Vitest unit suite), and
   **`bun run build`**; `bun run test:e2e` runs the Playwright smoke test.
+  **`bun run detect:dead-code`** (knip, config in `knip.json`) audits for unused
+  files, exports, and dependencies — run it every review (see Step 5).
   Formatting is `prettier` (config in `package.json`: single quotes, 2-space, no
   trailing commas, always-parens arrows).
 
@@ -182,7 +184,7 @@ Record findings with `file:line`, a **severity** from the **Severity scale**
 (`Critical` / `High` / `Medium` / `Low`), and a concrete suggested fix. Every
 finding gets a severity — no unlabelled findings.
 
-### Step 5 — Delegate code-quality to the built-in skills
+### Step 5 — Delegate code-quality to the built-in skills + tools
 
 Do not hand-roll correctness or cleanup analysis — invoke the purpose-built
 skills, scoped **separately** to frontend and backend so each pass stays
@@ -207,9 +209,28 @@ focused:
    `SECURITY.md`, and flag `SECURITY.md` itself going stale when the code it
    describes changes (e.g. the matcher exclusions or the env-var list drift out
    of sync with `.env.example`).
+4. **`knip`** (mechanical, not a skill) — **always run** `bun run detect:dead-code`.
+   It audits the whole repo for unused files, exports, and dependencies and
+   exits non-zero on any finding, so treat its output as the source for the
+   **Dead code** part of the backend checklist. Two rules:
+   - **Attribute to the diff, not the backlog.** knip reports pre-existing dead
+     code too; only the entries the PR *introduces or newly orphans* (a now-unused
+     export left behind by a refactor, a dependency added but unused, a file no
+     longer imported) are findings against this PR. A new unused export/file is
+     typically `Medium`; a newly-added-but-unused dependency is `Medium`. Note
+     pre-existing findings the diff didn't cause as `Low` / out-of-scope, and
+     don't gate the PR on the backlog. If a run is clean of new items, say so.
+   - **Removal over ignoring.** A genuinely-unused item should be deleted (and any
+     dependency it pulled in `bun remove`d), per `README.md` → *Dead Code &
+     Dependency Audit*. Only when an item is a deliberate public API / framework
+     contract / config-only tool should it be silenced in `knip.json`
+     (`ignore` / `ignoreDependencies` / `ignoreBinaries`) or with a `// @public`
+     tag — **with a reason**. Flag a diff that grows `knip.json`'s ignores to
+     hide real dead code instead of removing it.
 
 Fold their findings into the report under the relevant area, de-duplicating
-against your Step 4 findings. Attribute each finding to the skill that raised it.
+against your Step 4 findings. Attribute each finding to the skill / tool that
+raised it.
 **Assign each delegated finding a severity from the same Severity scale** — the
 built-in skills use their own wording (e.g. `code-review` effort tiers,
 `security-review` risk levels), so map every one onto `Critical` / `High` /
@@ -257,7 +278,9 @@ findings only (never the `Low` / `false-positive` / `needs-verification` ones):
   `bun run build`** — and confirm all three are green before committing. If the
   fix changed business logic, add/adjust the unit test that covers it (see
   `references/testability.md`) rather than leaving the suite behind. If a fix
-  touches `lib/schema.ts`, run `bun run db:setup` per the backend checklist.
+  touches `lib/schema.ts`, run `bun run db:setup` per the backend checklist. If a
+  fix removed code, re-run **`bun run detect:dead-code`** to confirm it didn't
+  strand a now-unused export or dependency (and clean up any it did).
 - Commit on the current branch with a message that references the findings
   addressed, then push (`git push -u origin HEAD`). Do **not** open or merge a PR
   unless that was also requested.
