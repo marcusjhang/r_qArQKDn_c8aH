@@ -57,6 +57,45 @@ allowlist managed on `/settings`. Any signed-in user can use the board.
 | `bun run db:migrate` | Apply pending migrations |
 | `bun run db:seed` | Seed the admin login + sample pipeline (idempotent) |
 | `bun run db:setup` | Run migrations + seed in one step |
+| `bun run typecheck` | Type-check the project (`tsc --noEmit`) |
+| `bun run detect:dead-code` | Audit for unused files, exports and dependencies ([knip](https://knip.dev)) |
+| `bun run test` | Run the unit test suite (Vitest) |
+
+## Dead Code & Dependency Audit
+
+To keep the surface lean as the app grows, [knip](https://knip.dev) audits the
+codebase for **unused files, unused exports, and unused/unlisted dependencies**.
+Its Next.js, Vitest, Playwright and Drizzle plugins understand this stack's
+file-based routing and test/config entry points, so App Router pages, layouts,
+route handlers, `middleware.ts`, and the `db/` scripts are recognised
+automatically and are never reported as unused.
+
+Run the audit:
+
+```bash
+bun run detect:dead-code
+```
+
+Configuration lives in `knip.json`. The `drizzle/` directory (generated
+migrations) is excluded, and `prettier` is kept in `ignoreDependencies` because
+it is used via the inline config in `package.json` rather than a script.
+
+### Workflow — triaging findings
+
+knip exits non-zero when it finds anything, so it doubles as a CI gate. When it
+reports an item:
+
+1. **Genuinely unused → remove it.** Delete the dead file/export, then drop any
+   dependency it pulled in with `bun remove <pkg>`. Re-run `bun run typecheck`
+   and `bun run test` to confirm nothing broke.
+2. **Intentionally kept (public API, framework contract, config-only tool) →
+   ignore it deliberately.** Add the entry to the relevant `knip.json` field
+   (`ignore`, `ignoreDependencies`, `ignoreBinaries`) or annotate the export
+   with a `// @public` JSDoc tag, and note _why_ so the next reader understands
+   the exception. Prefer removal over ignoring.
+
+Run `bun run detect:dead-code` before opening a PR that adds or removes modules
+or dependencies, and clear new findings you introduce.
 
 ## Database Schema
 
