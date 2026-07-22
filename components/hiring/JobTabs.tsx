@@ -14,6 +14,7 @@ export default function JobTabs({
   jobs,
   activeJob,
   liveCount,
+  canWrite,
   onSelect,
   onToggleStar,
   onDelete
@@ -21,6 +22,8 @@ export default function JobTabs({
   jobs: Job[];
   activeJob: number;
   liveCount: (jobId: number) => number;
+  // RBAC: readers can switch jobs but not star or delete them.
+  canWrite: boolean;
   onSelect: (jobId: number) => void;
   onToggleStar: (jobId: number, starred: boolean) => void;
   onDelete: (jobId: number) => void;
@@ -51,7 +54,9 @@ export default function JobTabs({
 
   // Starred first (stable — jobs already come oldest-first), cap the inline set,
   // then guarantee the active job is shown even if it would otherwise overflow.
-  const sorted = [...jobs].sort((a, b) => Number(b.starred) - Number(a.starred));
+  const sorted = [...jobs].sort(
+    (a, b) => Number(b.starred) - Number(a.starred)
+  );
   let inline = sorted.slice(0, INLINE_CAP);
   if (!inline.some((j) => j.id === activeJob)) {
     const active = jobs.find((j) => j.id === activeJob);
@@ -93,21 +98,23 @@ export default function JobTabs({
           <div className="jobmenu" role="menu">
             {sorted.map((j) => (
               <div className="jobmenu-row" key={j.id}>
-                <button
-                  className="jobmenu-star"
-                  aria-pressed={j.starred}
-                  disabled={!j.starred && favCount >= MAX_FAVORITES}
-                  title={
-                    j.starred
-                      ? 'Unfavorite'
-                      : favCount >= MAX_FAVORITES
-                        ? `You can favorite up to ${MAX_FAVORITES} jobs`
-                        : 'Favorite (pin as a tab)'
-                  }
-                  onClick={() => onToggleStar(j.id, !j.starred)}
-                >
-                  {j.starred ? '★' : '☆'}
-                </button>
+                {canWrite && (
+                  <button
+                    className="jobmenu-star"
+                    aria-pressed={j.starred}
+                    disabled={!j.starred && favCount >= MAX_FAVORITES}
+                    title={
+                      j.starred
+                        ? 'Unfavorite'
+                        : favCount >= MAX_FAVORITES
+                          ? `You can favorite up to ${MAX_FAVORITES} jobs`
+                          : 'Favorite (pin as a tab)'
+                    }
+                    onClick={() => onToggleStar(j.id, !j.starred)}
+                  >
+                    {j.starred ? '★' : '☆'}
+                  </button>
+                )}
                 <button
                   className={`jobmenu-select${j.id === activeJob ? ' active' : ''}`}
                   onClick={() => {
@@ -119,7 +126,7 @@ export default function JobTabs({
                   <span className="jobmenu-title">{j.title}</span>
                   <span className="count">{liveCount(j.id)}</span>
                 </button>
-                {confirmId === j.id ? (
+                {!canWrite ? null : confirmId === j.id ? (
                   <span className="jobmenu-confirm">
                     <button
                       className="jobmenu-del danger"

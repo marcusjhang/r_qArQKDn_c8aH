@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react';
 import { isTerminal } from '@/lib/hiring/helpers';
 import { useHiringStore } from '@/lib/hiring/store';
+import { canWrite as roleCanWrite } from '@/lib/rbac';
 import type { HiringState } from '@/lib/hiring/types';
 import Board from './Board';
 import DetailDrawer from './DetailDrawer';
@@ -19,12 +20,16 @@ import './hiring.css';
 
 export default function HiringApp({
   initial,
-  userEmail
+  userEmail,
+  role
 }: {
   initial: HiringState;
   userEmail?: string | null;
+  role?: string;
 }) {
   const { state, actions } = useHiringStore(initial);
+  // RBAC: readers get a view-only board; writer+ can mutate the pipeline.
+  const canWrite = roleCanWrite(role);
   const [activeJob, setActiveJob] = useState<number>(state.jobs[0]?.id ?? 0);
   const [showRejected, setShowRejected] = useState(false);
   const [openId, setOpenId] = useState<number | null>(null);
@@ -50,7 +55,6 @@ export default function HiringApp({
     setOpenId(null);
   }
 
-
   const jobCands = job
     ? state.candidates.filter((c) => c.jobId === job.id)
     : [];
@@ -71,14 +75,17 @@ export default function HiringApp({
         userEmail={userEmail}
         nav={{ href: '/settings', label: '⚙ Settings' }}
       >
-        <button className="btn primary" onClick={() => setCreatingJob(true)}>
-          ＋ New job
-        </button>
+        {canWrite && (
+          <button className="btn primary" onClick={() => setCreatingJob(true)}>
+            ＋ New job
+          </button>
+        )}
         <JobTabs
           jobs={state.jobs}
           activeJob={activeJob}
           liveCount={liveCount}
           onSelect={selectJob}
+          canWrite={canWrite}
           onToggleStar={actions.setJobStarred}
           onDelete={actions.deleteJob}
         />
@@ -98,13 +105,15 @@ export default function HiringApp({
           />{' '}
           Show rejected
         </label>
-        <button
-          className="btn primary"
-          onClick={() => setAddingCandidate(true)}
-          disabled={!job}
-        >
-          ＋ Add candidate
-        </button>
+        {canWrite && (
+          <button
+            className="btn primary"
+            onClick={() => setAddingCandidate(true)}
+            disabled={!job}
+          >
+            ＋ Add candidate
+          </button>
+        )}
       </div>
 
       <Board
@@ -112,6 +121,7 @@ export default function HiringApp({
         actions={actions}
         activeJob={activeJob}
         showRejected={showRejected}
+        canWrite={canWrite}
         onOpen={setOpenId}
       />
 
@@ -119,6 +129,7 @@ export default function HiringApp({
         state={state}
         actions={actions}
         openId={openId}
+        canWrite={canWrite}
         onClose={() => setOpenId(null)}
       />
 

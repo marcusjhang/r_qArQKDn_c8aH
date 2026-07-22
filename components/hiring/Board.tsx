@@ -29,10 +29,12 @@ function RatingChip({ candidate }: { candidate: Candidate }) {
 
 function CandidateCard({
   candidate,
+  canWrite,
   onOpen,
   onToggleStar
 }: {
   candidate: Candidate;
+  canWrite: boolean;
   onOpen: (id: number) => void;
   onToggleStar: (id: number, starred: boolean) => void;
 }) {
@@ -40,24 +42,28 @@ function CandidateCard({
   return (
     <div
       className={`card${candidate.starred ? ' starred' : ''}`}
-      draggable
-      onDragStart={(e) =>
-        e.dataTransfer.setData('text/plain', String(candidate.id))
+      draggable={canWrite}
+      onDragStart={
+        canWrite
+          ? (e) => e.dataTransfer.setData('text/plain', String(candidate.id))
+          : undefined
       }
       onClick={() => onOpen(candidate.id)}
     >
       <div className="card-top">
-        <button
-          className="card-star"
-          aria-pressed={candidate.starred}
-          title={candidate.starred ? 'Unstar candidate' : 'Star candidate'}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleStar(candidate.id, !candidate.starred);
-          }}
-        >
-          {candidate.starred ? '★' : '☆'}
-        </button>
+        {canWrite && (
+          <button
+            className="card-star"
+            aria-pressed={candidate.starred}
+            title={candidate.starred ? 'Unstar candidate' : 'Star candidate'}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleStar(candidate.id, !candidate.starred);
+            }}
+          >
+            {candidate.starred ? '★' : '☆'}
+          </button>
+        )}
         <span className="card-name">{candidate.name}</span>
         <span className="avatar" title={owner.name}>
           {owner.initials}
@@ -130,6 +136,7 @@ function Column({
   cards,
   actions,
   state,
+  canWrite,
   onOpen
 }: {
   job: Job;
@@ -138,6 +145,7 @@ function Column({
   cards: Candidate[];
   actions: HiringActions;
   state: HiringState;
+  canWrite: boolean;
   onOpen: (id: number) => void;
 }) {
   const titleRef = useRef<HTMLDivElement>(null);
@@ -148,7 +156,10 @@ function Column({
   useEffect(() => {
     if (!menuOpen) return;
     function onDoc(e: MouseEvent) {
-      if (menuWrapRef.current && !menuWrapRef.current.contains(e.target as Node)) {
+      if (
+        menuWrapRef.current &&
+        !menuWrapRef.current.contains(e.target as Node)
+      ) {
         setMenuOpen(false);
       }
     }
@@ -191,80 +202,95 @@ function Column({
     <div
       className={`column${menuOpen ? ' menu-open' : ''}`}
       data-stage={stage}
-      onDragOver={(e) => {
-        e.preventDefault();
-        e.currentTarget.classList.add('dragover');
-      }}
+      onDragOver={
+        canWrite
+          ? (e) => {
+              e.preventDefault();
+              e.currentTarget.classList.add('dragover');
+            }
+          : undefined
+      }
       onDragLeave={(e) => e.currentTarget.classList.remove('dragover')}
-      onDrop={(e) => {
-        e.preventDefault();
-        e.currentTarget.classList.remove('dragover');
-        const id = Number(e.dataTransfer.getData('text/plain'));
-        if (id) actions.moveTo(id, stage);
-      }}
+      onDrop={
+        canWrite
+          ? (e) => {
+              e.preventDefault();
+              e.currentTarget.classList.remove('dragover');
+              const id = Number(e.dataTransfer.getData('text/plain'));
+              if (id) actions.moveTo(id, stage);
+            }
+          : undefined
+      }
     >
       <div className="col-head">
         <div
           className="col-title"
           ref={titleRef}
-          contentEditable
+          contentEditable={canWrite}
           suppressContentEditableWarning
           spellCheck={false}
-          title="Click to rename this stage"
-          onBlur={(e) => commitRename(e.currentTarget)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              e.currentTarget.blur();
-            } else if (e.key === 'Escape') {
-              e.currentTarget.textContent = stage;
-              e.currentTarget.blur();
-            }
-          }}
+          title={canWrite ? 'Click to rename this stage' : undefined}
+          onBlur={canWrite ? (e) => commitRename(e.currentTarget) : undefined}
+          onKeyDown={
+            canWrite
+              ? (e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.currentTarget.blur();
+                  } else if (e.key === 'Escape') {
+                    e.currentTarget.textContent = stage;
+                    e.currentTarget.blur();
+                  }
+                }
+              : undefined
+          }
         >
           {stage}
         </div>
         <span className="col-count">{cards.length}</span>
-        <div className="col-menu-wrap" ref={menuWrapRef}>
-          <button
-            className="col-menu"
-            title="Stage options"
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((o) => !o)}
-          >
-            ⋯
-          </button>
-          {menuOpen && (
-            <StageMenu
-              index={index}
-              stagesLen={job.stages.length}
-              canDelete={del.ok}
-              deleteReason={del.reason}
-              onRename={() => {
-                setMenuOpen(false);
-                startRename();
-              }}
-              onMove={(dir) => {
-                setMenuOpen(false);
-                actions.reorderStage(job.id, index, dir);
-              }}
-              onDelete={() => {
-                setMenuOpen(false);
-                actions.deleteStage(job.id, index);
-              }}
-            />
-          )}
-        </div>
+        {canWrite && (
+          <div className="col-menu-wrap" ref={menuWrapRef}>
+            <button
+              className="col-menu"
+              title="Stage options"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((o) => !o)}
+            >
+              ⋯
+            </button>
+            {menuOpen && (
+              <StageMenu
+                index={index}
+                stagesLen={job.stages.length}
+                canDelete={del.ok}
+                deleteReason={del.reason}
+                onRename={() => {
+                  setMenuOpen(false);
+                  startRename();
+                }}
+                onMove={(dir) => {
+                  setMenuOpen(false);
+                  actions.reorderStage(job.id, index, dir);
+                }}
+                onDelete={() => {
+                  setMenuOpen(false);
+                  actions.deleteStage(job.id, index);
+                }}
+              />
+            )}
+          </div>
+        )}
       </div>
       <div className="col-body">
         {cards.length === 0 ? (
-          <div className="empty-hint">Drop here</div>
+          <div className="empty-hint">{canWrite ? 'Drop here' : '—'}</div>
         ) : (
           cards.map((c) => (
             <CandidateCard
               key={c.id}
               candidate={c}
+              canWrite={canWrite}
               onOpen={onOpen}
               onToggleStar={actions.setCandidateStarred}
             />
@@ -355,12 +381,14 @@ export default function Board({
   actions,
   activeJob,
   showRejected,
+  canWrite,
   onOpen
 }: {
   state: HiringState;
   actions: HiringActions;
   activeJob: number;
   showRejected: boolean;
+  canWrite: boolean;
   onOpen: (id: number) => void;
 }) {
   const job = state.jobs.find((j) => j.id === activeJob);
@@ -374,7 +402,8 @@ export default function Board({
         {job.stages.map((stage, index) => {
           const cards = jobCandidates
             .filter(
-              (c) => c.stage === stage && (showRejected || !isHiddenByDefault(c))
+              (c) =>
+                c.stage === stage && (showRejected || !isHiddenByDefault(c))
             )
             // Starred candidates float to the top of the column (stable sort
             // preserves the existing creation order within each group).
@@ -388,14 +417,17 @@ export default function Board({
               cards={cards}
               actions={actions}
               state={state}
+              canWrite={canWrite}
               onOpen={onOpen}
             />
           );
         })}
-        <AddStageGhost
-          job={job}
-          onAdd={(name) => actions.addStage(job.id, name)}
-        />
+        {canWrite && (
+          <AddStageGhost
+            job={job}
+            onAdd={(name) => actions.addStage(job.id, name)}
+          />
+        )}
       </div>
     </div>
   );

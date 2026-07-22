@@ -10,6 +10,8 @@
 import { and, eq, ne, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db, jobs, candidates, feedback } from '@/lib/db';
+import { auth } from '@/lib/auth';
+import { canWrite } from '@/lib/rbac';
 import { stageDeletable, validateStageName, MAX_FAVORITES } from './helpers';
 import { DEFAULT_STAGES } from './config';
 import type { Status } from './types';
@@ -26,6 +28,16 @@ import {
   feedbackInsertSchema
 } from './schemas';
 
+// RBAC gate: every write below is a writer+ capability. Server actions are
+// independent entry points, so each enforces this itself — never relying on the
+// client having hidden the control (mirrors settings/actions.ts).
+async function assertCanWrite() {
+  const session = await auth();
+  if (!canWrite(session?.user?.role)) {
+    throw new Error('Forbidden: you do not have permission to make changes.');
+  }
+}
+
 async function loadJobStages(jobId: number): Promise<string[] | null> {
   const [j] = await db
     .select({ stages: jobs.stages })
@@ -40,6 +52,7 @@ async function loadJobStages(jobId: number): Promise<string[] | null> {
  * the client can reconcile its optimistic job and switch the board to it.
  */
 export async function createJob(titleRaw: string): Promise<number | null> {
+  await assertCanWrite();
   const title = zJobTitle.parse(titleRaw);
   const [{ maxPos }] = await db
     .select({ maxPos: sql<number>`coalesce(max(${jobs.position}), -1)` })
@@ -63,6 +76,7 @@ export async function addCandidate(
   sourceRaw: string,
   ownerRaw: string
 ): Promise<number | null> {
+  await assertCanWrite();
   const jobId = zId.parse(jobIdRaw);
   const { name, source, owner } = candidateInsertSchema.parse({
     name: nameRaw,
@@ -80,6 +94,7 @@ export async function addCandidate(
 }
 
 export async function setJobStarred(jobIdRaw: number, starred: boolean) {
+  await assertCanWrite();
   const jobId = zId.parse(jobIdRaw);
   if (starred) {
     // Enforce the favorites cap (count other starred jobs).
@@ -98,6 +113,7 @@ export async function setJobStarred(jobIdRaw: number, starred: boolean) {
  * float to the top of their column), so there's no favorites cap like jobs.
  */
 export async function setCandidateStarred(idRaw: number, starred: boolean) {
+  await assertCanWrite();
   const id = zId.parse(idRaw);
   await db
     .update(candidates)
@@ -108,12 +124,14 @@ export async function setCandidateStarred(idRaw: number, starred: boolean) {
 
 /** Delete a job; its candidates and feedback cascade via the FKs. */
 export async function deleteJob(jobIdRaw: number) {
+  await assertCanWrite();
   const jobId = zId.parse(jobIdRaw);
   await db.delete(jobs).where(eq(jobs.id, jobId));
   revalidatePath('/');
 }
 
 export async function moveStage(idRaw: number, stageRaw: string) {
+  await assertCanWrite();
   const id = zId.parse(idRaw);
   const stage = zStageName.parse(stageRaw);
   const [c] = await db
@@ -125,11 +143,15 @@ export async function moveStage(idRaw: number, stageRaw: string) {
   let status: Status = c.status;
   if (stage === 'Hired') status = 'hired';
   else if (c.status === 'hired') status = 'active';
-  await db.update(candidates).set({ stage, status }).where(eq(candidates.id, id));
+  await db
+    .update(candidates)
+    .set({ stage, status })
+    .where(eq(candidates.id, id));
   revalidatePath('/');
 }
 
 export async function setOwner(idRaw: number, ownerRaw: string) {
+  await assertCanWrite();
   const id = zId.parse(idRaw);
   const owner = zOwner.parse(ownerRaw);
   await db.update(candidates).set({ owner }).where(eq(candidates.id, id));
@@ -137,6 +159,7 @@ export async function setOwner(idRaw: number, ownerRaw: string) {
 }
 
 export async function setSource(idRaw: number, sourceRaw: string) {
+  await assertCanWrite();
   const id = zId.parse(idRaw);
   const source = zSource.parse(sourceRaw);
   await db.update(candidates).set({ source }).where(eq(candidates.id, id));
@@ -144,6 +167,7 @@ export async function setSource(idRaw: number, sourceRaw: string) {
 }
 
 export async function setStatus(idRaw: number, statusRaw: Status) {
+  await assertCanWrite();
   const id = zId.parse(idRaw);
   const status = zStatus.parse(statusRaw);
   const [c] = await db
@@ -158,7 +182,10 @@ export async function setStatus(idRaw: number, statusRaw: Status) {
     const stages = await loadJobStages(c.jobId);
     if (stages?.includes('Hired')) stage = 'Hired';
   }
-  await db.update(candidates).set({ status, stage }).where(eq(candidates.id, id));
+  await db
+    .update(candidates)
+    .set({ status, stage })
+    .where(eq(candidates.id, id));
   revalidatePath('/');
 }
 
@@ -168,6 +195,7 @@ export async function addFeedback(
   ratingRaw: number,
   noteRaw: string
 ) {
+  await assertCanWrite();
   const id = zId.parse(idRaw);
   const { byFounder, rating, note } = feedbackInsertSchema.parse({
     byFounder: byFounderRaw,
@@ -181,6 +209,7 @@ export async function addFeedback(
 }
 
 export async function addStage(jobIdRaw: number, nameRaw: string) {
+  await assertCanWrite();
   const jobId = zId.parse(jobIdRaw);
   const stages = await loadJobStages(jobId);
   if (!stages) return;
@@ -197,6 +226,7 @@ export async function renameStage(
   indexRaw: number,
   nameRaw: string
 ) {
+  await assertCanWrite();
   const jobId = zId.parse(jobIdRaw);
   const index = zIndex.parse(indexRaw);
   const stages = await loadJobStages(jobId);
@@ -223,6 +253,7 @@ export async function reorderStage(
   indexRaw: number,
   dirRaw: 1 | -1
 ) {
+  await assertCanWrite();
   const jobId = zId.parse(jobIdRaw);
   const index = zIndex.parse(indexRaw);
   const dir = zDir.parse(dirRaw);
@@ -237,6 +268,7 @@ export async function reorderStage(
 }
 
 export async function deleteStage(jobIdRaw: number, indexRaw: number) {
+  await assertCanWrite();
   const jobId = zId.parse(jobIdRaw);
   const index = zIndex.parse(indexRaw);
   const stages = await loadJobStages(jobId);

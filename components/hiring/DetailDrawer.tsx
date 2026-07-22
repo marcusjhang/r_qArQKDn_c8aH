@@ -9,7 +9,12 @@ import { useEffect, useRef, useState } from 'react';
 import { FOUNDERS, RATINGS, SOURCES, STATUS } from '@/lib/hiring/config';
 import { agg, founderById } from '@/lib/hiring/helpers';
 import type { HiringActions } from '@/lib/hiring/store';
-import type { Candidate, HiringState, RatingValue, Status } from '@/lib/hiring/types';
+import type {
+  Candidate,
+  HiringState,
+  RatingValue,
+  Status
+} from '@/lib/hiring/types';
 
 const RATING_ORDER: RatingValue[] = [1, 2, 3, 4];
 
@@ -17,15 +22,19 @@ export default function DetailDrawer({
   state,
   actions,
   openId,
+  canWrite,
   onClose
 }: {
   state: HiringState;
   actions: HiringActions;
   openId: number | null;
+  canWrite: boolean;
   onClose: () => void;
 }) {
   const candidate =
-    openId == null ? null : state.candidates.find((c) => c.id === openId) ?? null;
+    openId == null
+      ? null
+      : (state.candidates.find((c) => c.id === openId) ?? null);
 
   // Keep the last shown candidate so content stays put during the slide-out.
   const lastRef = useRef<Candidate | null>(null);
@@ -101,16 +110,18 @@ export default function DetailDrawer({
         aria-modal="true"
       >
         <div className="drawer-head">
-          <button
-            className="drawer-star"
-            aria-pressed={view?.starred ?? false}
-            title={view?.starred ? 'Unstar candidate' : 'Star candidate'}
-            onClick={() =>
-              view && actions.setCandidateStarred(view.id, !view.starred)
-            }
-          >
-            {view?.starred ? '★' : '☆'}
-          </button>
+          {canWrite && (
+            <button
+              className="drawer-star"
+              aria-pressed={view?.starred ?? false}
+              title={view?.starred ? 'Unstar candidate' : 'Star candidate'}
+              onClick={() =>
+                view && actions.setCandidateStarred(view.id, !view.starred)
+              }
+            >
+              {view?.starred ? '★' : '☆'}
+            </button>
+          )}
           <div className="who">
             <h2>{view?.name ?? '—'}</h2>
             <div className="sub">
@@ -128,7 +139,10 @@ export default function DetailDrawer({
               <span className="label">Owner</span>
               <select
                 value={view?.owner ?? FOUNDERS[0].id}
-                onChange={(e) => view && actions.setOwner(view.id, e.target.value)}
+                disabled={!canWrite}
+                onChange={(e) =>
+                  view && actions.setOwner(view.id, e.target.value)
+                }
               >
                 {FOUNDERS.map((f) => (
                   <option key={f.id} value={f.id}>
@@ -141,6 +155,7 @@ export default function DetailDrawer({
               <span className="label">Status</span>
               <select
                 value={view?.status ?? 'active'}
+                disabled={!canWrite}
                 onChange={(e) =>
                   view && actions.setStatus(view.id, e.target.value as Status)
                 }
@@ -159,7 +174,10 @@ export default function DetailDrawer({
               <span className="label">Source</span>
               <select
                 value={view?.source ?? SOURCES[0]}
-                onChange={(e) => view && actions.setSource(view.id, e.target.value)}
+                disabled={!canWrite}
+                onChange={(e) =>
+                  view && actions.setSource(view.id, e.target.value)
+                }
               >
                 {SOURCES.map((s) => (
                   <option key={s} value={s}>
@@ -187,8 +205,11 @@ export default function DetailDrawer({
                 {a == null ? (
                   <span className="rating-chip muted">No ratings</span>
                 ) : (
-                  <span className={`rating-chip ${RATINGS[Math.round(a) as RatingValue].cls}`}>
-                    {RATINGS[Math.round(a) as RatingValue].label} · avg {a.toFixed(1)}
+                  <span
+                    className={`rating-chip ${RATINGS[Math.round(a) as RatingValue].cls}`}
+                  >
+                    {RATINGS[Math.round(a) as RatingValue].label} · avg{' '}
+                    {a.toFixed(1)}
                   </span>
                 )}
               </span>
@@ -224,49 +245,54 @@ export default function DetailDrawer({
               )}
             </div>
 
-            <div className="add-fb">
-              <div className="field">
-                <span className="label">Interviewer</span>
-                <select value={fbWho} onChange={(e) => setFbWho(e.target.value)}>
-                  {FOUNDERS.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="field">
-                <span className="label">Rating</span>
-                <div className="rating-picker">
-                  {RATING_ORDER.map((v) => (
-                    <button
-                      key={v}
-                      className={`rp ${RATINGS[v].cls}`}
-                      aria-pressed={draftV === v}
-                      onClick={() => {
-                        setDraftV(v);
-                        setFbError('');
-                      }}
-                    >
-                      {RATINGS[v].label}
-                    </button>
-                  ))}
+            {canWrite && (
+              <div className="add-fb">
+                <div className="field">
+                  <span className="label">Interviewer</span>
+                  <select
+                    value={fbWho}
+                    onChange={(e) => setFbWho(e.target.value)}
+                  >
+                    {FOUNDERS.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
+                <div className="field">
+                  <span className="label">Rating</span>
+                  <div className="rating-picker">
+                    {RATING_ORDER.map((v) => (
+                      <button
+                        key={v}
+                        className={`rp ${RATINGS[v].cls}`}
+                        aria-pressed={draftV === v}
+                        onClick={() => {
+                          setDraftV(v);
+                          setFbError('');
+                        }}
+                      >
+                        {RATINGS[v].label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="field">
+                  <span className="label">Note</span>
+                  <textarea
+                    value={note}
+                    maxLength={2000}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="What stood out? Concerns?"
+                  />
+                </div>
+                {fbError && <div className="form-error">{fbError}</div>}
+                <button className="btn primary" onClick={addFeedback}>
+                  Add feedback
+                </button>
               </div>
-              <div className="field">
-                <span className="label">Note</span>
-                <textarea
-                  value={note}
-                  maxLength={2000}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="What stood out? Concerns?"
-                />
-              </div>
-              {fbError && <div className="form-error">{fbError}</div>}
-              <button className="btn primary" onClick={addFeedback}>
-                Add feedback
-              </button>
-            </div>
+            )}
           </div>
         </div>
 
@@ -274,12 +300,12 @@ export default function DetailDrawer({
           <div className="stage-now">
             Stage: <b>{view?.stage ?? '—'}</b>
           </div>
-          {canMoveBack && (
+          {canWrite && canMoveBack && (
             <button className="btn" onClick={() => moveAndClose(-1)}>
               ← Move back
             </button>
           )}
-          {canAdvance && (
+          {canWrite && canAdvance && (
             <button className="btn primary" onClick={() => moveAndClose(1)}>
               Advance stage →
             </button>

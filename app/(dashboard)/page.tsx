@@ -6,5 +6,11 @@ export const dynamic = 'force-dynamic';
 
 export default async function Page() {
   const [initial, session] = await Promise.all([getBoardData(), auth()]);
-  return <HiringApp initial={initial} userEmail={session?.user?.email ?? null} />;
+  return (
+    <HiringApp
+      initial={initial}
+      userEmail={session?.user?.email ?? null}
+      role={session?.user?.role}
+    />
+  );
 }

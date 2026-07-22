@@ -57,6 +57,13 @@
       "when": 1784631600003,
       "tag": "0007_chilly_wolfsbane",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784686121548,
+      "tag": "0008_equal_monster_badoon",
+      "breakpoints": true
     }
   ]
 }

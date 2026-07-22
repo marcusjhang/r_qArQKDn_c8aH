@@ -12,15 +12,17 @@ import {
 import { relations, sql } from 'drizzle-orm';
 import { STATUSES, type RatingValue } from './hiring/primitives';
 
-// Auth accounts (used by lib/auth.ts to gate the app).
-export const roleEnum = pgEnum('role', ['user', 'admin']);
+// Auth accounts (used by lib/auth.ts to gate the app). Roles form a hierarchy
+// (owner > admin > writer > reader); the ordering and permission checks live in
+// lib/rbac.ts.
+export const roleEnum = pgEnum('role', ['reader', 'writer', 'admin', 'owner']);
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }),
   email: varchar('email', { length: 255 }).notNull().unique(),
   passwordHash: text('password_hash').notNull(),
-  role: roleEnum('role').default('user').notNull(),
+  role: roleEnum('role').default('reader').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 

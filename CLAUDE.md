@@ -20,7 +20,20 @@ bun run db:generate  # generate migration after schema change
 
 - The whole app is gated behind login — enforced by the `authorized` callback in
   `lib/auth.ts` (middleware runs on every route; only `/login` is public).
-- Seeded login: `marcusajh0802@gmail.com` / `password` (override via `SEED_PASSWORD`; change before non-demo use).
+- Seeded login: `marcusajh0802@gmail.com` / `password`, seeded with the `owner`
+  role (override password via `SEED_PASSWORD`; change before non-demo use).
+- RBAC: every user has a role (`reader` < `writer` < `admin` < `owner`), stored
+  on `users.role` and threaded onto the session in `lib/auth.ts`. The hierarchy
+  and permission checks are the single source of truth in `lib/rbac.ts`
+  (`canWrite`, `canManageAllowlist`, `canManageRoles`, `isOwner`). Capabilities:
+  - **reader** — view the board only.
+  - **writer** — reader + all pipeline work (every `lib/hiring/actions.ts`
+    mutation; gated by `assertCanWrite`).
+  - **admin** — writer + manage the signup allowlist and assign roles up to
+    admin (in `/settings`).
+  - **owner** — admin + the exclusive ability to grant/change the `owner` role.
+  Signups default to `reader`; an admin promotes them under `/settings`
+  → Members. Server actions enforce RBAC independently of the UI gating.
 - Sign up via `/login` → `POST /api/register`, restricted to the allowlist managed in `/settings`.
 
 ## App
