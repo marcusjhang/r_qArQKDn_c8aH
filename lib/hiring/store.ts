@@ -93,6 +93,14 @@ export function useHiringStore(initial: HiringState): {
   // adopts server state on an explicit resync — never clobbering an in-flight
   // optimistic change during the automatic post-action refresh.
   const wantResync = useRef(false);
+  // Mutations that targeted a still-optimistic (negative temp-id) row, keyed by
+  // that temp id. An optimistic row carries a negative id until the server
+  // hands back the real one; a server action's `zId` rejects a negative id, so
+  // acting on such a row before its reconcile would throw and resync away the
+  // just-created row. We queue those mutations here and flush them with the
+  // real id once reconcile lands (see reconcile* below), keeping it general
+  // across jobs, candidates and feedback.
+  const pending = useRef(new Map<number, ((realId: number) => void)[]>());
 
   // Adopt fresh server props only when we explicitly asked to resync (error
   // recovery). Optimistic local state is otherwise authoritative.
@@ -105,8 +113,36 @@ export function useHiringStore(initial: HiringState): {
 
   const resync = useCallback(() => {
     wantResync.current = true;
+    // Fresh server state replaces every optimistic row, so any queued mutation
+    // targeting a temp id is moot — drop them rather than run against stale ids.
+    pending.current.clear();
     router.refresh();
   }, [router]);
+
+  // Run `fn` against a row's real id. A non-negative id is already persisted, so
+  // run immediately; a negative (temp) id belongs to an unreconciled optimistic
+  // row, so defer until its reconcile flushes the queue.
+  const whenReconciled = useCallback(
+    (id: number, fn: (realId: number) => void) => {
+      if (id >= 0) {
+        fn(id);
+        return;
+      }
+      const q = pending.current.get(id);
+      if (q) q.push(fn);
+      else pending.current.set(id, [fn]);
+    },
+    []
+  );
+
+  // Drain the mutations queued against a temp id, replaying them with the real
+  // id the server just returned.
+  const flushPending = useCallback((tempId: number, realId: number) => {
+    const q = pending.current.get(tempId);
+    if (!q) return;
+    pending.current.delete(tempId);
+    for (const fn of q) fn(realId);
+  }, []);
 
   const persist = useCallback(
     (fn: () => Promise<unknown>) => {
@@ -134,13 +170,14 @@ export function useHiringStore(initial: HiringState): {
           if (realId != null) {
             dispatch({ type: 'reconcileJobId', tempId: temp, realId });
             onReady(realId); // re-point the board at the persisted id
+            flushPending(temp, realId); // replay any mutations queued on the temp id
           }
         } catch {
           resync();
         }
       });
     },
-    [resync]
+    [resync, flushPending]
   );
 
   const setJobStarred = useCallback(
@@ -154,17 +191,17 @@ export function useHiringStore(initial: HiringState): {
         return;
       }
       dispatch({ type: 'setJobStarred', jobId, starred });
-      persist(() => api.setJobStarred(jobId, starred));
+      whenReconciled(jobId, (id) => persist(() => api.setJobStarred(id, starred)));
     },
-    [persist]
+    [persist, whenReconciled]
   );
 
   const deleteJob = useCallback(
     (jobId: number) => {
       dispatch({ type: 'deleteJob', jobId });
-      persist(() => api.deleteJob(jobId));
+      whenReconciled(jobId, (id) => persist(() => api.deleteJob(id)));
     },
-    [persist]
+    [persist, whenReconciled]
   );
 
   const addCandidate = useCallback(
@@ -202,13 +239,14 @@ export function useHiringStore(initial: HiringState): {
           );
           if (realId != null) {
             dispatch({ type: 'reconcileCandidateId', tempId: temp, realId });
+            flushPending(temp, realId); // replay any mutations queued on the temp id
           }
         } catch {
           resync();
         }
       });
     },
-    [resync]
+    [resync, flushPending]
   );
 
   const editCandidate = useCallback(
@@ -231,27 +269,29 @@ export function useHiringStore(initial: HiringState): {
         githubUrl,
         yearsExperience
       });
-      persist(() =>
-        api.editCandidate(
-          id,
-          name,
-          source,
-          owner,
-          linkedinUrl,
-          githubUrl,
-          yearsExperience
+      whenReconciled(id, (realId) =>
+        persist(() =>
+          api.editCandidate(
+            realId,
+            name,
+            source,
+            owner,
+            linkedinUrl,
+            githubUrl,
+            yearsExperience
+          )
         )
       );
     },
-    [persist]
+    [persist, whenReconciled]
   );
 
   const moveTo = useCallback(
     (id: number, stage: string) => {
       dispatch({ type: 'moveStage', id, stage });
-      persist(() => api.moveStage(id, stage));
+      whenReconciled(id, (realId) => persist(() => api.moveStage(realId, stage)));
     },
-    [persist]
+    [persist, whenReconciled]
   );
 
   const advance = useCallback(
@@ -272,28 +312,41 @@ export function useHiringStore(initial: HiringState): {
   const setStatus = useCallback(
     (id: number, status: Status) => {
       dispatch({ type: 'setStatus', id, status });
-      persist(() => api.setStatus(id, status));
+      whenReconciled(id, (realId) => persist(() => api.setStatus(realId, status)));
     },
-    [persist]
+    [persist, whenReconciled]
   );
 
   const setCandidateStarred = useCallback(
     (id: number, starred: boolean) => {
       dispatch({ type: 'setCandidateStarred', id, starred });
-      persist(() => api.setCandidateStarred(id, starred));
+      whenReconciled(id, (realId) =>
+        persist(() => api.setCandidateStarred(realId, starred))
+      );
     },
-    [persist]
+    [persist, whenReconciled]
   );
 
   const addFeedback = useCallback(
     (id: number, entry: { byUser: number; rating: RatingValue; note: string }) => {
       const temp = tempId.current--;
+      // byUser is the current user (used only for the optimistic row's display);
+      // the server derives the real author from the session, so it's not sent.
       dispatch({ type: 'addFeedback', id, tempId: temp, ...entry });
-      persist(() =>
-        api.addFeedback(id, entry.byUser, entry.rating, entry.note)
-      );
+      whenReconciled(id, (realId) => {
+        startTransition(async () => {
+          try {
+            const fbId = await api.addFeedback(realId, entry.rating, entry.note);
+            if (fbId != null) {
+              dispatch({ type: 'reconcileFeedbackId', tempId: temp, realId: fbId });
+            }
+          } catch {
+            resync();
+          }
+        });
+      });
     },
-    [persist]
+    [resync, whenReconciled]
   );
 
   const renameStage = useCallback(
@@ -305,9 +358,11 @@ export function useHiringStore(initial: HiringState): {
       if (old === undefined || trimmed === old) return;
       if (!validateStageName(job.stages, name, index).ok) return;
       dispatch({ type: 'renameStage', jobId, index, name: trimmed });
-      persist(() => api.renameStage(jobId, index, trimmed));
+      whenReconciled(jobId, (id) =>
+        persist(() => api.renameStage(id, index, trimmed))
+      );
     },
-    [persist]
+    [persist, whenReconciled]
   );
 
   const addStage = useCallback(
@@ -319,9 +374,9 @@ export function useHiringStore(initial: HiringState): {
       if (!addStageToPipeline(job.stages, name).ok) return;
       const trimmed = name.trim();
       dispatch({ type: 'addStage', jobId, name: trimmed });
-      persist(() => api.addStage(jobId, trimmed));
+      whenReconciled(jobId, (id) => persist(() => api.addStage(id, trimmed)));
     },
-    [persist]
+    [persist, whenReconciled]
   );
 
   const reorderStage = useCallback(
@@ -330,9 +385,9 @@ export function useHiringStore(initial: HiringState): {
       if (!job) return;
       if (!reorderStages(job.stages, index, dir).ok) return;
       dispatch({ type: 'reorderStage', jobId, index, dir });
-      persist(() => api.reorderStage(jobId, index, dir));
+      whenReconciled(jobId, (id) => persist(() => api.reorderStage(id, index, dir)));
     },
-    [persist]
+    [persist, whenReconciled]
   );
 
   const deleteStage = useCallback(
@@ -346,9 +401,9 @@ export function useHiringStore(initial: HiringState): {
       );
       if (!removeStage(job.stages, index, hasCandidates).ok) return;
       dispatch({ type: 'deleteStage', jobId, index });
-      persist(() => api.deleteStage(jobId, index));
+      whenReconciled(jobId, (id) => persist(() => api.deleteStage(id, index)));
     },
-    [persist]
+    [persist, whenReconciled]
   );
 
   const actions: HiringActions = {

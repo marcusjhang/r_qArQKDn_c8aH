@@ -63,6 +63,7 @@ export type HiringEvent =
       rating: RatingValue;
       note: string;
     }
+  | { type: 'reconcileFeedbackId'; tempId: number; realId: number }
   // Stages (edits to a job's ordered stage list)
   | { type: 'renameStage'; jobId: number; index: number; name: string }
   | { type: 'addStage'; jobId: number; name: string }
@@ -214,6 +215,20 @@ export function hiringReducer(
           }
         ]
       }));
+
+    case 'reconcileFeedbackId':
+      // Feedback ids live in their own space, so match the temp entry wherever
+      // it sits (its candidate) and adopt the persisted id — mirrors the
+      // job/candidate reconciliations.
+      return {
+        ...state,
+        candidates: state.candidates.map((c) => ({
+          ...c,
+          feedback: c.feedback.map((f) =>
+            f.id === event.tempId ? { ...f, id: event.realId } : f
+          )
+        }))
+      };
 
     case 'renameStage': {
       const job = state.jobs.find((j) => j.id === event.jobId);

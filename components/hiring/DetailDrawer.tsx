@@ -56,10 +56,11 @@ export default function DetailDrawer({
 
   const job = view ? state.jobs.find((j) => j.id === view.jobId) : undefined;
 
-  // One feedback entry per interviewer (enforced by a DB unique constraint), so
-  // only offer users who haven't reviewed this candidate yet.
+  // Feedback is always authored by the signed-in user (one entry per user,
+  // enforced by a DB unique constraint), so they can only add feedback if they
+  // haven't reviewed this candidate yet.
   const reviewedIds = new Set((view?.feedback ?? []).map((f) => f.byUser));
-  const availableUsers = state.users.filter((u) => !reviewedIds.has(u.id));
+  const canReview = currentUserId != null && !reviewedIds.has(currentUserId);
 
   // Moving a candidate's stage returns you to the board so the move is visible.
   function moveAndClose(dir: 1 | -1) {
@@ -103,9 +104,12 @@ export default function DetailDrawer({
             <FeedbackList view={view} users={state.users} />
             <AddFeedbackForm
               resetKey={openId}
-              users={availableUsers}
-              currentUserId={currentUserId}
-              onAdd={(entry) => view && actions.addFeedback(view.id, entry)}
+              canReview={canReview}
+              onAdd={(entry) =>
+                view &&
+                currentUserId != null &&
+                actions.addFeedback(view.id, { byUser: currentUserId, ...entry })
+              }
             />
           </div>
 
