@@ -998,16 +998,21 @@
 }
 
 /* Settings page */
-/* Settings scrolls at full viewport width so its scrollbar sits at the right
-   edge of the screen; the content inside stays centered (.settings-inner).
-   `.ht-settings` lifts the board's centered max-width for this page only. */
+/* The whole page scrolls at full viewport width, so its scrollbar spans the
+   full height of the screen (top to bottom) and sits flush at the right edge.
+   `.ht-settings` lifts the board's centered max-width and becomes the scroll
+   container; the top bar stays pinned (sticky) and the content stays centered
+   (.settings-inner). */
 .ht-root.ht-settings {
   max-width: none;
+  overflow-y: auto;
+}
+.ht-root.ht-settings .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 .ht-root .settings-wrap {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
   width: 100%;
 }
 .ht-root .settings-inner {
