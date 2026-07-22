@@ -62,8 +62,7 @@ export default function ProfilePanel({
         <p className="settings-section-title">Profile</p>
         <h1 className="settings-title">Your name</h1>
         <p className="settings-sub">
-          Your first and last name. Your avatar initials are the first letter of
-          each — e.g. &ldquo;Ben Ong&rdquo; → BO, &ldquo;Heng Hong Lee&rdquo; → HL.
+          Your name. Avatar initials come from it — e.g. Ben Ong → BO.
         </p>
       </div>
 

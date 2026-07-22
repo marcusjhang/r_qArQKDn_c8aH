@@ -60,8 +60,7 @@ export default function AllowlistPanel({
         <p className="settings-section-title">Allowlist</p>
         <h1 className="settings-title">Signup allowlist</h1>
         <p className="settings-sub">
-          Only these email addresses can create an account and become a member.
-          Everyone else is rejected at sign-up.
+          Only these emails can sign up.
         </p>
       </div>
 
@@ -87,7 +86,7 @@ export default function AllowlistPanel({
       <ul className="email-list">
         {emails.length === 0 && (
           <li className="email-empty">
-            No emails yet — no one can sign up until you add one.
+            No emails yet — no one can sign up.
           </li>
         )}
         {emails.map((e) => (

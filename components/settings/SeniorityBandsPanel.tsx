@@ -111,8 +111,8 @@ export default function SeniorityBandsPanel({
         <p className="settings-section-title">Seniority</p>
         <h1 className="settings-title">Seniority bands</h1>
         <p className="settings-sub">
-          Maps a candidate&apos;s years of experience to a seniority label. A
-          candidate gets the highest band whose threshold their experience meets.
+          Maps years of experience to a label; the highest matching threshold
+          wins.
         </p>
       </div>
 

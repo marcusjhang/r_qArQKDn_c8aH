@@ -259,8 +259,7 @@ export default function ChatPanel({
           <div className="chat-empty">Loading discussion…</div>
         ) : messages.length === 0 ? (
           <div className="chat-empty">
-            No messages yet — start the discussion. Type <b>@</b> to tag a
-            teammate.
+            No messages yet. Type <b>@</b> to tag a teammate.
           </div>
         ) : (
           messages.map((m) => {

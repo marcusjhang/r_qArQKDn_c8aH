@@ -85,8 +85,7 @@ export default function SourcesPanel({
         <p className="settings-section-title">Sources</p>
         <h1 className="settings-title">Candidate sources</h1>
         <p className="settings-sub">
-          The options offered when setting where a candidate came from. A source
-          can&apos;t be removed while candidates still use it.
+          Where candidates come from. A source in use can&apos;t be removed.
         </p>
       </div>
 

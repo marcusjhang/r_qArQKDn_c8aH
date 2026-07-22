@@ -25,9 +25,7 @@ export default function MembersPanel({ members }: { members: Member[] }) {
         <p className="settings-section-title">Members</p>
         <h1 className="settings-title">Team members</h1>
         <p className="settings-sub">
-          Everyone with an account, and a history of what they&apos;ve done —
-          feedback left and messages posted across the pipeline. Click a member
-          to see their activity.
+          Everyone with an account. Click a member to see their activity.
         </p>
       </div>
 
