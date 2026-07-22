@@ -20,4 +20,12 @@ export {
 } from './schema';
 
 // Pass the schema (incl. relations) so the db.query relational API is available.
-export const db = drizzle(postgres(process.env.DATABASE_URL!), { schema });
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error(
+    'DATABASE_URL is not set. ' +
+      'Add it to your .env.local file (see .env.example) or set it in your deployment environment.'
+  );
+}
+
+export const db = drizzle(postgres(databaseUrl), { schema });
