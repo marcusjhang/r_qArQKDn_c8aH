@@ -116,6 +116,45 @@ export function mentionPresent(text: string, name: string): boolean {
 }
 
 /**
+ * Find the active `@query` token immediately before the caret, if any. Drives
+ * the chat composer's @-mention autocomplete: returns the partial query and the
+ * offset of the leading `@` so an accepted pick can splice the name in.
+ */
+export function activeMention(
+  text: string,
+  caret: number
+): { query: string; start: number } | null {
+  const upto = text.slice(0, caret);
+  const m = upto.match(/(?:^|\s)@([\p{L}\d._-]*)$/u);
+  if (!m) return null;
+  const query = m[1];
+  return { query, start: caret - query.length - 1 };
+}
+
+/**
+ * The @-mention autocomplete suggestions for a query: the board's users minus
+ * the author, name/email substring-matched (case-insensitive; empty query
+ * matches all), capped at 6.
+ */
+export function mentionSuggestions(
+  users: User[],
+  query: string,
+  currentUserId: number | null
+): User[] {
+  const q = query.toLowerCase();
+  return users
+    .filter((u) => currentUserId == null || u.id !== currentUserId)
+    .filter((u) => {
+      if (!q) return true;
+      return (
+        displayName(u).toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q)
+      );
+    })
+    .slice(0, 6);
+}
+
+/**
  * Seniority band label for a candidate's years of experience against the
  * configurable `bands` (from board state / DB), or null when experience is
  * unspecified or no band's threshold is met. Bands are scanned high-to-low so
@@ -147,6 +186,134 @@ export function parseYearsInput(raw: string): {
     return { value: null, ok: false };
   }
   return { value: n, ok: true };
+}
+
+/**
+ * The editable candidate fields, as raw form strings/ids. Shared by the add-
+ * candidate modal and the edit/detail form so both drive the same
+ * `<CandidateFields>` and validate through `validateCandidateDraft`. Years is
+ * kept as the raw input string (empty = unspecified) until validated.
+ */
+export interface CandidateDraft {
+  name: string;
+  source: number;
+  owner: number;
+  linkedin: string;
+  github: string;
+  years: string;
+}
+
+/** Canonical text form of a stored years value (null → empty string). */
+export function yearsToText(years: number | null | undefined): string {
+  return years == null ? '' : String(years);
+}
+
+/**
+ * A blank draft, defaulting the source/owner selects to the first available
+ * option (matching the add-candidate form's initial state).
+ */
+export function emptyCandidateDraft(
+  sources: Source[],
+  users: User[]
+): CandidateDraft {
+  return {
+    name: '',
+    source: sources[0]?.id ?? 0,
+    owner: users[0]?.id ?? 0,
+    linkedin: '',
+    github: '',
+    years: ''
+  };
+}
+
+/**
+ * Seed a draft from an existing candidate (edit mode), falling back to the
+ * first source/owner option when the candidate is null or its FK is unset.
+ */
+export function draftFromCandidate(
+  c: Candidate | null,
+  sources: Source[],
+  users: User[]
+): CandidateDraft {
+  return {
+    name: c?.name ?? '',
+    source: c?.source ?? sources[0]?.id ?? 0,
+    owner: c?.owner ?? users[0]?.id ?? 0,
+    linkedin: c?.linkedinUrl ?? '',
+    github: c?.githubUrl ?? '',
+    years: yearsToText(c?.yearsExperience)
+  };
+}
+
+/** The normalized, persist-ready candidate values a valid draft produces. */
+export interface CandidateDraftValues {
+  name: string;
+  source: number;
+  owner: number;
+  linkedinUrl: string | null;
+  githubUrl: string | null;
+  yearsExperience: number | null;
+}
+
+/**
+ * Validate a candidate draft with the exact rules (and error copy) shared by
+ * the add- and edit-candidate forms: a required name, http(s) profile URLs (or
+ * blank), and a whole-number years value in range. Returns the normalized
+ * values on success, or the message to surface on the first failing field.
+ */
+export function validateCandidateDraft(
+  draft: CandidateDraft
+): { ok: true; values: CandidateDraftValues } | { ok: false; error: string } {
+  const name = draft.name.trim();
+  if (!name) {
+    return { ok: false, error: 'Enter a candidate name.' };
+  }
+  const li = normalizeProfileUrl(draft.linkedin);
+  if (!li.ok) {
+    return { ok: false, error: 'LinkedIn must be a valid http(s) URL.' };
+  }
+  const gh = normalizeProfileUrl(draft.github);
+  if (!gh.ok) {
+    return { ok: false, error: 'GitHub must be a valid http(s) URL.' };
+  }
+  const years = parseYearsInput(draft.years);
+  if (!years.ok) {
+    return {
+      ok: false,
+      error: `Years of experience must be a whole number 0–${MAX_YEARS_EXPERIENCE}.`
+    };
+  }
+  return {
+    ok: true,
+    values: {
+      name,
+      source: draft.source,
+      owner: draft.owner,
+      linkedinUrl: li.value,
+      githubUrl: gh.value,
+      yearsExperience: years.value
+    }
+  };
+}
+
+/**
+ * Whether a draft differs from the candidate it was seeded from — the edit
+ * form's "dirty" check that gates Save. Trims text fields the same way
+ * validation does so whitespace-only edits don't count as changes.
+ */
+export function candidateDraftDirty(
+  draft: CandidateDraft,
+  view: Candidate | null
+): boolean {
+  if (!view) return false;
+  return (
+    draft.name.trim() !== view.name ||
+    draft.source !== view.source ||
+    draft.owner !== view.owner ||
+    draft.linkedin.trim() !== (view.linkedinUrl ?? '') ||
+    draft.github.trim() !== (view.githubUrl ?? '') ||
+    draft.years.trim() !== yearsToText(view.yearsExperience)
+  );
 }
 
 /** Rejected and Hired are terminal — they're not part of the active pipeline. */
