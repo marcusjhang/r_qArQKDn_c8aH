@@ -7,7 +7,8 @@ export const metadata = {
 };
 
 // Applies the persisted theme before paint so there's no light→dark flash.
-const THEME_SCRIPT = `try{if(localStorage.getItem('theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}`;
+// 'system' (and no stored preference) follows the OS `prefers-color-scheme`.
+const THEME_SCRIPT = `try{var t=localStorage.getItem('theme');if(t==='dark'||((!t||t==='system')&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}`;
 
 export default function RootLayout({
   children
