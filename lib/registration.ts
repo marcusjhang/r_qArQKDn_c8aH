@@ -25,18 +25,34 @@ export interface RegisterInput {
 }
 
 /**
- * Result of a registration attempt. On failure it carries the caller-facing
- * message and the HTTP status the API handler should map it to, so the domain
- * owns the rule while the handler owns the transport.
+ * Result of a registration attempt.
+ *
+ * Only genuine input-validation failures (`ok: false`) are reported distinctly
+ * to the caller — a malformed request tells the client nothing about whether
+ * any given email is allowlisted or already registered, so a clear 400 is safe
+ * and useful.
+ *
+ * Every request that passes validation resolves to `ok: true` regardless of
+ * whether an account was actually created: allowlist-miss, duplicate, and
+ * fresh-insert are deliberately indistinguishable to the caller (see
+ * `SECURITY.md` → "Registration enumeration"). The internal `created` flag
+ * records what really happened for logging/metrics, but MUST NOT be surfaced in
+ * the HTTP response — doing so would reintroduce the enumeration oracle.
  */
 export type RegisterResult =
-  | { ok: true }
-  | { ok: false; error: string; status: 400 | 403 | 409 };
+  | { ok: true; created: boolean }
+  | { ok: false; error: string; status: 400 };
 
 /**
- * Validate and create a user account. Runs the checks in the same order the
- * handler used to (required → password length → allowlist → duplicate) so the
- * behaviour, messages, and statuses are unchanged.
+ * Validate and (when eligible) create a user account.
+ *
+ * Runs the checks in order: required fields → password length → allowlist →
+ * duplicate → insert. The first two are input validation and surface as a
+ * distinct 400. The allowlist and duplicate checks still fully gate account
+ * creation, but they no longer produce a distinct result — a request for an
+ * email that is not allowlisted, or that already has an account, returns the
+ * same `{ ok: true }` shape as a successful creation so an attacker cannot
+ * enumerate the allowlist or which emails have accounts.
  */
 export async function registerUser(input: RegisterInput): Promise<RegisterResult> {
   const rawEmail = typeof input.email === 'string' ? input.email : '';
@@ -66,14 +82,11 @@ export async function registerUser(input: RegisterInput): Promise<RegisterResult
     };
   }
 
-  // Signups are restricted to the allowlist (managed in /settings).
+  // Signups are restricted to the allowlist (managed in /members). A miss is
+  // NOT reported distinctly — returning here with the same shape as success
+  // keeps the allowlist unenumerable.
   if (!(await isEmailAllowed(email))) {
-    return {
-      ok: false,
-      status: 403,
-      error:
-        'This email is not allowed to sign up. Ask an admin to add it in Settings.'
-    };
+    return { ok: true, created: false };
   }
 
   const [existing] = await db
@@ -82,12 +95,10 @@ export async function registerUser(input: RegisterInput): Promise<RegisterResult
     .where(eq(users.email, email))
     .limit(1);
 
+  // A duplicate is likewise indistinguishable from a fresh signup: we simply
+  // do not create a second account and report the uniform success shape.
   if (existing) {
-    return {
-      ok: false,
-      status: 409,
-      error: 'An account with this email already exists'
-    };
+    return { ok: true, created: false };
   }
 
   const passwordHash = await hash(password, PASSWORD_COST);
@@ -99,5 +110,5 @@ export async function registerUser(input: RegisterInput): Promise<RegisterResult
     passwordHash
   });
 
-  return { ok: true };
+  return { ok: true, created: true };
 }
