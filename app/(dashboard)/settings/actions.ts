@@ -134,7 +134,7 @@ export async function removeSource(idRaw: number): Promise<SettingsResult> {
   if (inUse > 0) {
     return {
       ok: false,
-      error: `In use by ${inUse} candidate${inUse === 1 ? '' : 's'} — reassign them first.`
+      error: `In use by ${inUse} candidate${inUse === 1 ? '' : 's'}. Reassign them first.`
     };
   }
   await db.delete(sources).where(eq(sources.id, id));

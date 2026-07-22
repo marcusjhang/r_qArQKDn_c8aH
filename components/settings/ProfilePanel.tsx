@@ -62,7 +62,7 @@ export default function ProfilePanel({
         <p className="settings-section-title">Profile</p>
         <h1 className="settings-title">Your name</h1>
         <p className="settings-sub">
-          Your name. Avatar initials come from it — e.g. Ben Ong → BO.
+          Avatar initials come from it, like BO for Ben Ong.
         </p>
       </div>
 

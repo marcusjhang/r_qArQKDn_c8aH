@@ -41,7 +41,7 @@ export default function FeedbackList({
       <div>
         {!view || view.feedback.length === 0 ? (
           <div className="fb-empty">
-            No feedback yet — add the first review below.
+            No feedback yet. Add the first review below.
           </div>
         ) : (
           <div className="feedback">

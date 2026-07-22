@@ -7,6 +7,7 @@
 // chat-actions and the page revalidates.
 
 import { useRouter } from 'next/navigation';
+import { Bell } from 'lucide-react';
 import {
   markAllNotificationsRead,
   markNotificationRead
@@ -50,7 +51,7 @@ export default function NotificationBell({
         aria-label={`Notifications${unread ? ` (${unread} unread)` : ''}`}
         {...menu.triggerProps}
       >
-        <span aria-hidden>🔔</span>
+        <Bell size={16} aria-hidden />
         {unread > 0 && <span className="notif-badge">{unread > 99 ? '99+' : unread}</span>}
       </button>
 
@@ -65,10 +66,7 @@ export default function NotificationBell({
             )}
           </div>
           {notifications.length === 0 ? (
-            <div className="notif-empty">
-              You&apos;re all caught up. When someone tags you, it&apos;ll show
-              up here.
-            </div>
+            <div className="notif-empty">You&apos;re all caught up.</div>
           ) : (
             <div className="notif-list">
               {notifications.map((n) => (

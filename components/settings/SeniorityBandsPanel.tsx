@@ -100,7 +100,7 @@ export default function SeniorityBandsPanel({
       pending={list.pending}
       error={list.error}
       items={bands}
-      emptyText="No bands yet — add one so candidates show a seniority label."
+      emptyText="No bands yet. Add one to show seniority labels."
       renderRow={(b) =>
         list.editingId === b.id ? (
           <>

@@ -425,7 +425,7 @@ export function stageDeletable(
   if (columnHasCandidates) {
     return {
       ok: false,
-      reason: 'Move its candidates out first — the column still holds people.'
+      reason: 'Move its candidates out first. The column still holds people.'
     };
   }
   if (stages.length <= 2) {

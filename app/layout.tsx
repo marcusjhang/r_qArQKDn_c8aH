@@ -1,7 +1,7 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'Hiring — Pipeline Tracker',
+  title: 'Hiring Pipeline Tracker',
   description:
     'Board-first hiring pipeline tracker: per-job Kanban, per-interviewer feedback, and stage transitions for a small founding team.'
 };
