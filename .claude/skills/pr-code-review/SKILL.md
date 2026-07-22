@@ -4,9 +4,10 @@ description: >-
   Structured, stack-aware review of the current PR / working diff. Reconstructs
   the PR's intention from its description and commit history, traces every
   changed symbol into a call graph, checks that the implementation actually
-  matches the stated intention, then runs frontend, backend, and type-management
-  best-practice checklists for this Next.js 15 + React 19 + Drizzle + next-auth
-  stack and delegates correctness/cleanup/security to the built-in code-review,
+  matches the stated intention, then runs frontend, backend, type-management,
+  and testability best-practice checklists for this Next.js 15 + React 19 +
+  Drizzle + next-auth stack and delegates correctness/cleanup/security to the
+  built-in code-review,
   simplify, and security-review skills. Use when asked to review a PR, review
   the diff, or check a change before merge.
 ---
@@ -17,6 +18,11 @@ A repeatable review pipeline for this repository. It is **stack-aware** (see the
 `references/` checklists) and it **orchestrates the built-in quality skills**
 rather than re-deriving their heuristics: `code-review` and `simplify` for
 correctness and cleanup, `security-review` for auth / DB / secret risks.
+
+This is the **review** lens (what to flag). Its companions are the **authoring**
+skills — `drizzle`, `auth`, `server-actions` — which give the how-to recipes for
+the same components; the checklists here cross-link to them. See
+`.claude/skills/README.md` for the skill map.
 
 The default output is a single review report — reviewing is **read-only by
 default**: do not comment on the PR, apply fixes, or push commits unless asked.
@@ -61,10 +67,19 @@ Assign exactly one severity to **every** finding — the stack-checklist finding
   UI/domain types are _derived_ (`$inferSelect` + `Pick`), value-sets are
   single-sourced (`lib/hiring/primitives.ts`) and shared by the DB enum, the TS
   type, and the zod validator. `strict` is on.
-- **Tooling:** `bun` is the package manager. There is **no lint/test script** —
-  the type/build gate is `bun run build` (runs `tsc`) and formatting is
-  `prettier` (config in `package.json`: single quotes, 2-space, no trailing
-  commas, always-parens arrows).
+- **Testability:** business rules are extracted into pure, dependency-free
+  modules (`lib/hiring/helpers.ts`, `lib/registration.ts`) and I/O
+  is behind injectable seams (`getBoardData(reader)` in `lib/hiring/queries.ts`)
+  so the logic unit-tests without a live DB. Unit tests live in `test/unit/**`
+  (Vitest), an auth smoke test in `test/e2e/**` (Playwright); `server-only` is
+  aliased to an inert stub in `vitest.config.ts`.
+- **Tooling:** `bun` is the package manager. The gate is **`bun run typecheck`**
+  (`tsc --noEmit`), **`bun run test`** (Vitest unit suite), and
+  **`bun run build`**; `bun run test:e2e` runs the Playwright smoke test.
+  **`bun run detect:dead-code`** (knip, config in `knip.json`) audits for unused
+  files, exports, and dependencies — run it every review (see Step 5).
+  Formatting is `prettier` (config in `package.json`: single quotes, 2-space, no
+  trailing commas, always-parens arrows).
 
 ## Inputs
 
@@ -107,12 +122,16 @@ handler, query, schema table), trace how it is reached and what it reaches:
 
   ```
   UI event (components/**, 'use client')
-    → store action (lib/**/store.ts, optimistic)
-      → server action (lib/**/actions.ts, 'use server', zod-validated)
-        → Drizzle write (lib/db, lib/schema.ts)  → revalidatePath('/')
+    → orchestration hook (components/**/use*.ts, app/**/use*.ts)
+      → store action (lib/**/store.ts, optimistic; pure rules from helpers.ts)
+        → server action (lib/**/actions.ts, 'use server', zod-validated)
+          → Drizzle write (lib/db, lib/schema.ts)  → revalidatePath('/')
   Server Component / page (app/**)
-    → query (lib/**/queries.ts, 'server-only')
+    → query (lib/**/queries.ts, 'server-only', reads via injected reader)
       → Drizzle relational read → typed HiringState
+  HTTP route (app/api/**/route.ts, thin adapter)
+    → domain service (lib/registration.ts, 'server-only', returns discriminated result)
+      → Drizzle write → NextResponse(status)
   Request → middleware.ts → lib/auth.ts (authorized) → route/page
   ```
 
@@ -144,7 +163,7 @@ Cross the intention statement (Step 1) against the call graph and diff (Step 2):
 
 State the intention-match verdict plainly: `matches`, `partial`, or `diverges`.
 
-### Step 4 — Stack best-practice review (frontend / backend / types)
+### Step 4 — Stack best-practice review (frontend / backend / types / testability)
 
 Split the changed files by area and apply the matching checklist. Read the
 checklist file before reviewing that area. Each checklist has two layers —
@@ -161,12 +180,16 @@ frontend; API/service design for backend) that apply in any stack, plus the
 - **Types** (`lib/schema.ts`, `**/types.ts`, `**/primitives.ts`,
   `**/schemas.ts`, any `type`/`interface`/generic change): → read
   `references/type-management.md`
+- **Testability** (`test/**`, `vitest.config.ts`, `playwright.config.ts`, and
+  **any** change to business rules in `lib/**/helpers.ts`,
+  `lib/registration.ts`, or a query/action — a logic change is in scope here
+  even when no test file is touched): → read `references/testability.md`
 
 Record findings with `file:line`, a **severity** from the **Severity scale**
 (`Critical` / `High` / `Medium` / `Low`), and a concrete suggested fix. Every
 finding gets a severity — no unlabelled findings.
 
-### Step 5 — Delegate code-quality to the built-in skills
+### Step 5 — Delegate code-quality to the built-in skills + tools
 
 Do not hand-roll correctness or cleanup analysis — invoke the purpose-built
 skills, scoped **separately** to frontend and backend so each pass stays
@@ -191,9 +214,28 @@ focused:
    `SECURITY.md`, and flag `SECURITY.md` itself going stale when the code it
    describes changes (e.g. the matcher exclusions or the env-var list drift out
    of sync with `.env.example`).
+4. **`knip`** (mechanical, not a skill) — **always run** `bun run detect:dead-code`.
+   It audits the whole repo for unused files, exports, and dependencies and
+   exits non-zero on any finding, so treat its output as the source for the
+   **Dead code** part of the backend checklist. Two rules:
+   - **Attribute to the diff, not the backlog.** knip reports pre-existing dead
+     code too; only the entries the PR *introduces or newly orphans* (a now-unused
+     export left behind by a refactor, a dependency added but unused, a file no
+     longer imported) are findings against this PR. A new unused export/file is
+     typically `Medium`; a newly-added-but-unused dependency is `Medium`. Note
+     pre-existing findings the diff didn't cause as `Low` / out-of-scope, and
+     don't gate the PR on the backlog. If a run is clean of new items, say so.
+   - **Removal over ignoring.** A genuinely-unused item should be deleted (and any
+     dependency it pulled in `bun remove`d), per `README.md` → *Dead Code &
+     Dependency Audit*. Only when an item is a deliberate public API / framework
+     contract / config-only tool should it be silenced in `knip.json`
+     (`ignore` / `ignoreDependencies` / `ignoreBinaries`) or with a `// @public`
+     tag — **with a reason**. Flag a diff that grows `knip.json`'s ignores to
+     hide real dead code instead of removing it.
 
 Fold their findings into the report under the relevant area, de-duplicating
-against your Step 4 findings. Attribute each finding to the skill that raised it.
+against your Step 4 findings. Attribute each finding to the skill / tool that
+raised it.
 **Assign each delegated finding a severity from the same Severity scale** — the
 built-in skills use their own wording (e.g. `code-review` effort tiers,
 `security-review` risk levels), so map every one onto `Critical` / `High` /
@@ -237,9 +279,13 @@ findings only (never the `Low` / `false-positive` / `needs-verification` ones):
 - Apply the fixes to the working tree — reuse `code-review --fix` / `simplify`
   where a delegated finding produced the fix, and follow this repo's conventions
   (prettier config, the single write path, derived types) for hand-edits.
-- Re-run the type/build gate (`bun run build`, which runs `tsc`) and confirm it
-  is green before committing. If a fix touches `lib/schema.ts`, run
-  `bun run db:setup` per the backend checklist.
+- Re-run the full gate — **`bun run typecheck`, `bun run test`, and
+  `bun run build`** — and confirm all three are green before committing. If the
+  fix changed business logic, add/adjust the unit test that covers it (see
+  `references/testability.md`) rather than leaving the suite behind. If a fix
+  touches `lib/schema.ts`, run `bun run db:setup` per the backend checklist. If a
+  fix removed code, re-run **`bun run detect:dead-code`** to confirm it didn't
+  strand a now-unused export or dependency (and clean up any it did).
 - Commit on the current branch with a message that references the findings
   addressed, then push (`git push -u origin HEAD`). Do **not** open or merge a PR
   unless that was also requested.

@@ -53,6 +53,33 @@ and any `type`/`interface`/generic change anywhere.
   `unknown` until validated — parse with zod before use; don't assert a type
   onto unparsed input.
 
+## Model outcomes as discriminated unions, not optional-field bags
+
+> Where these are authored (the write-path helpers and the registration domain
+> service): the **`server-actions`** and **`auth`** skills.
+
+PRs #18 and #19 replaced loose `{ ok: boolean; reason?: string }` result bags
+with discriminated unions so the failure fields only exist on failure and the
+compiler forces callers to narrow:
+
+- A function that can succeed or fail should return a **discriminated union**
+  keyed on a literal — `StageMutation` / `StageGuard` (`lib/hiring/helpers.ts`)
+  and `RegisterResult` (`{ ok: true } | { ok: false; error; status }` in
+  `lib/registration.ts`). Flag a result type that carries `reason?`/`error?` as
+  optional fields alongside `ok`, so a "success" can still smuggle an error
+  string and callers can read fields that shouldn't exist in that state.
+- Callers must **narrow on the discriminant** before touching state-specific
+  fields (e.g. `Board.tsx` narrows `StageGuard` for the delete reason). Flag code
+  that reads `result.reason` without first checking `result.ok === false`.
+
+## Single-source domain literals as named constants
+
+- A domain literal that couples layers (the `'Hired'` stage↔status coupling)
+  belongs in **one named constant** — `HIRED_STAGE` in `lib/hiring/helpers.ts`
+  replaced a bare `'Hired'` string repeated in four places (PR #18). Flag the
+  same magic string/number repeated across store, actions, and components where a
+  shared constant (or the existing `primitives.ts` tuple) should be the source.
+
 ## Drift smells to grep for in a diff
 
 - A field added to a table but not surfaced in the derived UI type (or vice

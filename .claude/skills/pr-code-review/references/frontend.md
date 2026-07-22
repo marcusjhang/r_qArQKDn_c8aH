@@ -19,7 +19,12 @@ new/changed component against these:
 - **Separate presentation from logic.** Prefer "dumb" presentational components
   that take data + callbacks via props, with logic lifted into hooks/services
   (here: the store, server actions, queries). Flag side effects (API calls,
-  mutations) buried inside a display component.
+  mutations) buried inside a display component. This repo extracts multi-step
+  orchestration into co-located hooks — `app/login/useLoginForm.ts` owns the
+  register → `signIn` → redirect flow and `components/hiring/useFeedbackDraft.ts`
+  owns the drawer's draft/reset/submit state, leaving the page and `DetailDrawer`
+  presentational (PR #19). Flag a component that inlines that kind of async
+  orchestration or form-submit sequencing instead of a `use*` hook.
 - **Composition over inheritance/config.** Build complex UI by composing small
   pieces (`children`/slots), not by piling options onto one mega-component. Keep
   base components unopinionated and compose the opinions around them.
