@@ -1304,6 +1304,298 @@
   cursor: not-allowed;
 }
 
+/* One-line purpose hint under a section title (feedback vs discussion). */
+.ht-root .section-hint {
+  margin: -6px 0 0;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+/* ---------- Per-applicant chat (in the detail drawer) ---------- */
+.ht-root .chat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.ht-root .chat-msgs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.ht-root .chat-empty {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+.ht-root .chat-msg {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.ht-root .chat-msg .avatar {
+  margin-top: 2px;
+}
+.ht-root .chat-bubble {
+  flex: 1 1 0;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ht-root .chat-msg.mine .chat-bubble {
+  background: var(--primary-weak);
+  border-color: var(--primary-border);
+}
+/* Brief flash when a message is opened from its notification. */
+.ht-root .chat-msg.chat-msg-focus .chat-bubble {
+  animation: ht-msg-flash 2.2s ease-out;
+}
+@keyframes ht-msg-flash {
+  0%,
+  35% {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-weak);
+  }
+  100% {
+    border-color: var(--border);
+    box-shadow: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ht-root .chat-msg.chat-msg-focus .chat-bubble {
+    animation: none;
+  }
+}
+.ht-root .chat-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.ht-root .chat-author {
+  font-weight: 600;
+  font-size: 12.5px;
+}
+.ht-root .chat-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+.ht-root .chat-body {
+  font-size: 12.5px;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.ht-root .chat-body .mention {
+  color: var(--primary);
+  font-weight: 600;
+  background: var(--primary-weak);
+  border-radius: 4px;
+  padding: 0 3px;
+}
+.ht-root .chat-compose {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ht-root .chat-input-wrap {
+  position: relative;
+}
+.ht-root .chat-compose-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.ht-root .chat-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.ht-root .chat-compose-foot .btn {
+  margin-left: auto;
+}
+.ht-root .mention-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 4px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 4px;
+  z-index: 22;
+  display: flex;
+  flex-direction: column;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.ht-root .mention-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 5px;
+  color: var(--text);
+  font-size: 12.5px;
+}
+.ht-root .mention-item:hover {
+  background: var(--surface-2);
+}
+.ht-root .mention-item .avatar {
+  width: 20px;
+  height: 20px;
+  font-size: 9px;
+}
+.ht-root .mention-name {
+  font-weight: 600;
+}
+.ht-root .mention-email {
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 45%;
+}
+
+/* ---------- Notification bell (top bar) ---------- */
+.ht-root .notif {
+  position: relative;
+}
+.ht-root .notif-btn {
+  position: relative;
+  padding: 7px 10px;
+  font-size: 15px;
+  line-height: 1;
+}
+.ht-root .notif-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  background: var(--sno-fg);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ht-root .notif-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  width: 320px;
+  max-width: 86vw;
+  max-height: 420px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 4px;
+  z-index: 26;
+  display: flex;
+  flex-direction: column;
+}
+.ht-root .notif-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+.ht-root .notif-clear {
+  border: none;
+  background: transparent;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+.ht-root .notif-clear:hover {
+  background: var(--primary-weak);
+}
+.ht-root .notif-empty {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  padding: 12px 10px;
+}
+.ht-root .notif-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ht-root .notif-item {
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--text);
+}
+.ht-root .notif-item:hover {
+  background: var(--surface-2);
+}
+.ht-root .notif-item.unread {
+  background: var(--primary-weak);
+}
+.ht-root .notif-item.unread:hover {
+  filter: brightness(0.98);
+}
+.ht-root .notif-item-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.ht-root .notif-who {
+  font-weight: 600;
+  font-size: 12.5px;
+}
+.ht-root .notif-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+.ht-root .notif-ctx {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.ht-root .notif-body {
+  font-size: 12px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
 /* Custom inset dropdown chevron for native <select> (browser arrow removed) */
 .ht-root select {
   appearance: none;

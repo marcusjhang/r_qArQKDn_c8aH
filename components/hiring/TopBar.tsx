@@ -10,11 +10,15 @@ export default function TopBar({
   subtitle,
   userEmail,
   nav,
+  topRight,
   children
 }: {
   subtitle: string;
   userEmail?: string | null;
   nav?: { href: string; label: string };
+  // Optional controls rendered in the top nav, left of the account menu
+  // (e.g. the notification bell on the board).
+  topRight?: React.ReactNode;
   children?: React.ReactNode;
 }) {
   return (
@@ -22,6 +26,7 @@ export default function TopBar({
       <header className="topbar">
         <Brand subtitle={subtitle} />
         <div className="spacer" />
+        {topRight}
         <UserMenu email={userEmail} nav={nav} />
       </header>
       {children && <div className="subnav">{children}</div>}

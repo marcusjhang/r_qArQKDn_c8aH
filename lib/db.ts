@@ -9,10 +9,14 @@ export {
   jobs,
   candidates,
   feedback,
+  messages,
+  mentions,
   candidateStatusEnum,
   type SelectJob,
   type SelectCandidate,
-  type SelectFeedback
+  type SelectFeedback,
+  type SelectMessage,
+  type SelectMention
 } from './schema';
 
 // Pass the schema (incl. relations) so the db.query relational API is available.

@@ -109,10 +109,45 @@ export const feedback = pgTable(
   })
 );
 
+// Per-candidate discussion thread (the "chat" that follows the applicant).
+// One row per message; authored by a login account and pinned to a candidate,
+// so it survives stage moves and cascades away only when the candidate is
+// deleted.
+export const messages = pgTable('messages', {
+  id: serial('id').primaryKey(),
+  candidateId: integer('candidate_id')
+    .notNull()
+    .references(() => candidates.id, { onDelete: 'cascade' }),
+  // The login account that wrote the message.
+  authorId: integer('author_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  body: text('body').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// One row per (message, tagged account). Drives the notification inbox:
+// `readAt` is null until the tagged user opens the notification. Cascades with
+// its message (and therefore with the candidate).
+export const mentions = pgTable('mentions', {
+  id: serial('id').primaryKey(),
+  messageId: integer('message_id')
+    .notNull()
+    .references(() => messages.id, { onDelete: 'cascade' }),
+  // The tagged login account.
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  readAt: timestamp('read_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
 export type SelectJob = typeof jobs.$inferSelect;
 export type SelectCandidate = typeof candidates.$inferSelect;
 export type SelectFeedback = typeof feedback.$inferSelect;
 export type SelectSource = typeof sources.$inferSelect;
+export type SelectMessage = typeof messages.$inferSelect;
+export type SelectMention = typeof mentions.$inferSelect;
 
 /* ---------- Relations (enable the db.query relational API) ---------- */
 export const jobsRelations = relations(jobs, ({ many }) => ({
@@ -121,12 +156,36 @@ export const jobsRelations = relations(jobs, ({ many }) => ({
 
 export const candidatesRelations = relations(candidates, ({ one, many }) => ({
   job: one(jobs, { fields: [candidates.jobId], references: [jobs.id] }),
-  feedback: many(feedback)
+  feedback: many(feedback),
+  messages: many(messages)
 }));
 
 export const feedbackRelations = relations(feedback, ({ one }) => ({
   candidate: one(candidates, {
     fields: [feedback.candidateId],
     references: [candidates.id]
+  })
+}));
+
+export const messagesRelations = relations(messages, ({ one, many }) => ({
+  candidate: one(candidates, {
+    fields: [messages.candidateId],
+    references: [candidates.id]
+  }),
+  author: one(users, {
+    fields: [messages.authorId],
+    references: [users.id]
+  }),
+  mentions: many(mentions)
+}));
+
+export const mentionsRelations = relations(mentions, ({ one }) => ({
+  message: one(messages, {
+    fields: [mentions.messageId],
+    references: [messages.id]
+  }),
+  user: one(users, {
+    fields: [mentions.userId],
+    references: [users.id]
   })
 }));

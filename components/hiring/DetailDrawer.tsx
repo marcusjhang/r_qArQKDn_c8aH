@@ -6,8 +6,8 @@
 // visible behind the drawer so pipeline context is never lost.
 //
 // This file coordinates open/close + the last-shown candidate; the rendering
-// is delegated to DetailHeader, DetailForm, FeedbackList, AddFeedbackForm and
-// DetailFooter.
+// is delegated to DetailHeader, DetailForm, FeedbackList, AddFeedbackForm,
+// DetailFooter and the per-applicant discussion ChatPanel.
 
 import { useEffect, useRef } from 'react';
 import type { HiringActions, Candidate, HiringState } from '@/lib/hiring';
@@ -16,19 +16,22 @@ import DetailForm from './DetailForm';
 import FeedbackList from './FeedbackList';
 import AddFeedbackForm from './AddFeedbackForm';
 import DetailFooter from './DetailFooter';
+import ChatPanel from './ChatPanel';
 
 export default function DetailDrawer({
   state,
   actions,
   openId,
   currentUserId,
-  onClose
+  onClose,
+  focusMessageId
 }: {
   state: HiringState;
   actions: HiringActions;
   openId: number | null;
   currentUserId: number | null;
   onClose: () => void;
+  focusMessageId?: number | null;
 }) {
   const candidate =
     openId == null
@@ -104,6 +107,13 @@ export default function DetailDrawer({
               onAdd={(entry) => view && actions.addFeedback(view.id, entry)}
             />
           </div>
+
+          <ChatPanel
+            candidateId={candidate ? candidate.id : null}
+            currentUserId={currentUserId}
+            users={state.users}
+            focusMessageId={focusMessageId ?? null}
+          />
         </div>
 
         <DetailFooter view={view} job={job} onMove={moveAndClose} />

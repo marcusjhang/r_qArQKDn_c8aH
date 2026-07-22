@@ -5,13 +5,14 @@
 // slide-over. Board-first: the board is the home screen and the drawer opens
 // over it so pipeline context stays on screen.
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   formatJobMeta,
   jobStats,
   liveCount,
   useHiringStore,
-  type HiringState
+  type HiringState,
+  type Notification
 } from '@/lib/hiring';
 import Board from './Board';
 import DetailDrawer from './DetailDrawer';
@@ -19,19 +20,24 @@ import AddCandidateModal from './AddCandidateModal';
 import NewJobModal from './NewJobModal';
 import JobTabs from './JobTabs';
 import TopBar from './TopBar';
+import NotificationBell from './NotificationBell';
 import './hiring.css';
 
 export default function HiringApp({
   initial,
-  userEmail
+  userEmail,
+  notifications = []
 }: {
   initial: HiringState;
   userEmail?: string | null;
+  notifications?: Notification[];
 }) {
   const { state, actions } = useHiringStore(initial);
   const [activeJob, setActiveJob] = useState<number>(state.jobs[0]?.id ?? 0);
   const [showRejected, setShowRejected] = useState(false);
   const [openId, setOpenId] = useState<number | null>(null);
+  // When a candidate is opened from a notification, the message to scroll to.
+  const [focusMessageId, setFocusMessageId] = useState<number | null>(null);
   const [addingCandidate, setAddingCandidate] = useState(false);
   const [creatingJob, setCreatingJob] = useState(false);
 
@@ -57,6 +63,24 @@ export default function HiringApp({
     setOpenId(null);
   }
 
+  // Open a candidate from the board — no specific message to focus.
+  const openFromBoard = useCallback((candidateId: number) => {
+    setFocusMessageId(null);
+    setOpenId(candidateId);
+  }, []);
+
+  // Jump to an applicant's chat from a notification: switch to their job (so
+  // the board context is right), open their detail drawer, and remember which
+  // message to scroll to once the thread loads.
+  const openCandidate = useCallback(
+    (candidateId: number, jobId: number, messageId: number) => {
+      if (state.jobs.some((j) => j.id === jobId)) setActiveJob(jobId);
+      setFocusMessageId(messageId);
+      setOpenId(candidateId);
+    },
+    [state.jobs]
+  );
+
   const meta = formatJobMeta(
     job
       ? jobStats(state.candidates, job.id)
@@ -70,6 +94,12 @@ export default function HiringApp({
         subtitle="Pipeline Tracker"
         userEmail={userEmail}
         nav={{ href: '/settings', label: '⚙ Settings' }}
+        topRight={
+          <NotificationBell
+            notifications={notifications}
+            onOpen={openCandidate}
+          />
+        }
       >
         <button className="btn primary" onClick={() => setCreatingJob(true)}>
           ＋ New job
@@ -112,7 +142,7 @@ export default function HiringApp({
         actions={actions}
         activeJob={activeJob}
         showRejected={showRejected}
-        onOpen={setOpenId}
+        onOpen={openFromBoard}
       />
 
       <DetailDrawer
@@ -121,6 +151,7 @@ export default function HiringApp({
         openId={openId}
         currentUserId={currentUserId}
         onClose={() => setOpenId(null)}
+        focusMessageId={focusMessageId}
       />
 
       {addingCandidate && job && (
