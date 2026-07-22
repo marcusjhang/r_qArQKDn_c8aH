@@ -45,7 +45,8 @@ export type { Status, RatingValue } from './primitives';
  */
 export interface User {
   id: number;
-  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   email: string;
 }
 
@@ -201,8 +202,8 @@ const drizzleReader: BoardReader = {
   loadUsers: async (): Promise<User[]> => {
     const { db } = await import('@/lib/db');
     return db.query.users.findMany({
-      columns: { id: true, name: true, email: true },
-      orderBy: (u, { asc }) => [asc(u.name), asc(u.email)]
+      columns: { id: true, firstName: true, lastName: true, email: true },
+      orderBy: (u, { asc }) => [asc(u.firstName), asc(u.lastName), asc(u.email)]
     });
   },
   // Sources are read fresh (uncached) too, so a newly seeded source is picker-

@@ -30,10 +30,10 @@ export type SettingsResult = { ok: true } | { ok: false; error: string };
 /* ---------- Current account profile ---------- */
 
 /**
- * Update the signed-in user's first/last name. The discrete columns are the
- * edited source of truth; the combined `name` is recomputed so everything that
- * reads it (login session, avatar initials — first word + last word) stays in
- * sync. Revalidates the board too, since owner initials render from `name`.
+ * Update the signed-in user's first/last name. These are the account's name of
+ * record; the display name and avatar initials (first word + last word) are
+ * derived from them (see lib/hiring/helpers.ts). Revalidates the board too,
+ * since owner initials render from these fields.
  */
 export async function updateProfile(
   firstNameRaw: string,
@@ -55,10 +55,9 @@ export async function updateProfile(
   const id = Number(session?.user?.id);
   if (!id) return { ok: false, error: 'Not signed in.' };
 
-  const name = [firstName, lastName].filter(Boolean).join(' ') || null;
   await db
     .update(users)
-    .set({ firstName: firstName || null, lastName: lastName || null, name })
+    .set({ firstName: firstName || null, lastName: lastName || null })
     .where(eq(users.id, id));
 
   revalidatePath('/settings');

@@ -29,34 +29,14 @@ const SEED_ALLOWED_EMAILS = [
 // Login accounts created on seed. Override the shared password via SEED_PASSWORD.
 // One account per allowlisted user; all share the same seeded password.
 const SEED_PASSWORD = process.env.SEED_PASSWORD ?? 'password';
-// `name` is the combined display value; firstName/lastName are the discrete
-// fields editable from /settings. Kept consistent so avatar initials (first
-// word + last word of `name`) match — e.g. "Ben Ong" → BO, "Heng Hong Lee" → HL.
+// Names are stored as discrete first/last parts (editable from /settings); the
+// display name and avatar initials (first word + last word) are derived from
+// them — e.g. "Ben Ong" → BO, "Heng Hong Lee" → HL.
 const SEED_ACCOUNTS = [
-  {
-    email: 'marcusajh0802@gmail.com',
-    firstName: 'Marcus',
-    lastName: 'Ang',
-    name: 'Marcus Ang'
-  },
-  {
-    email: 'benong@lightsprint.ai',
-    firstName: 'Ben',
-    lastName: 'Ong',
-    name: 'Ben Ong'
-  },
-  {
-    email: 'benchan@lightsprint.ai',
-    firstName: 'Benedict',
-    lastName: 'Chan',
-    name: 'Benedict Chan'
-  },
-  {
-    email: 'henghonglee@lightsprint.ai',
-    firstName: 'Heng Hong',
-    lastName: 'Lee',
-    name: 'Heng Hong Lee'
-  }
+  { email: 'marcusajh0802@gmail.com', firstName: 'Marcus', lastName: 'Ang' },
+  { email: 'benong@lightsprint.ai', firstName: 'Ben', lastName: 'Ong' },
+  { email: 'benchan@lightsprint.ai', firstName: 'Benedict', lastName: 'Chan' },
+  { email: 'henghonglee@lightsprint.ai', firstName: 'Heng Hong', lastName: 'Lee' }
 ];
 
 async function main() {
@@ -81,8 +61,7 @@ async function main() {
         .set({
           passwordHash,
           firstName: acc.firstName,
-          lastName: acc.lastName,
-          name: acc.name
+          lastName: acc.lastName
         })
         .where(eq(users.email, acc.email));
       console.log(`Updated login account ${acc.email}.`);
@@ -90,7 +69,6 @@ async function main() {
       await db.insert(users).values({
         firstName: acc.firstName,
         lastName: acc.lastName,
-        name: acc.name,
         email: acc.email,
         passwordHash
       });

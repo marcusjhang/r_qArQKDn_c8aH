@@ -18,7 +18,8 @@ export const PASSWORD_MIN_LENGTH = 8;
 const PASSWORD_COST = 12;
 
 export interface RegisterInput {
-  name?: unknown;
+  firstName?: unknown;
+  lastName?: unknown;
   email?: unknown;
   password?: unknown;
 }
@@ -40,7 +41,10 @@ export type RegisterResult =
 export async function registerUser(input: RegisterInput): Promise<RegisterResult> {
   const rawEmail = typeof input.email === 'string' ? input.email : '';
   const password = typeof input.password === 'string' ? input.password : '';
-  const name = typeof input.name === 'string' ? input.name : '';
+  const firstName =
+    typeof input.firstName === 'string' ? input.firstName.trim() : '';
+  const lastName =
+    typeof input.lastName === 'string' ? input.lastName.trim() : '';
 
   if (!rawEmail || !password) {
     return {
@@ -89,7 +93,8 @@ export async function registerUser(input: RegisterInput): Promise<RegisterResult
   const passwordHash = await hash(password, PASSWORD_COST);
 
   await db.insert(users).values({
-    name: name || null,
+    firstName: firstName || null,
+    lastName: lastName || null,
     email,
     passwordHash
   });

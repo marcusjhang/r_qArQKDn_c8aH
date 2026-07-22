@@ -44,7 +44,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         return {
           id: String(user.id),
-          name: user.name,
+          // Session display name is derived from the stored name parts (the
+          // `name` column was removed); falls back to null when neither is set.
+          name: [user.firstName, user.lastName].filter(Boolean).join(' ') || null,
           email: user.email
         };
       }

@@ -15,8 +15,10 @@ import { useLoginForm } from './useLoginForm';
 export default function LoginPage() {
   const {
     isSignUp,
-    name,
-    setName,
+    firstName,
+    setFirstName,
+    lastName,
+    setLastName,
     email,
     setEmail,
     password,
@@ -43,12 +45,22 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             {isSignUp && (
-              <Input
-                type="text"
-                placeholder="Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  placeholder="First name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  maxLength={50}
+                />
+                <Input
+                  type="text"
+                  placeholder="Last name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  maxLength={50}
+                />
+              </div>
             )}
             <Input
               type="email"

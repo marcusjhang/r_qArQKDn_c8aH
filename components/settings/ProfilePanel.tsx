@@ -28,9 +28,13 @@ export default function ProfilePanel({
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  // Same rule as the avatar everywhere else: initials of the combined name.
+  // Same rule as the avatar everywhere else: initials derived from the name.
   const combined = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ');
-  const preview = initials({ id: 0, name: combined || null, email: email ?? '' });
+  const preview = initials({
+    firstName: firstName.trim() || null,
+    lastName: lastName.trim() || null,
+    email: email ?? ''
+  });
 
   function save(e: React.FormEvent) {
     e.preventDefault();

@@ -27,7 +27,8 @@ export async function getNotifications(
       messageId: messages.id,
       body: messages.body,
       createdAt: messages.createdAt,
-      authorName: users.name,
+      authorFirstName: users.firstName,
+      authorLastName: users.lastName,
       authorEmail: users.email,
       candidateId: candidates.id,
       candidateName: candidates.name,
@@ -47,7 +48,11 @@ export async function getNotifications(
     candidateId: r.candidateId,
     candidateName: r.candidateName,
     jobId: r.jobId,
-    authorName: displayName({ id: 0, name: r.authorName, email: r.authorEmail }),
+    authorName: displayName({
+      firstName: r.authorFirstName,
+      lastName: r.authorLastName,
+      email: r.authorEmail
+    }),
     body: r.body,
     createdAt: r.createdAt.toISOString(),
     read: r.readAt != null

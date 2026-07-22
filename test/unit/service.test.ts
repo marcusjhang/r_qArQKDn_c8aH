@@ -21,7 +21,7 @@ describe('getBoard', () => {
     }
   ];
   const users: User[] = [
-    { id: 1, name: 'Ben Ong', email: 'benong@lightsprint.ai' }
+    { id: 1, firstName: 'Ben', lastName: 'Ong', email: 'benong@lightsprint.ai' }
   ];
   const sources: Source[] = [{ id: 5, name: 'Referral' }];
   const bands: SeniorityBand[] = [
