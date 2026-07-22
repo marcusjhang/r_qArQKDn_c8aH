@@ -9,7 +9,7 @@ import { RATINGS } from '@/lib/hiring/config';
 import {
   agg,
   founderById,
-  isHiddenByDefault,
+  selectStageCards,
   validateStageName,
   MAX_STAGE_NAME
 } from '@/lib/hiring/helpers';
@@ -148,7 +148,10 @@ function Column({
   useEffect(() => {
     if (!menuOpen) return;
     function onDoc(e: MouseEvent) {
-      if (menuWrapRef.current && !menuWrapRef.current.contains(e.target as Node)) {
+      if (
+        menuWrapRef.current &&
+        !menuWrapRef.current.contains(e.target as Node)
+      ) {
         setMenuOpen(false);
       }
     }
@@ -372,13 +375,7 @@ export default function Board({
     <div className="board-scroll">
       <div className="board">
         {job.stages.map((stage, index) => {
-          const cards = jobCandidates
-            .filter(
-              (c) => c.stage === stage && (showRejected || !isHiddenByDefault(c))
-            )
-            // Starred candidates float to the top of the column (stable sort
-            // preserves the existing creation order within each group).
-            .sort((a, b) => Number(b.starred) - Number(a.starred));
+          const cards = selectStageCards(jobCandidates, stage, showRejected);
           return (
             <Column
               key={`${stage}-${index}`}
