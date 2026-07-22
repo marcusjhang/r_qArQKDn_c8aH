@@ -3,6 +3,7 @@
 // Per-stage options dropdown (Decision 1) — replaces the old typed prompt.
 
 export default function StageMenu({
+  id,
   index,
   stagesLen,
   canDelete,
@@ -11,6 +12,7 @@ export default function StageMenu({
   onMove,
   onDelete
 }: {
+  id?: string;
   index: number;
   stagesLen: number;
   canDelete: boolean;
@@ -20,7 +22,7 @@ export default function StageMenu({
   onDelete: () => void;
 }) {
   return (
-    <div className="stage-menu" role="menu">
+    <div className="stage-menu" role="menu" id={id}>
       <button className="stage-menu-item" role="menuitem" onClick={onRename}>
         Rename
       </button>

@@ -6,7 +6,6 @@
 // "mark all read". Initial data is server-rendered; reads/clears go through the
 // chat-actions and the page revalidates.
 
-import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   markAllNotificationsRead,
@@ -14,6 +13,7 @@ import {
 } from '@/lib/hiring/chat-actions';
 import { formatMessageTime } from '@/lib/hiring/helpers';
 import type { Notification } from '@/lib/hiring/types';
+import { useDismissableMenu } from './hooks/useDismissableMenu';
 
 export default function NotificationBell({
   notifications,
@@ -22,33 +22,13 @@ export default function NotificationBell({
   notifications: Notification[];
   onOpen: (candidateId: number, jobId: number, messageId: number) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const menu = useDismissableMenu();
   const router = useRouter();
-  const wrapRef = useRef<HTMLDivElement>(null);
 
   const unread = notifications.filter((n) => !n.read).length;
 
-  // Close the dropdown on outside click / Escape.
-  useEffect(() => {
-    if (!open) return;
-    function onDoc(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('mousedown', onDoc);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDoc);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
-
   function openNotification(n: Notification) {
-    setOpen(false);
+    menu.close();
     onOpen(n.candidateId, n.jobId, n.messageId);
     if (!n.read) {
       markNotificationRead(n.id)
@@ -64,20 +44,18 @@ export default function NotificationBell({
   }
 
   return (
-    <div className="notif" ref={wrapRef}>
+    <div className="notif" ref={menu.wrapRef}>
       <button
         className="btn notif-btn"
         aria-label={`Notifications${unread ? ` (${unread} unread)` : ''}`}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
+        {...menu.triggerProps}
       >
         <span aria-hidden>🔔</span>
         {unread > 0 && <span className="notif-badge">{unread > 99 ? '99+' : unread}</span>}
       </button>
 
-      {open && (
-        <div className="notif-menu" role="menu">
+      {menu.open && (
+        <div className="notif-menu" {...menu.menuProps}>
           <div className="notif-head">
             <span>Notifications</span>
             {unread > 0 && (

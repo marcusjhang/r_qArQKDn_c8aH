@@ -8,9 +8,9 @@
 // built-in redirect builds an absolute URL from the server's internal host
 // (localhost behind the preview proxy), which the browser can't reach.
 
-import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
+import { useDismissableMenu } from './hooks/useDismissableMenu';
 
 /**
  * The account-menu destinations, defined once so each page's top bar composes
@@ -29,24 +29,7 @@ export default function UserMenu({
   email?: string | null;
   navItems?: { href: string; label: string }[];
 }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onDoc(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('mousedown', onDoc);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDoc);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
+  const menu = useDismissableMenu();
 
   async function handleSignOut() {
     await signOut({ redirect: false });
@@ -54,20 +37,15 @@ export default function UserMenu({
   }
 
   return (
-    <div className="usermenu" ref={ref}>
-      <button
-        className="btn usermenu-trigger"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-      >
+    <div className="usermenu" ref={menu.wrapRef}>
+      <button className="btn usermenu-trigger" {...menu.triggerProps}>
         <span className="usermenu-email" title={email ?? undefined}>
           {email ?? 'Account'}
         </span>
         <span className="caret">▾</span>
       </button>
-      {open && (
-        <div className="usermenu-menu" role="menu">
+      {menu.open && (
+        <div className="usermenu-menu" {...menu.menuProps}>
           {navItems.length > 0 && (
             <>
               {navItems.map((item) => (
@@ -76,7 +54,7 @@ export default function UserMenu({
                   className="usermenu-item"
                   role="menuitem"
                   href={item.href}
-                  onClick={() => setOpen(false)}
+                  onClick={() => menu.close()}
                 >
                   {item.label}
                 </Link>
