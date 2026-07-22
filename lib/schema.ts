@@ -12,15 +12,13 @@ import {
 import { relations, sql } from 'drizzle-orm';
 import { STATUSES, type RatingValue } from './hiring/primitives';
 
-// Auth accounts (used by lib/auth.ts to gate the app).
-export const roleEnum = pgEnum('role', ['user', 'admin']);
-
+// Auth accounts (used by lib/auth.ts to gate the app). The app has no roles —
+// access is authentication-only: any account can sign in and use the app.
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }),
   email: varchar('email', { length: 255 }).notNull().unique(),
   passwordHash: text('password_hash').notNull(),
-  role: roleEnum('role').default('user').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 

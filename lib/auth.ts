@@ -6,15 +6,11 @@ import { normalizeEmail } from '@/lib/allowlist';
 import { eq } from 'drizzle-orm';
 
 declare module 'next-auth' {
-  interface User {
-    role?: string;
-  }
   interface Session {
     user: {
       id?: string;
       name?: string | null;
       email?: string | null;
-      role?: string;
     };
   }
 }
@@ -49,8 +45,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return {
           id: String(user.id),
           name: user.name,
-          email: user.email,
-          role: user.role
+          email: user.email
         };
       }
     })
@@ -66,12 +61,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
     jwt({ token, user }) {
       if (user) {
-        token.role = user.role;
+        token.id = user.id;
       }
       return token;
     },
     session({ session, token }) {
-      session.user.role = token.role as string | undefined;
+      if (token.id) session.user.id = token.id as string;
       return session;
     }
   }
