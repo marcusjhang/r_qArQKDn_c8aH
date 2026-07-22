@@ -49,8 +49,6 @@
   flex-direction: column;
   position: relative;
   width: 100%;
-  max-width: 1400px;
-  margin-inline: auto;
   height: 100dvh;
   background: var(--bg);
   color: var(--text);
