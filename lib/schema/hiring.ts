@@ -1,3 +1,8 @@
+// Hiring Pipeline Tracker domain schema: the jobs → candidates → feedback
+// tables plus the relational wiring for the db.query API. Reads go through
+// lib/hiring/service.ts; writes through the zod-validated server actions in
+// lib/hiring/actions.ts.
+
 import {
   pgTable,
   text,
@@ -5,35 +10,11 @@ import {
   timestamp,
   pgEnum,
   serial,
-  varchar,
   boolean,
   check
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
-import { STATUSES, type RatingValue } from './hiring/primitives';
-
-// Auth accounts (used by lib/auth.ts to gate the app). The app has no roles —
-// access is authentication-only: any account can sign in and use the app.
-export const users = pgTable('users', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 100 }),
-  email: varchar('email', { length: 255 }).notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull()
-});
-
-export type SelectUser = typeof users.$inferSelect;
-
-// Emails permitted to sign up (enforced in /api/register, managed in /settings).
-export const allowedEmails = pgTable('allowed_emails', {
-  id: serial('id').primaryKey(),
-  email: text('email').notNull().unique(),
-  createdAt: timestamp('created_at').defaultNow().notNull()
-});
-
-export type SelectAllowedEmail = typeof allowedEmails.$inferSelect;
-
-/* ---------- Hiring Pipeline Tracker ---------- */
+import { STATUSES, type RatingValue } from '../hiring/primitives';
 
 // Orthogonal candidate status (Decision 3), built from the single-sourced
 // STATUSES tuple so the DB enum and the TS Status type can never diverge.

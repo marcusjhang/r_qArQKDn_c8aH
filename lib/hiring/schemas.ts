@@ -7,7 +7,7 @@ import 'server-only';
 
 import { z } from 'zod';
 import { createInsertSchema } from 'drizzle-zod';
-import { candidates, feedback } from '@/lib/schema';
+import { candidates, feedback } from '@/lib/schema/hiring';
 import { STATUSES, RATING_VALUES, type RatingValue } from './primitives';
 import { FOUNDERS, SOURCES } from './config';
 
