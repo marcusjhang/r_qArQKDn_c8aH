@@ -1662,14 +1662,16 @@
 .ht-root .cal-event {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 0;
+  line-height: 1.2;
   text-align: left;
   overflow: hidden;
   border: none;
   border-left: 3px solid var(--iv, var(--primary));
   border-radius: 5px;
-  padding: 3px 6px;
-  background: color-mix(in srgb, var(--iv, var(--primary)) 12%, #fff);
+  padding: 2px 6px;
+  /* Tint the themed surface (not white) so it reads in light AND dark mode. */
+  background: color-mix(in srgb, var(--iv, var(--primary)) 22%, var(--surface));
   color: var(--text);
   cursor: pointer;
 }
@@ -1865,4 +1867,11 @@
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 6px;
+}
+
+/* Availability editor: fixed current-user name (replaces the old picker) */
+.ht-root .avail-whoami {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
 }

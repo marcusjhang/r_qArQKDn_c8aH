@@ -70,26 +70,18 @@ function windowsFromKeys(keys: Set<string>) {
 export default function AvailabilityEditor({
   availability,
   exceptions,
-  interviewerSettings
+  interviewerSettings,
+  currentFounderId
 }: {
   availability: Availability[];
   exceptions: AvailabilityException[];
   interviewerSettings: Record<string, boolean>;
+  currentFounderId: string | null;
 }) {
   const router = useRouter();
-  const interviewerIds = FOUNDERS.filter(
-    (f) => interviewerSettings[f.id] ?? true
-  ).map((f) => f.id);
-  const [founderId, setFounderId] = useState(
-    interviewerIds[0] ?? FOUNDERS[0].id
-  );
-
-  // If the selected person is turned off as an interviewer, fall back.
-  useEffect(() => {
-    if (!interviewerIds.includes(founderId) && interviewerIds.length) {
-      setFounderId(interviewerIds[0]);
-    }
-  }, [interviewerIds, founderId]);
+  // You only edit your OWN availability — the grid is fixed to the signed-in
+  // interviewer, not a picker over everyone.
+  const founderId = currentFounderId ?? '';
   const [keys, setKeys] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [paint, setPaint] = useState<boolean | null>(null); // drag-paint mode
@@ -174,30 +166,28 @@ export default function AvailabilityEditor({
 
       <div className="avail-head">
         <div className="field">
-          <span className="label">Availability for</span>
-          <select value={founderId} onChange={(e) => setFounderId(e.target.value)}>
-            {interviewerIds.map((id) => (
-              <option key={id} value={id}>
-                {founderName(id)}
-              </option>
-            ))}
-          </select>
+          <span className="label">Your availability</span>
+          <div className="avail-whoami">
+            {currentFounderId ? founderName(currentFounderId) : '—'}
+          </div>
         </div>
         <div className="avail-tz">All times in {COMPANY_TZ}</div>
         <button
           className="btn primary"
           onClick={save}
-          disabled={saving || interviewerIds.length === 0}
+          disabled={saving || !currentFounderId}
         >
           {saving ? 'Saving…' : 'Save availability'}
         </button>
       </div>
-      {interviewerIds.length === 0 && (
-        <div className="fb-empty">
-          No interviewers selected — turn someone on above to set availability.
-        </div>
-      )}
 
+      {!currentFounderId ? (
+        <div className="fb-empty">
+          Your login isn’t linked to an interviewer profile yet, so there’s no
+          personal availability to edit.
+        </div>
+      ) : (
+        <>
       <div
         className="avail-grid"
         style={{ ['--cols' as string]: WEEKDAYS.length }}
@@ -286,6 +276,8 @@ export default function AvailabilityEditor({
           </button>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

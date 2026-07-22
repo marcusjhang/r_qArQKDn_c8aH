@@ -1,8 +1,8 @@
 'use client';
 
-// Shared interview calendar: Week / Day / Team views + an availability editor,
-// filterable by job and interviewer. Built entirely in the board's scoped
-// .ht-root design system (no calendar library).
+// Shared interview calendar: a Week view + an availability editor, filterable
+// by job and interviewer. Built entirely in the board's scoped .ht-root design
+// system (no calendar library).
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -20,7 +20,6 @@ import type {
   CalendarInterview
 } from '@/lib/hiring/scheduling/types';
 import TimeGrid from './TimeGrid';
-import TeamView from './TeamView';
 import AvailabilityEditor from './AvailabilityEditor';
 import {
   addDaysYmd,
@@ -33,11 +32,12 @@ import {
 } from './util';
 import '@/components/hiring/hiring.css';
 
-type View = 'week' | 'day' | 'team' | 'availability';
+type View = 'week' | 'availability';
 
 export default function CalendarApp({
   initial,
-  userEmail
+  userEmail,
+  currentFounderId
 }: {
   initial: {
     interviews: CalendarInterview[];
@@ -46,6 +46,7 @@ export default function CalendarApp({
     interviewerSettings: Record<string, boolean>;
   };
   userEmail?: string | null;
+  currentFounderId: string | null;
 }) {
   const router = useRouter();
   const [view, setView] = useState<View>('week');
@@ -55,10 +56,7 @@ export default function CalendarApp({
   const [open, setOpen] = useState<CalendarInterview | null>(null);
 
   const monday = weekMonday(anchor);
-  const days = view === 'day' ? [anchor] : weekDates(monday);
-  const interviewerIds = FOUNDERS.filter(
-    (f) => initial.interviewerSettings[f.id] ?? true
-  ).map((f) => f.id);
+  const days = weekDates(monday);
 
   const jobOptions = useMemo(() => {
     const m = new Map<number, string>();
@@ -78,7 +76,7 @@ export default function CalendarApp({
   );
 
   function shiftWeek(dir: number) {
-    setAnchor((a) => addDaysYmd(view === 'day' ? a : weekMonday(a), dir * (view === 'day' ? 1 : 7)));
+    setAnchor((a) => addDaysYmd(weekMonday(a), dir * 7));
   }
 
   async function act(fn: () => Promise<unknown>) {
@@ -99,7 +97,7 @@ export default function CalendarApp({
       >
         <div className="cal-toolbar">
           <div className="seg cal-views">
-            {(['week', 'day', 'team', 'availability'] as View[]).map((v) => (
+            {(['week', 'availability'] as View[]).map((v) => (
               <button
                 key={v}
                 type="button"
@@ -123,9 +121,7 @@ export default function CalendarApp({
                 ›
               </button>
               <span className="cal-range">
-                {view === 'day'
-                  ? dayLabel(anchor)
-                  : `${dayLabel(days[0])} – ${dayLabel(days[days.length - 1])}`}
+                {`${dayLabel(days[0])} – ${dayLabel(days[days.length - 1])}`}
               </span>
             </div>
           )}
@@ -166,18 +162,12 @@ export default function CalendarApp({
       </TopBar>
 
       <div className="cal-wrap">
-        {view === 'team' ? (
-          <TeamView
-            days={days}
-            interviews={interviews}
-            interviewerIds={interviewerIds}
-            onOpen={setOpen}
-          />
-        ) : view === 'availability' ? (
+        {view === 'availability' ? (
           <AvailabilityEditor
             availability={initial.availability}
             exceptions={initial.exceptions}
             interviewerSettings={initial.interviewerSettings}
+            currentFounderId={currentFounderId}
           />
         ) : (
           <TimeGrid days={days} interviews={interviews} onOpen={setOpen} />
