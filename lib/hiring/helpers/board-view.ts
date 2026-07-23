@@ -11,6 +11,21 @@ import type { Candidate, Job, RatingValue } from '../types';
 /** At most this many jobs can be favorited (pinned as inline tabs). */
 export const MAX_FAVORITES = 3;
 
+/** Find a candidate in the board by id, or null when absent / not requested. */
+export function candidateById(
+  candidates: Candidate[],
+  id: number | null
+): Candidate | null {
+  if (id == null) return null;
+  return candidates.find((c) => c.id === id) ?? null;
+}
+
+/** Find a job in the board by id (undefined when absent). */
+export function jobById(jobs: Job[], id: number | null): Job | undefined {
+  if (id == null) return undefined;
+  return jobs.find((j) => j.id === id);
+}
+
 /**
  * The candidates rendered in one column: this stage's candidates, hiding
  * rejected ones (see `isHiddenByDefault`) unless `showRejected`, with starred

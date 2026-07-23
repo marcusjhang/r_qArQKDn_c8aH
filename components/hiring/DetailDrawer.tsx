@@ -10,7 +10,14 @@
 // DetailFooter and the per-applicant discussion ChatPanel.
 
 import { useEffect, useRef } from 'react';
-import type { HiringActions, Candidate, HiringState } from '@/lib/hiring';
+import {
+  candidateById,
+  canReviewCandidate,
+  jobById,
+  type HiringActions,
+  type Candidate,
+  type HiringState
+} from '@/lib/hiring';
 import { useFocusTrap } from './hooks/useFocusTrap';
 import DetailHeader from './DetailHeader';
 import DetailForm from './DetailForm';
@@ -34,10 +41,7 @@ export default function DetailDrawer({
   onClose: () => void;
   focusMessageId?: number | null;
 }) {
-  const candidate =
-    openId == null
-      ? null
-      : (state.candidates.find((c) => c.id === openId) ?? null);
+  const candidate = candidateById(state.candidates, openId);
 
   // Keep the last shown candidate so content stays put during the slide-out.
   const lastRef = useRef<Candidate | null>(null);
@@ -60,13 +64,11 @@ export default function DetailDrawer({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
-  const job = view ? state.jobs.find((j) => j.id === view.jobId) : undefined;
+  const job = jobById(state.jobs, view?.jobId ?? null);
 
-  // One feedback entry per interviewer (enforced by a DB unique constraint).
-  // Feedback is always authored by the signed-in user (derived server-side), so
-  // they can review only when signed in and haven't reviewed this candidate yet.
-  const reviewedIds = new Set((view?.feedback ?? []).map((f) => f.byUser));
-  const canReview = currentUserId != null && !reviewedIds.has(currentUserId);
+  // Whether the signed-in user may leave feedback (one entry per interviewer,
+  // authored server-side from the session). The rule lives in the helper.
+  const canReview = canReviewCandidate(view, currentUserId);
 
   // Moving a candidate's stage returns you to the board so the move is visible.
   function moveAndClose(dir: 1 | -1) {

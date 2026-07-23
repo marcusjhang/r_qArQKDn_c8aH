@@ -9,6 +9,7 @@ import { useCallback, useEffect, useReducer, useState } from 'react';
 import {
   findUserIdByEmail,
   formatJobMeta,
+  jobById,
   jobStats,
   liveCount,
   overlayReducer,
@@ -59,7 +60,7 @@ export default function HiringApp({
     }
   }, [state.jobs, activeJob]);
 
-  const job = state.jobs.find((j) => j.id === activeJob) ?? state.jobs[0];
+  const job = jobById(state.jobs, activeJob) ?? state.jobs[0];
 
   // The logged-in user's id (matched by email) — used to default the feedback
   // author to whoever is actually leaving the review.
