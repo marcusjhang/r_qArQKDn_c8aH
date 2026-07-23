@@ -67,6 +67,16 @@ accounts' passwords after seeding). Do not deploy with the default in place.
   travels on the JWT/session, so the `/change-password` server action clears it
   in the DB and the client re-authenticates with the new password to replace the
   stale token.
+- **Voluntary password change (`/settings` → Security).** A signed-in account can
+  change its own password from settings. Unlike the forced first-login flow, this
+  is voluntary, so the `updatePassword` service (`lib/password.ts`) verifies the
+  **current** password with bcrypt before writing — a stolen session token or an
+  unattended logged-in session cannot silently take the account over by setting a
+  new password. A wrong current password and the (defensive) missing-account case
+  return the same generic "current password is incorrect" message. The `updatePassword`
+  settings action confirms the session itself (`signedInUserId()`), like every
+  other action. The password is not part of the session token, so no re-auth is
+  needed; existing JWT sessions remain valid until they expire.
 - [`middleware.ts`](./middleware.ts) excludes only the NextAuth/register/MCP API
   routes, Next internals, and static assets from the gate. The `api/` exclusion
   is anchored so a page route that merely starts with `api` is not accidentally

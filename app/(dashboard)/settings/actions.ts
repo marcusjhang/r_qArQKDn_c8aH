@@ -16,6 +16,7 @@ import { MAX_YEARS_EXPERIENCE } from '@/lib/hiring/primitives';
 import { auth } from '@/lib/auth';
 import type { SettingsResult, CreateTokenResult } from '@/lib/settings-types';
 import { mintToken } from '@/lib/mcp/auth';
+import { updatePassword as updatePasswordService } from '@/lib/password';
 
 const zId = z.number().int().positive();
 const zSourceName = z.string().trim().min(1).max(40);
@@ -76,6 +77,30 @@ export async function updateProfile(
 
   revalidatePath('/settings');
   return { ok: true };
+}
+
+/**
+ * Change the signed-in account's password (Security panel). A voluntary change,
+ * so unlike the forced first-login flow it verifies the current password — the
+ * rules live in the lib/password.ts domain service and this stays a thin adapter
+ * that confirms the session first (the middleware never gates Server Actions).
+ * The stored password isn't part of the session token, so no re-auth is needed;
+ * the user stays signed in.
+ */
+export async function updatePassword(
+  currentPassword: string,
+  newPassword: string,
+  confirmPassword: string
+): Promise<SettingsResult> {
+  const id = await signedInUserId();
+  if (!id) return { ok: false, error: 'Not signed in.' };
+
+  return updatePasswordService({
+    userId: id,
+    currentPassword,
+    newPassword,
+    confirmPassword
+  });
 }
 
 /* ---------- Candidate sources ---------- */

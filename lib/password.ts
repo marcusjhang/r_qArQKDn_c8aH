@@ -10,7 +10,7 @@ import 'server-only';
 import { eq } from 'drizzle-orm';
 import { db, users } from '@/lib/db';
 import { PASSWORD_MIN_LENGTH, PASSWORD_COST } from '@/lib/registration';
-import { hash } from 'bcryptjs';
+import { compare, hash } from 'bcryptjs';
 
 export interface ChangePasswordInput {
   userId: number;
@@ -53,6 +53,78 @@ export async function changePassword(
   }
 
   const passwordHash = await hash(password, PASSWORD_COST);
+
+  await db
+    .update(users)
+    .set({ passwordHash, mustChangePassword: false })
+    .where(eq(users.id, input.userId));
+
+  return { ok: true };
+}
+
+export interface UpdatePasswordInput {
+  userId: number;
+  currentPassword: unknown;
+  newPassword: unknown;
+  confirmPassword: unknown;
+}
+
+/**
+ * Change an already-authenticated account's password from /settings.
+ *
+ * This is the *voluntary* counterpart to `changePassword` above. Because it is
+ * not the minimal-friction first-login flow, it verifies the current password
+ * first: a signed-in-but-unattended session, or a stolen session token, must
+ * not be able to silently take the account over by setting a new password
+ * without knowing the old one.
+ *
+ * Validation order: confirmation match → minimum length → current password
+ * correct → new password differs from the current one. Any failure returns a
+ * caller-facing message and writes nothing. A generic "current password is
+ * incorrect" is used for both a wrong password and the (defensive) missing-row
+ * case, so nothing distinguishes them.
+ */
+export async function updatePassword(
+  input: UpdatePasswordInput
+): Promise<ChangePasswordResult> {
+  const currentPassword =
+    typeof input.currentPassword === 'string' ? input.currentPassword : '';
+  const newPassword =
+    typeof input.newPassword === 'string' ? input.newPassword : '';
+  const confirmPassword =
+    typeof input.confirmPassword === 'string' ? input.confirmPassword : '';
+
+  if (newPassword !== confirmPassword) {
+    return { ok: false, error: 'Passwords do not match.' };
+  }
+  if (newPassword.length < PASSWORD_MIN_LENGTH) {
+    return {
+      ok: false,
+      error: `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`
+    };
+  }
+
+  const [row] = await db
+    .select({ passwordHash: users.passwordHash })
+    .from(users)
+    .where(eq(users.id, input.userId))
+    .limit(1);
+  // The caller is authenticated, so the row should exist; treat a miss like a
+  // failed check rather than leaking a distinct "no such account" outcome.
+  const currentValid =
+    !!row && (await compare(currentPassword, row.passwordHash));
+  if (!currentValid) {
+    return { ok: false, error: 'Current password is incorrect.' };
+  }
+
+  if (newPassword === currentPassword) {
+    return {
+      ok: false,
+      error: 'New password must be different from your current password.'
+    };
+  }
+
+  const passwordHash = await hash(newPassword, PASSWORD_COST);
 
   await db
     .update(users)
