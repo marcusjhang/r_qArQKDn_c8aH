@@ -27,6 +27,7 @@ export default function StageColumn({
   actions,
   state,
   dnd,
+  now,
   onOpen
 }: {
   job: Job;
@@ -36,6 +37,8 @@ export default function StageColumn({
   actions: HiringActions;
   state: HiringState;
   dnd: BoardDnd;
+  /** Shared clock for time-in-stage UI; null until mounted (see useNow). */
+  now: number | null;
   onOpen: (id: number) => void;
 }) {
   const menu = useDismissableMenu();
@@ -110,6 +113,8 @@ export default function StageColumn({
               users={state.users}
               sources={state.sources}
               bands={state.bands}
+              stageSlas={state.stageSlas}
+              now={now}
               dragProps={dnd.cardProps(c.id)}
               onOpen={onOpen}
               onToggleStar={actions.setCandidateStarred}

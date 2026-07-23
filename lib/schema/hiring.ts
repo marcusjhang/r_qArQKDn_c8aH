@@ -19,6 +19,7 @@ import { relations, sql } from 'drizzle-orm';
 import {
   STATUSES,
   MAX_YEARS_EXPERIENCE,
+  MAX_SLA_DAYS,
   type RatingValue
 } from '../hiring/primitives';
 import { users } from './auth';
@@ -57,6 +58,36 @@ export const seniorityBands = pgTable('seniority_bands', {
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
+// Stage time-limits (SLAs) — the configurable "warn after N days in a stage"
+// mapping, managed from /settings and seeded in db/seed.ts. Keyed by stage
+// NAME (case-insensitively unique) rather than a per-job FK: pipelines share a
+// common stage vocabulary (Applied, Screen, Interview…), so one limit applies
+// wherever that stage appears. Warnings are opt-in — a stage only warns once a
+// row exists for it. DB-driven like sources/seniority_bands.
+export const stageSlas = pgTable(
+  'stage_slas',
+  {
+    id: serial('id').primaryKey(),
+    stage: text('stage').notNull(),
+    // Whole days a candidate may sit in the stage before the board warns.
+    maxDays: integer('max_days').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+  },
+  (t) => ({
+    // Case-insensitive uniqueness so "Interview" and "interview" are the same
+    // stage limit — mirrors the sources table's lower(name) unique index.
+    stageLowerUnique: uniqueIndex('stage_slas_stage_lower_unique').on(
+      sql`lower(${t.stage})`
+    ),
+    // A limit is at least a day and at most MAX_SLA_DAYS — backed at the DB
+    // level so a bad write can't slip past the zod validator.
+    maxDaysRange: check(
+      'stage_slas_max_days_range',
+      sql`${t.maxDays} between 1 and ${sql.raw(String(MAX_SLA_DAYS))}`
+    )
+  })
+);
+
 // A job owns its own ordered, per-job stage list (Decision 1), stored as an
 // ordered JSON array of stage names so candidates can key off the stage name.
 export const jobs = pgTable('jobs', {
@@ -80,6 +111,12 @@ export const candidates = pgTable(
       .references(() => jobs.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     stage: text('stage').notNull(),
+    // When the candidate entered its CURRENT stage. Set on insert and reset on
+    // every stage change (see moveStage / setStatus in actions.ts), so it
+    // always measures time-in-current-stage — the basis for the overdue
+    // warning (see stageOverdue in helpers.ts). Renaming/reordering a stage
+    // does NOT move the candidate, so it leaves this untouched.
+    stageEnteredAt: timestamp('stage_entered_at').defaultNow().notNull(),
     // The accountable owner — a user account (see lib/schema/auth.ts).
     owner: integer('owner')
       .notNull()
@@ -185,6 +222,7 @@ export type SelectCandidate = typeof candidates.$inferSelect;
 export type SelectFeedback = typeof feedback.$inferSelect;
 export type SelectSource = typeof sources.$inferSelect;
 export type SelectSeniorityBand = typeof seniorityBands.$inferSelect;
+export type SelectStageSla = typeof stageSlas.$inferSelect;
 export type SelectMessage = typeof messages.$inferSelect;
 export type SelectMention = typeof mentions.$inferSelect;
 

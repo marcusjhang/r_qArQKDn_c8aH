@@ -5,7 +5,8 @@ import type {
   Job,
   User,
   Source,
-  SeniorityBand
+  SeniorityBand,
+  StageSla
 } from '@/lib/hiring/types';
 
 // Because getBoard reads through an injected BoardReader (rather than the db
@@ -28,12 +29,14 @@ describe('getBoard', () => {
     { id: 1, label: 'Senior', minYears: 5 },
     { id: 2, label: 'Junior', minYears: 0 }
   ];
+  const stageSlas: StageSla[] = [{ id: 1, stage: 'Applied', maxDays: 14 }];
   const candidates: Candidate[] = [
     {
       id: 10,
       jobId: 1,
       name: 'Ada',
       stage: 'Applied',
+      stageEnteredAt: new Date(0),
       owner: 1,
       source: 5,
       yearsExperience: null,
@@ -50,15 +53,23 @@ describe('getBoard', () => {
     loadCandidates: async () => candidates,
     loadUsers: async () => users,
     loadSources: async () => sources,
-    loadBands: async () => bands
+    loadBands: async () => bands,
+    loadStageSlas: async () => stageSlas
   };
 
   it('composes the reader results into a HiringState payload', async () => {
     const state = await getBoard(fakeReader);
-    expect(state).toEqual({ jobs, candidates, users, sources, bands });
+    expect(state).toEqual({
+      jobs,
+      candidates,
+      users,
+      sources,
+      bands,
+      stageSlas
+    });
   });
 
-  it('reads jobs, candidates, users, sources and bands concurrently from the reader', async () => {
+  it('reads jobs, candidates, users, sources, bands and stage SLAs concurrently from the reader', async () => {
     const calls: string[] = [];
     const reader: BoardReader = {
       loadJobs: async () => {
@@ -80,6 +91,10 @@ describe('getBoard', () => {
       loadBands: async () => {
         calls.push('bands');
         return bands;
+      },
+      loadStageSlas: async () => {
+        calls.push('stageSlas');
+        return stageSlas;
       }
     };
     await getBoard(reader);
@@ -88,12 +103,20 @@ describe('getBoard', () => {
       'candidates',
       'jobs',
       'sources',
+      'stageSlas',
       'users'
     ]);
   });
 
   it('is exposed on the hiringService facade', async () => {
     const state = await hiringService.getBoard(fakeReader);
-    expect(state).toEqual({ jobs, candidates, users, sources, bands });
+    expect(state).toEqual({
+      jobs,
+      candidates,
+      users,
+      sources,
+      bands,
+      stageSlas
+    });
   });
 });

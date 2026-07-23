@@ -1,17 +1,17 @@
 'use server';
 
-// Manage the signed-in profile, candidate sources, and seniority bands from
-// /settings. The middleware only gates *page* routes; a Server Action can be
-// POSTed to the public /login route by action id and skip that gate, so each
-// action confirms the session itself via signedInUserId(). (The signup
-// allowlist is managed from /members — see app/(dashboard)/members/actions.ts.)
+// Manage the signed-in profile, candidate sources, seniority bands, and stage
+// time-limits from /settings. The middleware only gates *page* routes; a Server
+// Action can be POSTed to the public /login route by action id and skip that
+// gate, so each action confirms the session itself via signedInUserId(). (The
+// signup allowlist is managed from /members — see app/(dashboard)/members/actions.ts.)
 
 import { z } from 'zod';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { and, eq, ne, sql } from 'drizzle-orm';
 import { db, candidates, users } from '@/lib/db';
-import { sources, seniorityBands } from '@/lib/schema/hiring';
-import { MAX_YEARS_EXPERIENCE } from '@/lib/hiring/primitives';
+import { sources, seniorityBands, stageSlas } from '@/lib/schema/hiring';
+import { MAX_YEARS_EXPERIENCE, MAX_SLA_DAYS } from '@/lib/hiring/primitives';
 import { BOARD_TAGS } from '@/lib/hiring/cache';
 import { auth } from '@/lib/auth';
 import type { SettingsResult } from '@/lib/settings-types';
@@ -20,6 +20,10 @@ const zId = z.number().int().positive();
 const zSourceName = z.string().trim().min(1).max(40);
 const zBandLabel = z.string().trim().min(1).max(40);
 const zMinYears = z.number().int().min(0).max(MAX_YEARS_EXPERIENCE);
+// A stage limit's stage name (matches the board's MAX_STAGE_NAME bound) and its
+// day threshold (at least a day, at most MAX_SLA_DAYS).
+const zStageSlaName = z.string().trim().min(1).max(48);
+const zMaxDays = z.number().int().min(1).max(MAX_SLA_DAYS);
 // First/last are optional (some people go by one name); each capped to the
 // column width. Trimmed before storing.
 const zName = z.string().trim().max(50);
@@ -254,5 +258,99 @@ export async function removeBand(idRaw: number): Promise<SettingsResult> {
   await db.delete(seniorityBands).where(eq(seniorityBands.id, id));
   revalidatePath('/settings');
   revalidateTag(BOARD_TAGS.bands);
+  return { ok: true };
+}
+
+/* ---------- Stage time-limits (SLAs) ---------- */
+
+/**
+ * Add a stage time-limit: warn once a candidate has sat in `stage` for
+ * `maxDays` whole days. The stage name is unique case-insensitively (mirrors
+ * the DB's lower(stage) index), so a stage can't have two conflicting limits.
+ * Revalidates the board too, since the warning renders there.
+ */
+export async function addStageSla(
+  stageRaw: string,
+  maxDaysRaw: number
+): Promise<SettingsResult> {
+  if (!(await signedInUserId())) return { ok: false, error: 'Not signed in.' };
+  let stage: string;
+  let maxDays: number;
+  try {
+    stage = zStageSlaName.parse(stageRaw);
+    maxDays = zMaxDays.parse(maxDaysRaw);
+  } catch {
+    return {
+      ok: false,
+      error: `Enter a stage name (1–48 chars) and a limit of 1–${MAX_SLA_DAYS} days.`
+    };
+  }
+  const inserted = await db
+    .insert(stageSlas)
+    .values({ stage, maxDays })
+    .onConflictDoNothing()
+    .returning({ id: stageSlas.id });
+  if (inserted.length === 0) {
+    return { ok: false, error: 'That stage already has a time limit.' };
+  }
+  revalidatePath('/settings');
+  revalidateTag(BOARD_TAGS.stageSlas);
+  return { ok: true };
+}
+
+/**
+ * Update a stage limit's stage name and/or day threshold. Rejects a stage name
+ * already used by another limit (case-insensitive). Revalidates the board too.
+ */
+export async function updateStageSla(
+  idRaw: number,
+  stageRaw: string,
+  maxDaysRaw: number
+): Promise<SettingsResult> {
+  if (!(await signedInUserId())) return { ok: false, error: 'Not signed in.' };
+  let id: number;
+  let stage: string;
+  let maxDays: number;
+  try {
+    id = zId.parse(idRaw);
+    stage = zStageSlaName.parse(stageRaw);
+    maxDays = zMaxDays.parse(maxDaysRaw);
+  } catch {
+    return {
+      ok: false,
+      error: `Enter a stage name (1–48 chars) and a limit of 1–${MAX_SLA_DAYS} days.`
+    };
+  }
+  const [clash] = await db
+    .select({ id: stageSlas.id })
+    .from(stageSlas)
+    .where(
+      and(sql`lower(${stageSlas.stage}) = lower(${stage})`, ne(stageSlas.id, id))
+    )
+    .limit(1);
+  if (clash) {
+    return { ok: false, error: 'That stage already has a time limit.' };
+  }
+  await db
+    .update(stageSlas)
+    .set({ stage, maxDays })
+    .where(eq(stageSlas.id, id));
+  revalidatePath('/settings');
+  revalidateTag(BOARD_TAGS.stageSlas);
+  return { ok: true };
+}
+
+/** Delete a stage limit. Safe any time — nothing references it. */
+export async function removeStageSla(idRaw: number): Promise<SettingsResult> {
+  if (!(await signedInUserId())) return { ok: false, error: 'Not signed in.' };
+  let id: number;
+  try {
+    id = zId.parse(idRaw);
+  } catch {
+    return { ok: false, error: 'Invalid stage limit.' };
+  }
+  await db.delete(stageSlas).where(eq(stageSlas.id, id));
+  revalidatePath('/settings');
+  revalidateTag(BOARD_TAGS.stageSlas);
   return { ok: true };
 }

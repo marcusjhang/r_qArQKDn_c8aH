@@ -8,7 +8,8 @@ import {
   feedback,
   allowedEmails,
   sources,
-  seniorityBands
+  seniorityBands,
+  stageSlas
 } from '../lib/schema';
 import { count, eq } from 'drizzle-orm';
 import { hash } from 'bcryptjs';
@@ -16,7 +17,8 @@ import {
   SEED_JOBS,
   SEED_CANDIDATES,
   SEED_SOURCES,
-  SEED_SENIORITY_BANDS
+  SEED_SENIORITY_BANDS,
+  SEED_STAGE_SLAS
 } from '../lib/hiring/seed';
 
 const SEED_ALLOWED_EMAILS = [
@@ -108,6 +110,17 @@ async function main() {
   }
   console.log(`Ensured ${SEED_SENIORITY_BANDS.length} seniority bands.`);
 
+  // Seed the stage time-limits (idempotent via the unique lower(stage) index).
+  // The board reads this table for the "warn after N days" mapping, so ensure
+  // the defaults exist even when the pipeline seed below is skipped.
+  for (const sla of SEED_STAGE_SLAS) {
+    await db
+      .insert(stageSlas)
+      .values({ stage: sla.stage, maxDays: sla.maxDays })
+      .onConflictDoNothing();
+  }
+  console.log(`Ensured ${SEED_STAGE_SLAS.length} stage time-limits.`);
+
   // Seed the hiring pipeline (jobs → candidates → feedback), idempotently.
   const [{ value: jobCount }] = await db
     .select({ value: count() })
@@ -157,12 +170,19 @@ async function main() {
     for (const c of SEED_CANDIDATES) {
       const jobId = slugToId.get(c.job);
       if (jobId === undefined) continue;
+      // Backdate the stage clock so the demo shows a realistic mix of fresh and
+      // stalled applicants. Omitted daysInStage → let the column default (now).
+      const stageEnteredAt =
+        c.daysInStage != null
+          ? new Date(Date.now() - c.daysInStage * 86_400_000)
+          : undefined;
       const [row] = await db
         .insert(candidates)
         .values({
           jobId,
           name: c.name,
           stage: c.stage,
+          ...(stageEnteredAt ? { stageEnteredAt } : {}),
           owner: resolveUser(c.owner),
           source: resolveSource(c.source),
           yearsExperience: c.yearsExperience,

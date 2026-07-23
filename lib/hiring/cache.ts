@@ -26,5 +26,6 @@ export const BOARD_TAGS = {
   candidates: 'board:candidates',
   users: 'board:users',
   sources: 'board:sources',
-  bands: 'board:bands'
+  bands: 'board:bands',
+  stageSlas: 'board:stageSlas'
 } as const;

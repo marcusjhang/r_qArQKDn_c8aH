@@ -15,6 +15,19 @@ import type { RatingValue, Status } from './types';
 /** Default seniority bands seeded into the (editable) seniority_bands table. */
 export const SEED_SENIORITY_BANDS = SENIORITY_BANDS;
 
+/**
+ * Default stage time-limits seeded into the (editable) stage_slas table: warn
+ * once a candidate has sat in the stage for this many days. Keyed by the
+ * default-pipeline stage names; Hired is terminal so it has no limit. Editable
+ * from /settings after boot — these are only the starting values.
+ */
+export const SEED_STAGE_SLAS: { stage: string; maxDays: number }[] = [
+  { stage: 'Applied', maxDays: 14 },
+  { stage: 'Screen', maxDays: 10 },
+  { stage: 'Interview', maxDays: 7 },
+  { stage: 'Offer', maxDays: 7 }
+];
+
 // The seeded users, referenced by email so the demo assignments read clearly
 // and stay in lockstep with the accounts created in db/seed.ts.
 const SEED_USER_EMAILS = {
@@ -60,6 +73,11 @@ export interface SeedCandidate {
   yearsExperience: number | null;
   status: Status;
   starred?: boolean;
+  // Optional: how many days ago the candidate entered its current stage. The
+  // seeder backdates stage_entered_at by this much so the demo shows a mix of
+  // fresh and stalled applicants (some past their stage limit — see
+  // SEED_STAGE_SLAS). Omitted = entered "now" (the column default).
+  daysInStage?: number;
   feedback: SeedFeedback[];
 }
 
@@ -80,6 +98,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     yearsExperience: 6,
     status: 'active',
     starred: true,
+    daysInStage: 3,
     feedback: [
       { by: benChan, v: 3, note: 'Solid CS fundamentals, clean take-home.' },
       { by: hengHongLee, v: 4, note: 'Excellent systems design — would move fast.' }
@@ -93,6 +112,8 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     source: 'Referral',
     yearsExperience: 3,
     status: 'active',
+    // 20 days in Applied — past the 14-day limit, so the board flags him.
+    daysInStage: 20,
     feedback: []
   },
   {
@@ -104,6 +125,8 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     yearsExperience: 9,
     status: 'active',
     starred: true,
+    // 12 days in Interview — past the 7-day limit.
+    daysInStage: 12,
     feedback: [
       { by: benOng, v: 4, note: 'Sharp, great product instincts.' },
       { by: benChan, v: 3, note: 'Strong, minor gaps in distributed systems.' }
@@ -117,6 +140,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     source: 'Inbound',
     yearsExperience: 1,
     status: 'active',
+    daysInStage: 5,
     feedback: []
   },
   {
@@ -127,6 +151,8 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     source: 'Referral',
     yearsExperience: 12,
     status: 'active',
+    // 9 days sitting on the Offer — past the 7-day limit; nudge to close.
+    daysInStage: 9,
     feedback: [
       { by: benOng, v: 4, note: 'Best onsite so far.' },
       { by: hengHongLee, v: 4, note: 'Ship it — strong hire.' },

@@ -1,10 +1,11 @@
 'use client';
 
-// Settings: manage appearance, your profile, candidate sources, and seniority
-// bands. Styled with the board's design system (.ht-root) so it matches the rest
-// of the app. Server actions are passed in from the page (the @/app path isn't
-// aliased). The signup allowlist lives on /members (it governs who can become a
-// member), reachable from the account dropdown.
+// Settings: manage appearance, your profile, candidate sources, seniority
+// bands, and stage time-limits. Styled with the board's design system
+// (.ht-root) so it matches the rest of the app. Server actions are passed in
+// from the page (the @/app path isn't aliased). The signup allowlist lives on
+// /members (it governs who can become a member), reachable from the account
+// dropdown.
 
 import Link from 'next/link';
 import TopBar from '@/components/hiring/TopBar';
@@ -12,6 +13,7 @@ import { ACCOUNT_LINKS } from '@/components/hiring/UserMenu';
 import ThemeToggle from './ThemeToggle';
 import SourcesPanel from './SourcesPanel';
 import SeniorityBandsPanel from './SeniorityBandsPanel';
+import StageTimeLimitsPanel from './StageTimeLimitsPanel';
 import ProfilePanel from './ProfilePanel';
 import type { SettingsResult } from '@/lib/settings-types';
 import '@/components/hiring/hiring.css';
@@ -19,7 +21,9 @@ import '@/components/hiring/hiring.css';
 export default function SettingsView({
   sources,
   bands,
+  stageSlas,
   maxYears,
+  maxSlaDays,
   profile,
   userEmail,
   updateProfile,
@@ -28,11 +32,16 @@ export default function SettingsView({
   removeSource,
   addBand,
   updateBand,
-  removeBand
+  removeBand,
+  addStageSla,
+  updateStageSla,
+  removeStageSla
 }: {
   sources: { id: number; name: string }[];
   bands: { id: number; label: string; minYears: number }[];
+  stageSlas: { id: number; stage: string; maxDays: number }[];
   maxYears: number;
+  maxSlaDays: number;
   profile: { firstName: string; lastName: string };
   userEmail?: string | null;
   updateProfile: (
@@ -49,6 +58,13 @@ export default function SettingsView({
     minYears: number
   ) => Promise<SettingsResult>;
   removeBand: (id: number) => Promise<SettingsResult>;
+  addStageSla: (stage: string, maxDays: number) => Promise<SettingsResult>;
+  updateStageSla: (
+    id: number,
+    stage: string,
+    maxDays: number
+  ) => Promise<SettingsResult>;
+  removeStageSla: (id: number) => Promise<SettingsResult>;
 }) {
   return (
     <div className="ht-root ht-settings">
@@ -97,6 +113,14 @@ export default function SettingsView({
             addBand={addBand}
             updateBand={updateBand}
             removeBand={removeBand}
+          />
+
+          <StageTimeLimitsPanel
+            stageSlas={stageSlas}
+            maxDays={maxSlaDays}
+            addStageSla={addStageSla}
+            updateStageSla={updateStageSla}
+            removeStageSla={removeStageSla}
           />
         </div>
       </div>

@@ -1,13 +1,13 @@
 'use client';
 
-// Mention notification inbox in the top bar: a bell with an unread badge and a
-// dropdown of the mentions targeting the current account. Opening a
-// notification jumps to that applicant's chat and marks it read; each row can
-// be cleared with its ✕, and the header offers "Mark all read" and "Clear all".
-// Initial data is server-rendered (seeded via `initialData`); each read/clear is
-// a `useMutation` that, on success, invalidates the notifications query so it
-// re-reads the authoritative inbox — replacing the old per-handler
-// router.refresh().
+// Notification inbox in the top bar: a bell with an unread badge and a dropdown
+// carrying two streams. Mentions targeting the current account are
+// server-rendered (seeded via `initialData`) and refreshed by query
+// invalidation after a read/clear; opening one jumps to that applicant's chat
+// and marks it read, and each row can be cleared with its ✕. Stalled-candidate
+// alerts are derived on the client for candidates the signed-in user owns that
+// have overstayed their stage limit; opening one jumps to the candidate. They
+// have no read/clear state — they clear when the candidate advances.
 
 import { Bell, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -19,17 +19,22 @@ import {
 } from '@/lib/hiring/chat-actions';
 import { fetchNotifications } from '@/lib/hiring/board-query';
 import { hiringKeys } from '@/lib/hiring/query-keys';
-import { formatMessageTime } from '@/lib/hiring/helpers';
+import { formatMessageTime, type StageAlert } from '@/lib/hiring/helpers';
 import type { Notification } from '@/lib/hiring/types';
 import { Button } from '@/components/ui/button';
 import { useDismissableMenu } from './hooks/useDismissableMenu';
 
 export default function NotificationBell({
   notifications,
-  onOpen
+  stageAlerts,
+  onOpen,
+  onOpenAlert
 }: {
   notifications: Notification[];
+  /** Client-derived "your candidate is stalling" alerts for the signed-in owner. */
+  stageAlerts: StageAlert[];
   onOpen: (candidateId: number, jobId: number, messageId: number) => void;
+  onOpenAlert: (candidateId: number, jobId: number) => void;
 }) {
   const menu = useDismissableMenu();
   const queryClient = useQueryClient();
@@ -62,7 +67,10 @@ export default function NotificationBell({
     onSuccess: invalidate
   });
 
+  // Mentions carry a persisted read state; stage alerts are derived and clear
+  // when the candidate advances, so they always count toward the badge.
   const unread = items.filter((n) => !n.read).length;
+  const badgeCount = unread + stageAlerts.length;
 
   function openNotification(n: Notification) {
     menu.close();
@@ -82,16 +90,25 @@ export default function NotificationBell({
     clear.mutate();
   }
 
+  function openAlert(a: StageAlert) {
+    menu.close();
+    onOpenAlert(a.candidateId, a.jobId);
+  }
+
   return (
     <div className="notif" ref={menu.wrapRef}>
       <Button
         variant="app"
         className="notif-btn"
-        aria-label={`Notifications${unread ? ` (${unread} unread)` : ''}`}
+        aria-label={`Notifications${badgeCount ? ` (${badgeCount} unread)` : ''}`}
         {...menu.triggerProps}
       >
         <Bell size={16} aria-hidden />
-        {unread > 0 && <span className="notif-badge">{unread > 99 ? '99+' : unread}</span>}
+        {badgeCount > 0 && (
+          <span className="notif-badge">
+            {badgeCount > 99 ? '99+' : badgeCount}
+          </span>
+        )}
       </Button>
 
       {menu.open && (
@@ -111,10 +128,27 @@ export default function NotificationBell({
               </span>
             )}
           </div>
-          {items.length === 0 ? (
+          {items.length === 0 && stageAlerts.length === 0 ? (
             <div className="notif-empty">You&apos;re all caught up.</div>
           ) : (
             <div className="notif-list">
+              {stageAlerts.map((a) => (
+                <div
+                  key={`alert-${a.candidateId}`}
+                  className="notif-item alert unread"
+                >
+                  <button className="notif-open" onClick={() => openAlert(a)}>
+                    <div className="notif-item-top">
+                      <span className="notif-who">Stalled candidate</span>
+                      <span className="notif-time">{a.days}d in stage</span>
+                    </div>
+                    <div className="notif-ctx">
+                      <b>{a.candidateName}</b> has been in {a.stage} for {a.days}{' '}
+                      day{a.days === 1 ? '' : 's'}, past the {a.limit}-day limit
+                    </div>
+                  </button>
+                </div>
+              ))}
               {items.map((n) => (
                 <div
                   key={n.id}

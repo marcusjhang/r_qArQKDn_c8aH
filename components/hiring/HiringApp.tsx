@@ -13,6 +13,7 @@ import {
   jobStats,
   liveCount,
   overlayReducer,
+  overdueForOwner,
   useHiringStore,
   NO_OVERLAY,
   type HiringState,
@@ -28,6 +29,7 @@ import TopBar from './TopBar';
 import { ACCOUNT_LINKS } from './UserMenu';
 import NotificationBell from './NotificationBell';
 import CandidateSearch from './CandidateSearch';
+import { useNow } from './hooks/useNow';
 import './hiring.css';
 
 export default function HiringApp({
@@ -40,6 +42,8 @@ export default function HiringApp({
   notifications?: Notification[];
 }) {
   const { state, actions } = useHiringStore(initial);
+  // Shared clock for time-in-stage / overdue UI (null until mounted — see hook).
+  const now = useNow();
   const [activeJob, setActiveJob] = useState<number>(state.jobs[0]?.id ?? 0);
   const [showRejected, setShowRejected] = useState(false);
   // A single overlay state machine replaces the old cluster of open/adding/
@@ -80,6 +84,24 @@ export default function HiringApp({
     dispatchOverlay({ type: 'openCandidate', candidateId });
   }, []);
 
+  // Open a candidate from a stalled-candidate alert: switch to its job (which
+  // may not be the active one) and open the drawer — no chat message to focus.
+  const openFromAlert = useCallback(
+    (candidateId: number, jobId: number) => {
+      if (state.jobs.some((j) => j.id === jobId)) setActiveJob(jobId);
+      dispatchOverlay({ type: 'openCandidate', candidateId });
+    },
+    [state.jobs]
+  );
+
+  // The signed-in owner's overdue candidates, surfaced in the notification bell.
+  // Derived from the live clock (null until mounted) so it tracks the same
+  // overdue state as the card/drawer warnings and clears when a candidate moves.
+  const stageAlerts =
+    now == null || currentUserId == null
+      ? []
+      : overdueForOwner(state.candidates, state.stageSlas, currentUserId, now);
+
   // Jump to an applicant's chat from a notification: switch to their job (so
   // the board context is right), open their detail drawer, and remember which
   // message to scroll to once the thread loads.
@@ -100,8 +122,7 @@ export default function HiringApp({
   const openCandidateInJob = useCallback(
     (candidateId: number, jobId: number) => {
       if (state.jobs.some((j) => j.id === jobId)) setActiveJob(jobId);
-      setFocusMessageId(null);
-      setOpenId(candidateId);
+      dispatchOverlay({ type: 'openCandidate', candidateId });
     },
     [state.jobs]
   );
@@ -122,7 +143,9 @@ export default function HiringApp({
         topRight={
           <NotificationBell
             notifications={notifications}
+            stageAlerts={stageAlerts}
             onOpen={openCandidate}
+            onOpenAlert={openFromAlert}
           />
         }
       >
@@ -178,6 +201,7 @@ export default function HiringApp({
         actions={actions}
         activeJob={activeJob}
         showRejected={showRejected}
+        now={now}
         onOpen={openFromBoard}
       />
 
@@ -186,6 +210,7 @@ export default function HiringApp({
         actions={actions}
         openId={openId}
         currentUserId={currentUserId}
+        now={now}
         onClose={() => dispatchOverlay({ type: 'close' })}
         focusMessageId={focusMessageId}
       />

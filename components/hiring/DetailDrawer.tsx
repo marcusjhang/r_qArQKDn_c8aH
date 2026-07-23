@@ -31,6 +31,7 @@ export default function DetailDrawer({
   actions,
   openId,
   currentUserId,
+  now,
   onClose,
   focusMessageId
 }: {
@@ -38,6 +39,8 @@ export default function DetailDrawer({
   actions: HiringActions;
   openId: number | null;
   currentUserId: number | null;
+  /** Shared clock for time-in-stage UI; null until mounted (see useNow). */
+  now: number | null;
   onClose: () => void;
   focusMessageId?: number | null;
 }) {
@@ -133,7 +136,13 @@ export default function DetailDrawer({
           />
         </div>
 
-        <DetailFooter view={view} job={job} onMove={moveAndClose} />
+        <DetailFooter
+          view={view}
+          job={job}
+          stageSlas={state.stageSlas}
+          now={now}
+          onMove={moveAndClose}
+        />
       </aside>
     </>
   );

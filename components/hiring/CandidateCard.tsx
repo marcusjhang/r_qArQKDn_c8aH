@@ -10,11 +10,17 @@ import {
   initials,
   sourceName,
   seniorityFor,
+  isTerminal,
+  stageOverdue,
+  stageSlaFor,
+  stageAgeLabel,
+  daysInStage,
   STATUS,
   type Candidate,
   type User,
   type Source,
-  type SeniorityBand
+  type SeniorityBand,
+  type StageSla
 } from '@/lib/hiring';
 import RatingChip from './RatingChip';
 import ProfileLinks from './ProfileLinks';
@@ -24,6 +30,8 @@ export default function CandidateCard({
   users,
   sources,
   bands,
+  stageSlas,
+  now,
   dragProps,
   onOpen,
   onToggleStar
@@ -32,6 +40,9 @@ export default function CandidateCard({
   users: User[];
   sources: Source[];
   bands: SeniorityBand[];
+  stageSlas: StageSla[];
+  /** Shared clock; null until mounted, so no time UI renders on the server. */
+  now: number | null;
   dragProps: {
     draggable: true;
     onDragStart: (e: React.DragEvent<HTMLElement>) => void;
@@ -41,6 +52,15 @@ export default function CandidateCard({
 }) {
   const owner = userById(users, candidate.owner);
   const seniority = seniorityFor(bands, candidate.yearsExperience);
+  // Time-in-stage: shown for candidates still moving through the pipeline once
+  // the clock has mounted. Escalates to a warning when the stage's configured
+  // limit is exceeded (see stageOverdue). Terminal candidates (hired/rejected)
+  // aren't "in" a stage in the stalled sense, so they show nothing.
+  const showAge = now != null && !isTerminal(candidate);
+  const overdue = now != null && stageOverdue(candidate, stageSlas, now);
+  const ageLabel = now != null ? stageAgeLabel(candidate.stageEnteredAt, now) : '';
+  const daysIn = now != null ? daysInStage(candidate.stageEnteredAt, now) : 0;
+  const limit = stageSlaFor(stageSlas, candidate.stage);
   return (
     <div
       className={`card${candidate.starred ? ' starred' : ''}`}
@@ -92,6 +112,18 @@ export default function CandidateCard({
           >
             {STATUS[candidate.status]}
           </span>
+          {showAge && (
+            <span
+              className={`time-tag${overdue ? ' overdue' : ''}`}
+              title={
+                overdue && limit != null
+                  ? `In ${candidate.stage} ${daysIn} day${daysIn === 1 ? '' : 's'}, past the ${limit}-day limit`
+                  : `In ${candidate.stage} for ${ageLabel}`
+              }
+            >
+              {ageLabel}
+            </span>
+          )}
         </span>
         <span className="card-tags">
           {seniority && (

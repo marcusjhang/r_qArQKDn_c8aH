@@ -13,7 +13,8 @@ import type {
   SelectCandidate,
   SelectFeedback,
   SelectSource,
-  SelectSeniorityBand
+  SelectSeniorityBand,
+  SelectStageSla
 } from '@/lib/schema/hiring';
 import type { SelectUser } from '@/lib/schema/auth';
 import type { RatingValue, Status } from '../primitives';
@@ -52,6 +53,17 @@ export interface SeniorityBand {
   minYears: number;
 }
 
+/**
+ * A stage time-limit (SLA): the configurable "warn after `maxDays` days in
+ * this stage" mapping. Projected from the seeded `stage_slas` table so the
+ * limits are DB-driven and editable in /settings, never a hardcoded list.
+ */
+export interface StageSla {
+  id: number;
+  stage: string;
+  maxDays: number;
+}
+
 /** One interviewer's entry, trimmed to the fields the UI shows. */
 export interface Feedback {
   id: number;
@@ -66,6 +78,8 @@ export interface Candidate {
   jobId: number;
   name: string;
   stage: string;
+  /** When the candidate entered its current stage (drives the overdue warning). */
+  stageEnteredAt: Date;
   owner: number;
   source: number;
   yearsExperience: number | null;
@@ -94,6 +108,8 @@ export interface HiringState {
   sources: Source[];
   /** The configurable seniority bands (years-of-experience → label mapping). */
   bands: SeniorityBand[];
+  /** The configurable stage time-limits (stage → max-days) driving warnings. */
+  stageSlas: StageSla[];
 }
 
 /** The data dependency `getBoard` reads from (Drizzle-backed in production, an
@@ -104,6 +120,7 @@ export interface BoardReader {
   loadUsers(): Promise<User[]>;
   loadSources(): Promise<Source[]>;
   loadBands(): Promise<SeniorityBand[]>;
+  loadStageSlas(): Promise<StageSla[]>;
 }
 
 // Compile-time guard: every DTO must stay a faithful projection of its Drizzle
@@ -126,4 +143,8 @@ type _SourceConforms = Conforms<Source, Pick<SelectSource, keyof Source>>;
 type _SeniorityBandConforms = Conforms<
   SeniorityBand,
   Pick<SelectSeniorityBand, keyof SeniorityBand>
+>;
+type _StageSlaConforms = Conforms<
+  StageSla,
+  Pick<SelectStageSla, keyof StageSla>
 >;

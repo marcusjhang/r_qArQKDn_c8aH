@@ -17,7 +17,15 @@ import 'server-only';
 
 import { unstable_cache } from 'next/cache';
 import { BOARD_TAGS } from '../cache';
-import type { BoardReader, Candidate, Job, SeniorityBand, Source, User } from './dtos';
+import type {
+  BoardReader,
+  Candidate,
+  Job,
+  SeniorityBand,
+  Source,
+  StageSla,
+  User
+} from './dtos';
 
 export const drizzleReader: BoardReader = {
   loadJobs: unstable_cache(
@@ -40,6 +48,7 @@ export const drizzleReader: BoardReader = {
           jobId: true,
           name: true,
           stage: true,
+          stageEnteredAt: true,
           owner: true,
           source: true,
           yearsExperience: true,
@@ -108,5 +117,19 @@ export const drizzleReader: BoardReader = {
     },
     ['board:bands'],
     { tags: [BOARD_TAGS.bands] }
+  ),
+  // The stage time-limits. Cached under `board:stageSlas`; the SLA mutations in
+  // /settings revalidate this tag, so an edit is reflected on the next board
+  // render. Ordered by stage name for a stable, predictable list.
+  loadStageSlas: unstable_cache(
+    async (): Promise<StageSla[]> => {
+      const { db } = await import('@/lib/db');
+      return db.query.stageSlas.findMany({
+        columns: { id: true, stage: true, maxDays: true },
+        orderBy: (s, { asc }) => [asc(s.stage)]
+      });
+    },
+    ['board:stageSlas'],
+    { tags: [BOARD_TAGS.stageSlas] }
   )
 };

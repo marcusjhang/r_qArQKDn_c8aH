@@ -40,9 +40,15 @@ export type HiringEvent =
       linkedinUrl: string | null;
       githubUrl: string | null;
       yearsExperience: number | null;
+      // Stage-clock start for the optimistic row (the store supplies the clock
+      // so the reducer stays pure). Reconciled to the DB default on refresh.
+      at: Date;
     }
   | { type: 'reconcileCandidateId'; tempId: number; realId: number }
-  | { type: 'moveStage'; id: number; stage: string }
+  // `at` = the moment the move happened; the reducer stamps stageEnteredAt with
+  // it when (and only when) the stage actually changes — mirroring the server's
+  // withStageClock rule so the optimistic overdue state matches the DB.
+  | { type: 'moveStage'; id: number; stage: string; at: Date }
   | {
       type: 'editCandidate';
       id: number;
@@ -53,7 +59,7 @@ export type HiringEvent =
       githubUrl: string | null;
       yearsExperience: number | null;
     }
-  | { type: 'setStatus'; id: number; status: Status }
+  | { type: 'setStatus'; id: number; status: Status; at: Date }
   | { type: 'setCandidateStarred'; id: number; starred: boolean }
   | {
       type: 'addFeedback';
@@ -152,6 +158,7 @@ export function hiringReducer(
             jobId: event.jobId,
             name: event.name,
             stage: job.stages[0],
+            stageEnteredAt: event.at,
             owner: event.owner,
             source: event.source,
             status: 'active',
@@ -175,9 +182,17 @@ export function hiringReducer(
       // placeInStage couples the (stage, status) pair — entering the terminal
       // (last) stage marks the candidate hired, leaving it clears a stale hired
       // back to active. Terminal is resolved from the job's stages by position.
+      // Restart the stage clock only on a real stage change (mirrors the
+      // server's withStageClock) so the optimistic overdue state is correct.
       return mapCandidate(state, event.id, (c) => {
         const job = state.jobs.find((j) => j.id === c.jobId);
-        return { ...c, ...placeInStage(event.stage, c, job?.stages ?? []) };
+        const placement = placeInStage(event.stage, c, job?.stages ?? []);
+        const moved = placement.stage !== c.stage;
+        return {
+          ...c,
+          ...placement,
+          stageEnteredAt: moved ? event.at : c.stageEnteredAt
+        };
       });
 
     case 'editCandidate':
@@ -194,7 +209,13 @@ export function hiringReducer(
     case 'setStatus':
       return mapCandidate(state, event.id, (c) => {
         const job = state.jobs.find((j) => j.id === c.jobId);
-        return { ...c, ...placeWithStatus(event.status, c, job?.stages ?? []) };
+        const placement = placeWithStatus(event.status, c, job?.stages ?? []);
+        const moved = placement.stage !== c.stage;
+        return {
+          ...c,
+          ...placement,
+          stageEnteredAt: moved ? event.at : c.stageEnteredAt
+        };
       });
 
     case 'setCandidateStarred':

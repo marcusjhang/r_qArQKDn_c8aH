@@ -19,7 +19,7 @@ import {
   candidateInsertSchema,
   candidateEditSchema
 } from '../schemas';
-import { loadJobStages } from './support';
+import { loadJobStages, withStageClock } from './support';
 
 /** Returns the new candidate's id so the client can reconcile its optimistic row. */
 export async function addCandidate(
@@ -133,7 +133,12 @@ export async function moveStage(idRaw: number, stageRaw: string) {
   // wrongly flip the status to hired (see placeInStage).
   if (!stages.includes(stage)) return;
   const placement = placeInStage(stage, c, stages);
-  await db.update(candidates).set(placement).where(eq(candidates.id, id));
+  // Reset the stage clock only on an actual stage change, so re-dropping a card
+  // in its own column (or a no-op move) doesn't restart the overdue timer.
+  await db
+    .update(candidates)
+    .set(withStageClock(placement, c.stage))
+    .where(eq(candidates.id, id));
   revalidateTag(BOARD_TAGS.candidates);
 }
 
@@ -156,6 +161,11 @@ export async function setStatus(idRaw: number, statusRaw: Status) {
   // Setting status to Hired moves the card into the Hired stage if one exists.
   const stages = status === 'hired' ? await loadJobStages(c.jobId) : null;
   const placement = placeWithStatus(status, c, stages ?? []);
-  await db.update(candidates).set(placement).where(eq(candidates.id, id));
+  // A status change that also moves the card (to the terminal stage) restarts
+  // the clock; a status change that stays in place leaves it running.
+  await db
+    .update(candidates)
+    .set(withStageClock(placement, c.stage))
+    .where(eq(candidates.id, id));
   revalidateTag(BOARD_TAGS.candidates);
 }

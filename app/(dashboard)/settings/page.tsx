@@ -1,7 +1,8 @@
 import { auth } from '@/lib/auth';
 import { getSources } from '@/lib/sources';
 import { getSeniorityBands } from '@/lib/seniority';
-import { MAX_YEARS_EXPERIENCE } from '@/lib/hiring/primitives';
+import { getStageSlas } from '@/lib/stageSlas';
+import { MAX_YEARS_EXPERIENCE, MAX_SLA_DAYS } from '@/lib/hiring/primitives';
 import { getProfile } from '@/lib/profile';
 import SettingsView from '@/components/settings/SettingsView';
 import {
@@ -11,15 +12,19 @@ import {
   removeSource,
   addBand,
   updateBand,
-  removeBand
+  removeBand,
+  addStageSla,
+  updateStageSla,
+  removeStageSla
 } from './actions';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage() {
-  const [sources, bands, profile, session] = await Promise.all([
+  const [sources, bands, stageSlas, profile, session] = await Promise.all([
     getSources(),
     getSeniorityBands(),
+    getStageSlas(),
     getProfile(),
     auth()
   ]);
@@ -27,7 +32,9 @@ export default async function SettingsPage() {
     <SettingsView
       sources={sources}
       bands={bands}
+      stageSlas={stageSlas}
       maxYears={MAX_YEARS_EXPERIENCE}
+      maxSlaDays={MAX_SLA_DAYS}
       profile={profile}
       userEmail={session?.user?.email ?? null}
       updateProfile={updateProfile}
@@ -37,6 +44,9 @@ export default async function SettingsPage() {
       addBand={addBand}
       updateBand={updateBand}
       removeBand={removeBand}
+      addStageSla={addStageSla}
+      updateStageSla={updateStageSla}
+      removeStageSla={removeStageSla}
     />
   );
 }
