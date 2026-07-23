@@ -4,7 +4,7 @@
 // functions behind the TanStack Query caches on the client.
 //
 // These are thin `'use server'` adapters over the existing read facades
-// (`service.ts` for the board, `chat-queries.ts` for notifications). They exist
+// (`service.ts` for the board, `chat/queries.ts` for notifications). They exist
 // because a `useQuery` needs a function it can call from the client to re-read
 // after an `invalidateQueries`; the underlying facades are `server-only` and
 // can't be imported into a client bundle directly. The board fetch goes through
@@ -12,12 +12,12 @@
 // follows a mutation's `revalidateTag` returns fresh rows.
 //
 // The caller's identity for notifications is resolved from the auth session
-// server-side (never trusted from the client), mirroring chat-actions.
+// server-side (never trusted from the client), mirroring chat/actions.
 
 import { auth } from '@/lib/auth';
 import { hiringService } from './service';
-import { drizzleChatStore } from './chat-store';
-import { getNotifications } from './chat-queries';
+import { drizzleChatStore } from './chat/store';
+import { getNotifications } from './chat/queries';
 import type { HiringState, Notification } from './types';
 
 /** Re-read the whole board. The queryFn behind the board cache. */

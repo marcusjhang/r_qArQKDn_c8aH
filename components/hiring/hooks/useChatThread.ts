@@ -23,7 +23,7 @@ import {
   useState
 } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { loadThread, postMessage } from '@/lib/hiring/chat-actions';
+import { loadThread, postMessage } from '@/lib/hiring/chat/actions';
 import { hiringKeys } from '@/lib/hiring/query-keys';
 import {
   activeMention,

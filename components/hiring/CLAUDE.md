@@ -26,8 +26,14 @@ rendered under the auth-gated `app/(dashboard)` route.
   render the candidate detail; `*Modal`/`*Form` handle creation.
 - Reusable stateful behavior lives in `hooks/` (`useBoardDnd`, `useInlineEdit`);
   local form-draft state in colocated `use*.ts` files.
-- Primitives come from `components/ui/` (shadcn). Styles: Tailwind plus the
-  scoped `hiring.css`.
+- Primitives come from `components/ui/`. Alongside the shadcn Tailwind
+  components (`button`, `card`, `input`), it also holds the shared building
+  blocks for this app's own `.ht-root`-scoped design system (styled in
+  `hiring.css`): `Avatar` (the initials circle), `FormError` (the conditional
+  `.form-error` text — renders nothing when the message is falsy), and
+  `CloseButton` (the `✕` control). Reuse these instead of re-hand-writing the
+  markup; they're shared across hiring, settings and members. Styles: Tailwind
+  plus the scoped `hiring.css`.
 
 Keep decision logic (validation, placement, sorting) in `lib/hiring/helpers.ts`
 so it stays testable — components should stay presentational. For the frontend

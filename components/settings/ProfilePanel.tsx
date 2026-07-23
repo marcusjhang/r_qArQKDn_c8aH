@@ -8,6 +8,8 @@
 
 import { useState, useTransition } from 'react';
 import { initials } from '@/lib/hiring';
+import { Avatar } from '@/components/ui/avatar';
+import { FormError } from '@/components/ui/form-error';
 import type { SettingsResult } from '@/lib/settings-types';
 
 export default function ProfilePanel({
@@ -66,9 +68,9 @@ export default function ProfilePanel({
       </div>
 
       <form className="settings-add" onSubmit={save}>
-        <span className="avatar" title={combined || undefined} aria-hidden>
+        <Avatar title={combined || undefined} aria-hidden>
           {preview}
-        </span>
+        </Avatar>
         <div className="field" style={{ flex: '1 1 160px' }}>
           <label className="label" htmlFor="profile-first-name">First name</label>
           <input
@@ -103,7 +105,7 @@ export default function ProfilePanel({
           Save name
         </button>
       </form>
-      {error && <div className="form-error">{error}</div>}
+      <FormError message={error} />
       {saved && !error && <div className="settings-sub">Saved.</div>}
     </section>
   );

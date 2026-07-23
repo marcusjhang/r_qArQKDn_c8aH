@@ -2,16 +2,16 @@ import 'server-only';
 
 // Server-side read for the mention notification inbox. Loaded by the dashboard
 // server component (page.tsx) and handed to the client; the client triggers
-// further reads/writes through ./chat-actions. The pool of accounts that can be
+// further reads/writes through ./actions. The pool of accounts that can be
 // @-mentioned is the board's canonical user list (HiringState.users), so the
 // chat does not query users separately.
 //
-// This is a thin delegate over the injectable chat logic (./chat-logic) with
+// This is a thin delegate over the injectable chat logic (./logic) with
 // the production Drizzle-backed store — the seam keeps the read (and its
 // per-user scoping) unit-testable without a database.
 
-import { drizzleChatStore, getNotificationsWith } from './chat-logic';
-import type { Notification } from './types';
+import { drizzleChatStore, getNotificationsWith } from './logic';
+import type { Notification } from '../types';
 
 /**
  * The mentions targeting one user, newest first — the notification inbox.

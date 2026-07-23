@@ -1,14 +1,14 @@
 import 'server-only';
 
-// Shared shaping / identity primitives for the chat logic (see ./chat-messages
-// and ./chat-notifications). All framework-free: the current-user identity is
+// Shared shaping / identity primitives for the chat logic (see ./messages
+// and ./notifications). All framework-free: the current-user identity is
 // resolved through the injectable `ChatStore` seam by email, so these never
 // import `@/lib/auth` and stay unit-testable with an in-memory fake.
 
 import { z } from 'zod';
-import { displayName, initials } from './helpers';
-import type { ChatStore, MessageRow } from './chat-store';
-import type { ChatMessage } from './types';
+import { displayName, initials } from '../helpers';
+import type { ChatStore, MessageRow } from './store';
+import type { ChatMessage } from '../types';
 
 export const zBody = z.string().trim().min(1).max(4000);
 export const zMentionIds = z.array(z.number().int().positive()).max(50);

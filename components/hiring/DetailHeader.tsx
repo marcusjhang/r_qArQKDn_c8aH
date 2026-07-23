@@ -4,6 +4,7 @@
 // close control.
 
 import { sourceName, type Candidate, type Job, type Source } from '@/lib/hiring';
+import { CloseButton } from '@/components/ui/close-button';
 import ProfileLinks from './ProfileLinks';
 
 export default function DetailHeader({
@@ -42,9 +43,7 @@ export default function DetailHeader({
           />
         )}
       </div>
-      <button className="close" aria-label="Close" onClick={onClose}>
-        ✕
-      </button>
+      <CloseButton onClick={onClose} />
     </div>
   );
 }
