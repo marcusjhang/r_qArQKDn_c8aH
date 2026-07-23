@@ -16,8 +16,8 @@
 
 import { and, eq, sql } from 'drizzle-orm';
 import { revalidateTag } from 'next/cache';
-import { requireUser } from '@/lib/auth';
-import { db, jobs, candidates, feedback } from '@/lib/db';
+import { auth, requireUser } from '@/lib/auth';
+import { db, jobs, candidates, feedback, users } from '@/lib/db';
 import { BOARD_TAGS } from './cache';
 import {
   validateStageName,
@@ -41,6 +41,26 @@ import {
   candidateEditSchema,
   feedbackInsertSchema
 } from './schemas';
+
+/**
+ * Resolve the signed-in caller's numeric id from their session email against
+ * the live `users` table — the author of a write is derived here, never taken
+ * from client input. Mirrors chat-actions/chat-logic: resolving by email (the
+ * stable login identity) rather than trusting a JWT-captured id keeps a reseed
+ * that renumbers the rows from attributing feedback to the wrong account, and
+ * keeps a caller from fabricating feedback authored by a colleague.
+ */
+async function currentUserId(): Promise<number | null> {
+  const session = await auth();
+  const email = session?.user?.email;
+  if (!email) return null;
+  const [u] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+  return u?.id ?? null;
+}
 
 async function loadJobStages(jobId: number): Promise<string[] | null> {
   const [j] = await db
@@ -253,24 +273,33 @@ export async function setStatus(idRaw: number, statusRaw: Status) {
   revalidateTag(BOARD_TAGS.candidates);
 }
 
+/**
+ * Add a feedback entry to a candidate. The author is derived server-side from
+ * the session (never the client), so a caller cannot attribute feedback to a
+ * colleague. Returns the new feedback id so the client can reconcile its
+ * optimistic row, or null when the caller can't be resolved to an account.
+ */
 export async function addFeedback(
   idRaw: number,
-  byUserRaw: number,
   ratingRaw: number,
   noteRaw: string
-) {
+): Promise<number | null> {
   await requireUser();
+  const byUser = await currentUserId();
+  if (byUser == null) return null;
   const id = zId.parse(idRaw);
-  const { byUser, rating, note } = feedbackInsertSchema.parse({
-    byUser: byUserRaw,
+  const { rating, note } = feedbackInsertSchema.parse({
+    byUser,
     rating: ratingRaw,
     note: noteRaw ?? ''
   });
-  await db
+  const [row] = await db
     .insert(feedback)
-    .values({ candidateId: id, byUser, rating, note });
+    .values({ candidateId: id, byUser, rating, note })
+    .returning({ id: feedback.id });
   // Feedback is nested inside the candidates read, so invalidate that tag.
   revalidateTag(BOARD_TAGS.candidates);
+  return row?.id ?? null;
 }
 
 export async function addStage(jobIdRaw: number, nameRaw: string) {

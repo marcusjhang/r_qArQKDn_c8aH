@@ -63,6 +63,7 @@ export type HiringEvent =
       rating: RatingValue;
       note: string;
     }
+  | { type: 'reconcileFeedbackId'; tempId: number; realId: number }
   // Stages (edits to a job's ordered stage list)
   | { type: 'renameStage'; jobId: number; index: number; name: string }
   | { type: 'addStage'; jobId: number; name: string }
@@ -215,6 +216,25 @@ export function hiringReducer(
           }
         ]
       }));
+
+    case 'reconcileFeedbackId':
+      // The optimistic feedback row carries a negative temp id until the server
+      // returns the real one. Match by temp id across candidates (feedback is
+      // nested per candidate), rebuilding only the candidate that holds it so
+      // every other row keeps its identity.
+      return {
+        ...state,
+        candidates: state.candidates.map((c) =>
+          c.feedback.some((f) => f.id === event.tempId)
+            ? {
+                ...c,
+                feedback: c.feedback.map((f) =>
+                  f.id === event.tempId ? { ...f, id: event.realId } : f
+                )
+              }
+            : c
+        )
+      };
 
     case 'renameStage': {
       const job = state.jobs.find((j) => j.id === event.jobId);
