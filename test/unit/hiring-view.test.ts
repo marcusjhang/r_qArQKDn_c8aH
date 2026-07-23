@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
+  candidateById,
   candidateRating,
+  canReviewCandidate,
   formatJobMeta,
+  jobById,
   jobStats,
   liveCount,
   partitionJobTabs,
@@ -43,6 +46,51 @@ function job(over: Partial<Job> = {}): Job {
     ...over
   };
 }
+
+describe('candidateById', () => {
+  const cands = [candidate({ id: 10 }), candidate({ id: 11 })];
+
+  it('finds a candidate by id', () => {
+    expect(candidateById(cands, 11)?.id).toBe(11);
+  });
+
+  it('returns null for a null id or a miss', () => {
+    expect(candidateById(cands, null)).toBeNull();
+    expect(candidateById(cands, 99)).toBeNull();
+  });
+});
+
+describe('jobById', () => {
+  const jobs = [job({ id: 1 }), job({ id: 2 })];
+
+  it('finds a job by id', () => {
+    expect(jobById(jobs, 2)?.id).toBe(2);
+  });
+
+  it('is undefined for a null id or a miss', () => {
+    expect(jobById(jobs, null)).toBeUndefined();
+    expect(jobById(jobs, 99)).toBeUndefined();
+  });
+});
+
+describe('canReviewCandidate', () => {
+  const reviewed = candidate({
+    feedback: [{ id: 1, byUser: 7, rating: 3, note: '' }]
+  });
+
+  it('allows a signed-in user who has not reviewed yet', () => {
+    expect(canReviewCandidate(reviewed, 8)).toBe(true);
+  });
+
+  it('blocks a user who already left feedback', () => {
+    expect(canReviewCandidate(reviewed, 7)).toBe(false);
+  });
+
+  it('is false without a candidate or a signed-in user', () => {
+    expect(canReviewCandidate(null, 7)).toBe(false);
+    expect(canReviewCandidate(reviewed, null)).toBe(false);
+  });
+});
 
 describe('liveCount', () => {
   it('counts only non-terminal candidates for the given job', () => {
