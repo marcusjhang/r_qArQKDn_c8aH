@@ -5,13 +5,15 @@
 // slide-over. Board-first: the board is the home screen and the drawer opens
 // over it so pipeline context stays on screen.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useReducer, useState } from 'react';
 import {
   findUserIdByEmail,
   formatJobMeta,
   jobStats,
   liveCount,
+  overlayReducer,
   useHiringStore,
+  NO_OVERLAY,
   type HiringState,
   type Notification
 } from '@/lib/hiring';
@@ -38,11 +40,17 @@ export default function HiringApp({
   const { state, actions } = useHiringStore(initial);
   const [activeJob, setActiveJob] = useState<number>(state.jobs[0]?.id ?? 0);
   const [showRejected, setShowRejected] = useState(false);
-  const [openId, setOpenId] = useState<number | null>(null);
-  // When a candidate is opened from a notification, the message to scroll to.
-  const [focusMessageId, setFocusMessageId] = useState<number | null>(null);
-  const [addingCandidate, setAddingCandidate] = useState(false);
-  const [creatingJob, setCreatingJob] = useState(false);
+  // A single overlay state machine replaces the old cluster of open/adding/
+  // creating flags: at most one overlay is open at a time, so the drawer and
+  // the two modals are variants of one discriminated union (see ./overlay).
+  // Each open/close is one dispatch, and the per-overlay render props below are
+  // derived from the union rather than kept in sync across separate setStates.
+  const [overlay, dispatchOverlay] = useReducer(overlayReducer, NO_OVERLAY);
+  const openId = overlay.kind === 'detail' ? overlay.candidateId : null;
+  const focusMessageId =
+    overlay.kind === 'detail' ? overlay.focusMessageId : null;
+  const addingCandidate = overlay.kind === 'addCandidate';
+  const creatingJob = overlay.kind === 'newJob';
 
   // Keep a valid active job — e.g. after deleting the active job, fall back.
   useEffect(() => {
@@ -62,13 +70,12 @@ export default function HiringApp({
 
   function selectJob(jobId: number) {
     setActiveJob(jobId);
-    setOpenId(null);
+    dispatchOverlay({ type: 'close' });
   }
 
   // Open a candidate from the board — no specific message to focus.
   const openFromBoard = useCallback((candidateId: number) => {
-    setFocusMessageId(null);
-    setOpenId(candidateId);
+    dispatchOverlay({ type: 'openCandidate', candidateId });
   }, []);
 
   // Jump to an applicant's chat from a notification: switch to their job (so
@@ -77,8 +84,11 @@ export default function HiringApp({
   const openCandidate = useCallback(
     (candidateId: number, jobId: number, messageId: number) => {
       if (state.jobs.some((j) => j.id === jobId)) setActiveJob(jobId);
-      setFocusMessageId(messageId);
-      setOpenId(candidateId);
+      dispatchOverlay({
+        type: 'openCandidate',
+        candidateId,
+        focusMessageId: messageId
+      });
     },
     [state.jobs]
   );
@@ -103,7 +113,10 @@ export default function HiringApp({
           />
         }
       >
-        <Button variant="appPrimary" onClick={() => setCreatingJob(true)}>
+        <Button
+          variant="appPrimary"
+          onClick={() => dispatchOverlay({ type: 'openNewJob' })}
+        >
           ＋ New job
         </Button>
         <JobTabs
@@ -132,7 +145,7 @@ export default function HiringApp({
         </label>
         <Button
           variant="appPrimary"
-          onClick={() => setAddingCandidate(true)}
+          onClick={() => dispatchOverlay({ type: 'openAddCandidate' })}
           disabled={!job}
         >
           ＋ Add candidate
@@ -152,7 +165,7 @@ export default function HiringApp({
         actions={actions}
         openId={openId}
         currentUserId={currentUserId}
-        onClose={() => setOpenId(null)}
+        onClose={() => dispatchOverlay({ type: 'close' })}
         focusMessageId={focusMessageId}
       />
 
@@ -162,7 +175,7 @@ export default function HiringApp({
           users={state.users}
           sources={state.sources}
           bands={state.bands}
-          onClose={() => setAddingCandidate(false)}
+          onClose={() => dispatchOverlay({ type: 'close' })}
           onAdd={(name, source, owner, linkedinUrl, githubUrl, yearsExperience) =>
             actions.addCandidate(
               job.id,
@@ -179,7 +192,7 @@ export default function HiringApp({
 
       {creatingJob && (
         <NewJobModal
-          onClose={() => setCreatingJob(false)}
+          onClose={() => dispatchOverlay({ type: 'close' })}
           onCreate={(title) =>
             actions.createJob(title, (id) => setActiveJob(id))
           }
