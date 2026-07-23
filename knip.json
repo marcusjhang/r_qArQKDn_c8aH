@@ -3,7 +3,7 @@
   "entry": ["test/stubs/*.ts"],
   "project": ["**/*.{ts,tsx}"],
   "ignore": ["drizzle/**"],
-  "ignoreDependencies": ["prettier"],
+  "ignoreDependencies": ["prettier", "eslint-config-next"],
   "rules": {
     "duplicates": "off"
   }

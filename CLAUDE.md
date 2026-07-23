@@ -24,6 +24,17 @@ bun run db:seed      # seed data
 bun run db:generate  # generate migration after schema change
 ```
 
+## Client state
+
+Server data on the client is managed with **TanStack Query** — the single client
+cache. The board goes through `lib/hiring/store.ts` (optimistic updates over the
+Query cache); chat and notifications use their own `useQuery`/`useMutation`. Do
+**not** add a second client cache or hand-roll a new store for server data — the
+legacy optimistic store is being folded onto Query, not extended. Any
+`'use server'` read used as a `queryFn` (`fetchBoard`, `loadThread`,
+`fetchNotifications`) must check the session itself — it is directly POST-able by
+an anonymous caller.
+
 ## Auth
 
 - The whole app is gated behind login — enforced by the `authorized` callback in

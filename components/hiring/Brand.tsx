@@ -7,6 +7,11 @@ import { APP_NAME } from '@/lib/hiring/config';
 export default function Brand({ subtitle }: { subtitle: string }) {
   return (
     <div className="brand">
+      {/* A 22px static SVG brand mark. next/image doesn't optimize inline SVGs
+          (it would only add overhead and require `unoptimized`), so a plain
+          <img> is the correct choice — the no-img-element LCP/bandwidth
+          heuristic targets large content images, not a fixed-size icon. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         className="logo"
         src="/lightsprint-icon.svg"

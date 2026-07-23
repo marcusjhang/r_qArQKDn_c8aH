@@ -1,5 +1,8 @@
 import NextAuth from 'next-auth';
-import type { JWT } from 'next-auth/jwt';
+// Empty type-only import: anchors `next-auth/jwt` in this module's import graph
+// so the `declare module 'next-auth/jwt'` augmentation below resolves (TS only
+// augments an imported module). No named binding, so no unused-vars warning.
+import type {} from 'next-auth/jwt';
 import Credentials from 'next-auth/providers/credentials';
 import { NextResponse } from 'next/server';
 import { compare } from 'bcryptjs';
