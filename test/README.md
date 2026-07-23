@@ -58,6 +58,33 @@ bun run test:e2e           # boots the app via playwright.config.ts and runs spe
 Set `PLAYWRIGHT_BASE_URL` to point at an already-running instance and Playwright
 will skip the managed web server.
 
+### Test database isolation
+
+The E2E specs **mutate data** (register accounts, move candidates, write
+feedback, edit settings), so when Playwright manages the app itself it must run
+against a **dedicated, disposable database** — never your dev `DATABASE_URL`,
+which on a team is often a shared database the suite would clobber.
+
+The convention is formalized and enforced:
+
+- Set **`TEST_DATABASE_URL`** to an isolated database. The recommended place is
+  a git-ignored **`.env.test`** — `playwright.config.ts` loads it over `.env`
+  (via `dotenv`) and exports the resolved URL to the managed server as
+  `DATABASE_URL`.
+- `playwright.config.ts` resolves the URL through the pure
+  `resolveTestDatabaseUrl` helper (`test/db-env.ts`, unit-tested in
+  `test/unit/db-env.test.ts`). It **refuses to run** when `TEST_DATABASE_URL` is
+  unset or equal to `DATABASE_URL`, so the suite can't silently target the dev
+  DB.
+- **`ALLOW_SHARED_TEST_DB=1`** is an explicit opt-in escape hatch that lets the
+  suite run against `DATABASE_URL` — only for throwaway local sandboxes or
+  ephemeral CI containers where the dev and test DB are intentionally the same.
+- Point the isolated DB at the schema first: `DATABASE_URL=$TEST_DATABASE_URL
+  bun run db:setup` (migrate + seed).
+
+When `PLAYWRIGHT_BASE_URL` is set, Playwright doesn't own the server (or its
+database), so this resolution is skipped entirely.
+
 ## Adding tests
 
 - Unit: prefer testing pure functions in `lib/hiring/helpers.ts`. When adding
@@ -66,3 +93,9 @@ will skip the managed web server.
 - Injecting data: follow the `BoardReader` pattern in `service.ts` — accept the
   data dependency as an argument with a production default, so tests can pass a
   fake.
+- Extract decision logic from framework-bound modules. When a rule lives in a
+  file that constructs heavy dependencies at import time (e.g. `lib/auth.ts`
+  builds NextAuth + the DB client), lift the pure branching into a dependency-
+  free module and unit-test that directly — see `gateDecision` / `resolveUserId`
+  in `lib/auth-gate.ts` (tested in `test/unit/auth-gate.test.ts`), which mirrors
+  the `decide()` extraction in `lib/rate-limit.ts`.

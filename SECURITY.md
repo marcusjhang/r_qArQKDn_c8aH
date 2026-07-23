@@ -16,6 +16,12 @@
   - `PREVIEW_ORIGIN` — the exact origin/host this deployment is served from
     (**optional**; scopes the Server Actions CSRF allowlist — see
     "Server Actions origin allowlist" below).
+  - `TEST_DATABASE_URL` — connection string for a **dedicated, disposable**
+    database used only by the Playwright E2E suite (**optional**; test-only). It
+    is a database credential, so treat it like `DATABASE_URL` — it belongs in
+    the git-ignored `.env` / `.env.test`, never in `.env.example`. The E2E suite
+    refuses to run against the dev `DATABASE_URL` unless `ALLOW_SHARED_TEST_DB`
+    is set (see `test/README.md` → "Test database isolation").
 - Lightsprint-managed repos receive `DATABASE_URL` and `AUTH_SECRET`
   automatically; no manual setup is needed for those.
 

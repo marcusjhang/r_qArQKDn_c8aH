@@ -6,10 +6,8 @@ import { compare } from 'bcryptjs';
 import { z } from 'zod';
 import { db, users } from '@/lib/db';
 import { normalizeEmail } from '@/lib/allowlist';
+import { gateDecision, resolveUserId } from '@/lib/auth-gate';
 import { eq } from 'drizzle-orm';
-
-/** Path of the forced first-login password-change page (see the gate below). */
-const CHANGE_PASSWORD_PATH = '/change-password';
 
 declare module 'next-auth' {
   interface Session {
@@ -90,19 +88,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     // (mustChangePassword) is confined to the /change-password page until it
     // picks a new one — every other page route redirects there, and once the
     // flag is cleared the page itself redirects back to the board.
+    //
+    // The branching itself is the pure `gateDecision` (lib/auth-gate.ts) so it
+    // stays unit-testable without NextAuth/the DB client; here we only map its
+    // decision onto the callback's boolean | NextResponse contract.
     authorized({ auth, request }) {
-      const { pathname } = request.nextUrl;
-      if (pathname === '/login') return true;
-      if (!auth?.user) return false;
-
-      const mustChange = auth.user.mustChangePassword === true;
-      if (mustChange && pathname !== CHANGE_PASSWORD_PATH) {
-        return NextResponse.redirect(new URL(CHANGE_PASSWORD_PATH, request.nextUrl));
+      const decision = gateDecision(request.nextUrl.pathname, auth?.user);
+      switch (decision.type) {
+        case 'allow':
+          return true;
+        case 'deny':
+          return false;
+        case 'redirect':
+          return NextResponse.redirect(new URL(decision.to, request.nextUrl));
       }
-      if (!mustChange && pathname === CHANGE_PASSWORD_PATH) {
-        return NextResponse.redirect(new URL('/', request.nextUrl));
-      }
-      return true;
     },
     jwt({ token, user }) {
       if (user) {
@@ -132,11 +131,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
  *
  * Uses the numeric id set on the session (see the `session` callback) as the
  * "signed in" signal, matching how `lib/profile.ts` and the settings actions
- * already read it.
+ * already read it. The id coercion/validity check is the pure `resolveUserId`
+ * (lib/auth-gate.ts) so it is unit-testable without a live session.
  */
 export async function requireUser(): Promise<number> {
   const session = await auth();
-  const id = Number(session?.user?.id);
-  if (!id) throw new Error('Unauthorized');
+  const id = resolveUserId(session?.user?.id);
+  if (id === null) throw new Error('Unauthorized');
   return id;
 }

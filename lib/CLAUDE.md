@@ -8,6 +8,10 @@ under `lib/` are the auth/user domain and shared plumbing.
 
 - `auth.ts` — the Auth.js (next-auth v5 beta) config: credentials provider and
   the `authorized` callback that gates the app. Exported as the middleware.
+- `auth-gate.ts` — the pure, dependency-free decision logic behind that gate
+  (`gateDecision`, `resolveUserId`). No next-auth / DB / `server-only` imports,
+  so the security-critical branching is unit-testable in isolation
+  (`test/unit/auth-gate.test.ts`); `auth.ts` is a thin adapter over it.
 - `allowlist.ts` (`server-only`) — the signup allowlist; only listed emails may
   register. Managed from `/settings`.
 - `registration.ts` (`server-only`) — the account-creation domain service
