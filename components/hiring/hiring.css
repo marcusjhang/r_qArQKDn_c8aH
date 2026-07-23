@@ -2110,6 +2110,13 @@
   color: var(--hired-fg);
   font-size: 13px;
 }
+.ht-root .import-error {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--rej-bg);
+  color: var(--rej-fg);
+  font-size: 13px;
+}
 .ht-root .import-preview {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);

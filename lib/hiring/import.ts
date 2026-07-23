@@ -15,7 +15,7 @@
 import { parseCsv } from './csv';
 import { STATUS, DEFAULT_STAGES } from './config';
 import { displayName, normalizeProfileUrl, parseYearsInput } from './helpers';
-import { STATUSES } from './primitives';
+import { STATUSES, MAX_IMPORT_ROWS } from './primitives';
 import type { HiringState, Status } from './types';
 
 /**
@@ -242,6 +242,20 @@ export function resolveImportRows(
       githubUrl: github.value
     });
   });
+
+  // Mirror the server's per-call cap (importCandidatesSchema). Block the whole
+  // upload rather than importing a silent subset — the caller can split it.
+  if (rows.length > MAX_IMPORT_ROWS) {
+    return {
+      rows: [],
+      errors: [
+        {
+          line: 1,
+          message: `Too many rows to import at once (${rows.length}). Import at most ${MAX_IMPORT_ROWS} candidates per file.`
+        }
+      ]
+    };
+  }
 
   return { rows, errors };
 }

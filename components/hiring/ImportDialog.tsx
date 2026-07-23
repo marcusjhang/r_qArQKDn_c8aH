@@ -35,7 +35,8 @@ export default function ImportDialog({
   currentUserId: number | null;
   onImport: (
     rows: ImportRow[],
-    onDone: (result: { inserted: number }) => void
+    onDone: (result: { inserted: number }) => void,
+    onError?: () => void
   ) => void;
   onClose: () => void;
 }) {
@@ -43,6 +44,7 @@ export default function ImportDialog({
   const [fileName, setFileName] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const { rows, errors } = useMemo(
     () =>
@@ -60,20 +62,31 @@ export default function ImportDialog({
     if (!file) return;
     setFileName(file.name);
     setSummary(null);
+    setError(null);
     setText(await file.text());
   }
 
   function submit() {
     if (rows.length === 0 || busy) return;
     setBusy(true);
-    onImport(rows, ({ inserted }) => {
-      setBusy(false);
-      setSummary(
-        `Imported ${inserted} candidate${inserted === 1 ? '' : 's'}.`
-      );
-      setText('');
-      setFileName(null);
-    });
+    setError(null);
+    onImport(
+      rows,
+      ({ inserted }) => {
+        setBusy(false);
+        setSummary(
+          `Imported ${inserted} candidate${inserted === 1 ? '' : 's'}.`
+        );
+        setText('');
+        setFileName(null);
+      },
+      () => {
+        // The write failed (network, server rejection, …); leave the busy
+        // state so the user can fix and retry rather than seeing it hang.
+        setBusy(false);
+        setError('Import failed — nothing was saved. Please try again.');
+      }
+    );
   }
 
   const bands = [...state.bands].sort((a, b) => b.minYears - a.minYears);
@@ -114,11 +127,17 @@ export default function ImportDialog({
               setText(e.target.value);
               setFileName(null);
               setSummary(null);
+              setError(null);
             }}
           />
         </div>
 
         {summary && <div className="import-summary">{summary}</div>}
+        {error && (
+          <div className="import-error" role="alert">
+            {error}
+          </div>
+        )}
 
         {text.trim() && !summary && (
           <div className="import-preview">

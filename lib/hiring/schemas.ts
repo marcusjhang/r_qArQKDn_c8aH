@@ -14,6 +14,7 @@ import {
   STATUSES,
   RATING_VALUES,
   MAX_YEARS_EXPERIENCE,
+  MAX_IMPORT_ROWS,
   type RatingValue
 } from './primitives';
 
@@ -107,5 +108,9 @@ const candidateImportRowSchema = z.object({
   githubUrl: zProfileUrl
 });
 
-// A single import call is bounded so one upload can't insert unboundedly.
-export const importCandidatesSchema = z.array(candidateImportRowSchema).max(1000);
+// A single import call is bounded so one upload can't insert unboundedly. The
+// client resolver mirrors this cap (import.ts) so an over-cap file is blocked in
+// the preview rather than failing here.
+export const importCandidatesSchema = z
+  .array(candidateImportRowSchema)
+  .max(MAX_IMPORT_ROWS);

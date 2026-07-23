@@ -5,6 +5,7 @@ import {
   newSourceNames
 } from '@/lib/hiring/import';
 import { rowsToCsv, EXPORT_COLUMNS } from '@/lib/hiring/csv';
+import { MAX_IMPORT_ROWS } from '@/lib/hiring/primitives';
 import type { HiringState } from '@/lib/hiring/types';
 
 function board(over: Partial<HiringState> = {}): HiringState {
@@ -170,6 +171,40 @@ describe('resolveImportRows — structural', () => {
   it('errors when required columns are missing', () => {
     const { errors } = resolveImportRows('Foo,Bar\n1,2', board(), { currentUserId: 1 });
     expect(errors[0].message).toMatch(/Missing required column/);
+  });
+
+  it('blocks a file over the import cap (mirrors the server bound)', () => {
+    // One more than the cap of valid rows → no rows returned, a single error.
+    const many = Array.from({ length: MAX_IMPORT_ROWS + 1 }, (_, i) => ({
+      Job: 'Software Engineer',
+      Candidate: `C${i}`,
+      Owner: 'Ben Ong',
+      Source: 'LinkedIn'
+    }));
+    const { rows, errors } = resolveImportRows(
+      csv(IMPORT_HEADER, many),
+      board(),
+      { currentUserId: 1 }
+    );
+    expect(rows).toHaveLength(0);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].message).toMatch(/Too many rows/);
+  });
+
+  it('allows a file exactly at the import cap', () => {
+    const atCap = Array.from({ length: MAX_IMPORT_ROWS }, (_, i) => ({
+      Job: 'Software Engineer',
+      Candidate: `C${i}`,
+      Owner: 'Ben Ong',
+      Source: 'LinkedIn'
+    }));
+    const { rows, errors } = resolveImportRows(
+      csv(IMPORT_HEADER, atCap),
+      board(),
+      { currentUserId: 1 }
+    );
+    expect(rows).toHaveLength(MAX_IMPORT_ROWS);
+    expect(errors).toHaveLength(0);
   });
 
   it('ignores extra export-only columns so an exported file re-imports', () => {

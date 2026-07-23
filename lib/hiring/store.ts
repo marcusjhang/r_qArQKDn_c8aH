@@ -94,11 +94,14 @@ export interface HiringActions {
   /**
    * Bulk-import resolved CSV rows. Not optimistic — a bulk insert can create
    * jobs and sources too, so on success we resync from the server rather than
-   * projecting many temp rows into the cache. `onDone` fires with the count.
+   * projecting many temp rows into the cache. `onDone` fires with the count on
+   * success; `onError` fires if the write fails (so the dialog can leave its
+   * busy state and surface the failure instead of hanging).
    */
   importCandidates: (
     rows: ImportRow[],
-    onDone: (result: { inserted: number }) => void
+    onDone: (result: { inserted: number }) => void,
+    onError?: () => void
   ) => void;
 }
 
@@ -106,6 +109,8 @@ export interface HiringActions {
 interface PersistArgs {
   run: () => Promise<unknown>;
   onResult?: (result: unknown) => void;
+  /** Per-call failure hook, run before the shared resync (see the mutation). */
+  onError?: () => void;
 }
 
 export function useHiringStore(initial: HiringState): {
@@ -198,7 +203,12 @@ export function useHiringStore(initial: HiringState): {
   const { mutate: persist } = useMutation({
     mutationFn: ({ run }: PersistArgs) => run(),
     onSuccess: (result, { onResult }) => onResult?.(result),
-    onError: () => resync()
+    onError: (_error, { onError }) => {
+      // Let the caller react (e.g. clear a dialog's busy state) before the
+      // board resyncs, which rolls the failed optimistic change back.
+      onError?.();
+      resync();
+    }
   });
 
   const createJob = useCallback(
@@ -466,19 +476,26 @@ export function useHiringStore(initial: HiringState): {
   );
 
   const importCandidates = useCallback(
-    (rows: ImportRow[], onDone: (result: { inserted: number }) => void) => {
+    (
+      rows: ImportRow[],
+      onDone: (result: { inserted: number }) => void,
+      onError?: () => void
+    ) => {
       if (rows.length === 0) {
         onDone({ inserted: 0 });
         return;
       }
       // Not optimistic: the bulk write can create jobs + sources too, so we let
       // the server commit, then resync the board query to adopt the new rows.
+      // On failure `onError` lets the dialog recover (the shared mutation
+      // onError still resyncs to roll back).
       persist({
         run: () => api.importCandidates(rows),
         onResult: (result) => {
           onDone(result as { inserted: number });
           resync();
-        }
+        },
+        onError
       });
     },
     [persist, resync]
