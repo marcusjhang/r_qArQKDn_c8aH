@@ -8,8 +8,7 @@
 
 import { useState, useTransition } from 'react';
 import { initials } from '@/lib/hiring';
-
-type Result = { ok: true } | { ok: false; error: string };
+import type { SettingsResult } from '@/lib/settings-types';
 
 export default function ProfilePanel({
   firstName: initialFirst,
@@ -20,7 +19,7 @@ export default function ProfilePanel({
   firstName: string;
   lastName: string;
   email?: string | null;
-  updateProfile: (firstName: string, lastName: string) => Promise<Result>;
+  updateProfile: (firstName: string, lastName: string) => Promise<SettingsResult>;
 }) {
   const [firstName, setFirstName] = useState(initialFirst);
   const [lastName, setLastName] = useState(initialLast);

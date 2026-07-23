@@ -9,7 +9,8 @@
 // machine and shell come from useEditableList / EditableList.
 
 import EditableList from './EditableList';
-import { useEditableList, type Result } from './useEditableList';
+import { useEditableList } from './useEditableList';
+import type { SettingsResult } from '@/lib/settings-types';
 
 type Draft = { label: string; years: string };
 
@@ -22,9 +23,9 @@ export default function SeniorityBandsPanel({
 }: {
   bands: { id: number; label: string; minYears: number }[];
   maxYears: number;
-  addBand: (label: string, minYears: number) => Promise<Result>;
-  updateBand: (id: number, label: string, minYears: number) => Promise<Result>;
-  removeBand: (id: number) => Promise<Result>;
+  addBand: (label: string, minYears: number) => Promise<SettingsResult>;
+  updateBand: (id: number, label: string, minYears: number) => Promise<SettingsResult>;
+  removeBand: (id: number) => Promise<SettingsResult>;
 }) {
   function parseYears(raw: string): number | null {
     const n = Number(raw.trim());
