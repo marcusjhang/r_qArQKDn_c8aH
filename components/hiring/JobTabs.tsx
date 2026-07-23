@@ -4,8 +4,9 @@
 // oldest — and puts everything else in a dropdown that also lets you star/unstar
 // (pin as a tab) and delete jobs. The active job is always kept visible.
 
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { partitionJobTabs, MAX_FAVORITES, type Job } from '@/lib/hiring';
+import { useDismissableMenu } from './hooks/useDismissableMenu';
 
 const INLINE_CAP = 3;
 
@@ -24,29 +25,8 @@ export default function JobTabs({
   onToggleStar: (jobId: number, starred: boolean) => void;
   onDelete: (jobId: number) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [confirmId, setConfirmId] = useState<number | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function close() {
-      setOpen(false);
-      setConfirmId(null);
-    }
-    function onDoc(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) close();
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') close();
-    }
-    document.addEventListener('mousedown', onDoc);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDoc);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
+  const menu = useDismissableMenu({ onDismiss: () => setConfirmId(null) });
 
   // Starred first (stable — jobs already come oldest-first), cap the inline set,
   // then guarantee the active job is shown even if it would otherwise overflow.
@@ -57,7 +37,7 @@ export default function JobTabs({
   );
 
   return (
-    <div className="jobtabs" ref={ref}>
+    <div className="jobtabs" ref={menu.wrapRef}>
       {inline.map((j) => (
         <button
           key={j.id}
@@ -77,15 +57,13 @@ export default function JobTabs({
       <div className="jobmenu-wrap">
         <button
           className="btn jobmenu-trigger"
-          aria-haspopup="menu"
-          aria-expanded={open}
           title="All jobs"
-          onClick={() => setOpen((o) => !o)}
+          {...menu.triggerProps}
         >
           {overflow.length ? `${overflow.length} more ` : 'Jobs '}▾
         </button>
-        {open && (
-          <div className="jobmenu" role="menu">
+        {menu.open && (
+          <div className="jobmenu" {...menu.menuProps}>
             {sorted.map((j) => (
               <div className="jobmenu-row" key={j.id}>
                 <button
@@ -107,7 +85,7 @@ export default function JobTabs({
                   className={`jobmenu-select${j.id === activeJob ? ' active' : ''}`}
                   onClick={() => {
                     onSelect(j.id);
-                    setOpen(false);
+                    menu.close();
                     setConfirmId(null);
                   }}
                 >
@@ -120,7 +98,7 @@ export default function JobTabs({
                       className="jobmenu-del danger"
                       onClick={() => {
                         onDelete(j.id);
-                        setOpen(false);
+                        menu.close();
                         setConfirmId(null);
                       }}
                     >

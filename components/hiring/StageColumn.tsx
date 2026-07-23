@@ -5,7 +5,6 @@
 // Drag-and-drop wiring comes from useBoardDnd; the contentEditable rename
 // lifecycle from useInlineEdit — this file is left with layout + menu state.
 
-import { useEffect, useRef, useState } from 'react';
 import {
   validateStageName,
   canDeleteStage,
@@ -16,6 +15,7 @@ import {
 } from '@/lib/hiring';
 import type { BoardDnd } from './hooks/useBoardDnd';
 import { useInlineEdit } from './hooks/useInlineEdit';
+import { useDismissableMenu } from './hooks/useDismissableMenu';
 import CandidateCard from './CandidateCard';
 import StageMenu from './StageMenu';
 
@@ -38,8 +38,7 @@ export default function StageColumn({
   dnd: BoardDnd;
   onOpen: (id: number) => void;
 }) {
-  const menuWrapRef = useRef<HTMLDivElement>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const menu = useDismissableMenu();
 
   const rename = useInlineEdit({
     value: stage,
@@ -47,33 +46,11 @@ export default function StageColumn({
     onCommit: (text) => actions.renameStage(job.id, index, text)
   });
 
-  // Close the dropdown on outside click / Escape.
-  useEffect(() => {
-    if (!menuOpen) return;
-    function onDoc(e: MouseEvent) {
-      if (
-        menuWrapRef.current &&
-        !menuWrapRef.current.contains(e.target as Node)
-      ) {
-        setMenuOpen(false);
-      }
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setMenuOpen(false);
-    }
-    document.addEventListener('mousedown', onDoc);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDoc);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [menuOpen]);
-
   const del = canDeleteStage(state, job.id, index);
 
   return (
     <div
-      className={`column${menuOpen ? ' menu-open' : ''}`}
+      className={`column${menu.open ? ' menu-open' : ''}`}
       data-stage={stage}
       {...dnd.columnProps(stage)}
     >
@@ -91,32 +68,31 @@ export default function StageColumn({
           {stage}
         </div>
         <span className="col-count">{cards.length}</span>
-        <div className="col-menu-wrap" ref={menuWrapRef}>
+        <div className="col-menu-wrap" ref={menu.wrapRef}>
           <button
             className="col-menu"
             title="Stage options"
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((o) => !o)}
+            {...menu.triggerProps}
           >
             ⋯
           </button>
-          {menuOpen && (
+          {menu.open && (
             <StageMenu
+              id={menu.menuProps.id}
               index={index}
               stagesLen={job.stages.length}
               canDelete={del.ok}
               deleteReason={del.reason}
               onRename={() => {
-                setMenuOpen(false);
+                menu.close();
                 rename.start();
               }}
               onMove={(dir) => {
-                setMenuOpen(false);
+                menu.close();
                 actions.reorderStage(job.id, index, dir);
               }}
               onDelete={() => {
-                setMenuOpen(false);
+                menu.close();
                 actions.deleteStage(job.id, index);
               }}
             />
