@@ -42,7 +42,7 @@ export interface SeedJob {
   stages: string[];
 }
 
-export interface SeedFeedback {
+interface SeedFeedback {
   /** Interviewer's email (resolved to a user id by the seeder). */
   by: string;
   v: RatingValue;

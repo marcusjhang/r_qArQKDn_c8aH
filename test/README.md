@@ -43,21 +43,17 @@ bun run test:watch     # watch mode
 Config: `vitest.config.ts` (Node environment, `@/` path aliases mirrored from
 `tsconfig.json`, `server-only` aliased to `test/stubs/server-only.ts`).
 
-## Coverage per PR — Codecov
+## Coverage
 
-`bun run test:coverage` writes an `lcov.info` (plus an HTML report) into the
-git-ignored `coverage/` directory using the v8 provider. Coverage is scoped to
-the framework-free business logic under `lib/` (UI, generated, schema, and
-config files are excluded — see `coverage.include`/`exclude` in
-`vitest.config.ts`).
+`bun run test:coverage` runs the suite with the v8 provider and prints a
+coverage table. Coverage is scoped to the framework-free business logic under
+`lib/` (UI, generated, schema, and config files are excluded — see
+`coverage.include`/`exclude` in `vitest.config.ts`).
 
-In CI, `.github/workflows/ci.yml` runs this on every pull request and uploads
-`coverage/lcov.info` to [Codecov](https://about.codecov.io/). Codecov then posts
-a PR comment and two status checks — **project** (whole-codebase %) and
-**patch** (coverage of just the lines the PR changed). Both are `informational`
-today (they report but don't block merges); tune the gates in `codecov.yml` at
-the repo root. Private repos additionally need a `CODECOV_TOKEN` in the repo's
-GitHub Actions secrets.
+In CI, `.github/workflows/ci.yml` runs it on every pull request and push to
+`main`, so the coverage report is visible in the job log. It is **reported, not
+gated** — to enforce a floor, add a `coverage.thresholds` block to
+`vitest.config.ts`.
 
 ## Integration tests — Vitest (`test/integration/`)
 

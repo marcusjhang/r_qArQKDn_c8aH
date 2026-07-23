@@ -52,7 +52,7 @@ const appButtonVariants = {
 type DesignVariant = NonNullable<VariantProps<typeof buttonVariants>['variant']>;
 type AppVariant = keyof typeof appButtonVariants;
 
-export interface ButtonProps
+interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     Omit<VariantProps<typeof buttonVariants>, 'variant'> {
   /** Design-system variant, or an app-native hiring-shell variant. */
@@ -78,4 +78,4 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 Button.displayName = 'Button';
 
-export { Button, buttonVariants };
+export { Button };

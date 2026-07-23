@@ -5,8 +5,8 @@ import { expect, type Page } from '@playwright/test';
 // match the seeded login accounts in db/seed.ts (all seeded users share
 // SEED_PASSWORD, default 'password'); override via E2E_EMAIL / E2E_PASSWORD to
 // point the suite at a differently-seeded environment.
-export const E2E_EMAIL = process.env.E2E_EMAIL ?? 'marcusajh0802@gmail.com';
-export const E2E_PASSWORD = process.env.E2E_PASSWORD ?? 'password';
+const E2E_EMAIL = process.env.E2E_EMAIL ?? 'marcusajh0802@gmail.com';
+const E2E_PASSWORD = process.env.E2E_PASSWORD ?? 'password';
 
 /**
  * Sign in through the real login form (mirrors app/login/page.tsx +

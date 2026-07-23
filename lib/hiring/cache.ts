@@ -28,5 +28,3 @@ export const BOARD_TAGS = {
   sources: 'board:sources',
   bands: 'board:bands'
 } as const;
-
-export type BoardTag = (typeof BOARD_TAGS)[keyof typeof BOARD_TAGS];

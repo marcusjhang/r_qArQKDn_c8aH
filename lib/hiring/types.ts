@@ -21,7 +21,7 @@ export type {
 /* ---------- Chat / mentions / notifications ---------- */
 
 /** One @-mention embedded in a message (the tagged user, for highlighting). */
-export interface MessageMention {
+interface MessageMention {
   userId: number;
   name: string;
 }

@@ -1,0 +1,48 @@
+name: CI
+
+# Runs on every pull request and every push to `main`, so the test suite (with a
+# coverage report) and the knip dead-code audit run on every change (see README →
+# "Continuous integration"). This file has to be added by a maintainer: GitHub
+# refuses to let a GitHub App create/update anything under `.github/workflows/`
+# without the `workflows` permission, which the bot's token lacks.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Typecheck, tests & coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Type-check
+        run: bun run typecheck
+
+      - name: Unit tests + coverage
+        run: bun run test:coverage
+
+  knip:
+    name: Dead code audit (knip)
+    runs-on: ubuntu-latest
+    # Enforcing: the dead-code backlog is cleared, so knip's non-zero exit on any
+    # new finding fails this job and blocks the merge. To temporarily un-gate,
+    # add `continue-on-error: true` back here (see README → "Continuous integration").
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Audit dead code
+        run: bun run detect:dead-code

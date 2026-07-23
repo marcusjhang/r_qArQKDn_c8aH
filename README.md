@@ -106,11 +106,10 @@ request via the **Dead code audit (knip)** job in
 dependencies from the frozen lockfile and runs the same
 `bun run detect:dead-code` command.
 
-During the initial rollout the job is **advisory**: it is marked
-`continue-on-error`, so a finding shows up as a neutral check and never blocks a
-merge while the existing backlog is being worked down. The knip command itself
-still exits non-zero on findings, so once that backlog is cleared, drop the
-`continue-on-error: true` line from the workflow to make the audit enforcing.
+The dead-code backlog has been cleared, so the job is **enforcing**: knip exits
+non-zero on any new finding, which fails the job and blocks the merge. To
+temporarily un-gate it (e.g. while working down a fresh batch of findings), add
+`continue-on-error: true` back to the job in `.github/workflows/ci.yml`.
 
 ## Database Schema
 
