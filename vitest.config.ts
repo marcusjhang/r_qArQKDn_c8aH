@@ -8,7 +8,26 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['test/unit/**/*.test.ts']
+    include: ['test/unit/**/*.test.ts'],
+    coverage: {
+      // v8 native coverage. Report the framework-free business logic in `lib/`
+      // (what the unit suite actually exercises); UI, generated, and config
+      // files that the Node-environment suite can't drive are excluded so the
+      // numbers reflect real, testable code rather than being diluted by
+      // untestable surface area.
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      reportsDirectory: './coverage',
+      include: ['lib/**/*.ts'],
+      exclude: [
+        '**/*.d.ts',
+        '**/*.config.*',
+        'lib/schema/**',
+        'lib/**/types.ts'
+      ]
+      // No threshold gate: the existing suite covers a subset of `lib/`, so
+      // enforcing a high bar would fail CI today. Kept ungated intentionally.
+    }
   },
   resolve: {
     alias: {
