@@ -20,6 +20,13 @@ import {
 import { zId, zIndex, zDir } from '../schemas';
 import { lockJobStages } from './support';
 
+/**
+ * Add a stage to `jobIdRaw`'s pipeline, inserted just before the terminal stage
+ * by the shared `addStageToPipeline` rule, inside a job-row-locking transaction
+ * (see `lockJobStages`). Silently no-ops on a missing job or a name the shared
+ * rule rejects. Side effect: a `board:jobs` cache revalidation when the array
+ * actually changed.
+ */
 export async function addStage(jobIdRaw: number, nameRaw: string) {
   await requireUser();
   const jobId = zId.parse(jobIdRaw);
@@ -34,6 +41,13 @@ export async function addStage(jobIdRaw: number, nameRaw: string) {
   if (changed) revalidateTag(BOARD_TAGS.jobs);
 }
 
+/**
+ * Rename the stage at `indexRaw` on `jobIdRaw` and re-point every candidate
+ * sitting in the old column, atomically under a job-row lock (see the inline
+ * note and `lockJobStages`). No-ops on a missing job/stage, an unchanged name,
+ * or a name the shared `validateStageName` rule rejects. Side effects when the
+ * rename applies: `board:jobs` and `board:candidates` cache revalidations.
+ */
 export async function renameStage(
   jobIdRaw: number,
   indexRaw: number,
@@ -70,6 +84,12 @@ export async function renameStage(
   }
 }
 
+/**
+ * Move the stage at `indexRaw` one slot in `dirRaw` (+1 / -1) on `jobIdRaw`,
+ * via the shared `reorderStages` swap, under a job-row lock so it serializes
+ * against other stage edits. No-ops on a missing job or an out-of-bounds move.
+ * Side effect: a `board:jobs` cache revalidation when the order changed.
+ */
 export async function reorderStage(
   jobIdRaw: number,
   indexRaw: number,
@@ -90,6 +110,14 @@ export async function reorderStage(
   if (changed) revalidateTag(BOARD_TAGS.jobs);
 }
 
+/**
+ * Delete the stage at `indexRaw` from `jobIdRaw`. Runs in a transaction that
+ * locks the job row and counts the column's occupants under that same lock, so
+ * the emptiness check and the array write can't straddle a concurrent edit; the
+ * shared `removeStage`/`stageDeletable` rules allow the delete only on an empty
+ * column that leaves at least two stages. No-ops otherwise. Side effect: a
+ * `board:jobs` cache revalidation when a stage was removed.
+ */
 export async function deleteStage(jobIdRaw: number, indexRaw: number) {
   await requireUser();
   const jobId = zId.parse(jobIdRaw);

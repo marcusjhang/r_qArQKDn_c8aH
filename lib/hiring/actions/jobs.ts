@@ -35,6 +35,12 @@ export async function createJob(titleRaw: string): Promise<number | null> {
   return row?.id ?? null;
 }
 
+/**
+ * Star / unstar a job (starred jobs pin as inline tabs). Starring enforces the
+ * `MAX_FAVORITES` cap atomically via a single conditional UPDATE (see the inline
+ * note); the client guard in the store mirrors this for UX, but this server
+ * check is authoritative. Side effect: a `board:jobs` cache revalidation.
+ */
 export async function setJobStarred(jobIdRaw: number, starred: boolean) {
   await requireUser();
   const jobId = zId.parse(jobIdRaw);

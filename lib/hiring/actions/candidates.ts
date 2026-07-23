@@ -21,7 +21,14 @@ import {
 } from '../schemas';
 import { loadJobStages } from './support';
 
-/** Returns the new candidate's id so the client can reconcile its optimistic row. */
+/**
+ * Insert a candidate into `jobIdRaw`'s first stage with `active` status. The
+ * raw args are the serialized client inputs; ids are zod-parsed and the text
+ * fields validated/normalized via `candidateInsertSchema` before the write.
+ * No-ops (returns null) when the job no longer exists. Side effects: one
+ * `candidates` insert and a `board:candidates` cache revalidation. Returns the
+ * new candidate's id so the client can reconcile its optimistic row.
+ */
 export async function addCandidate(
   jobIdRaw: number,
   nameRaw: string,
@@ -107,6 +114,13 @@ export async function setCandidateStarred(idRaw: number, starred: boolean) {
   revalidateTag(BOARD_TAGS.candidates);
 }
 
+/**
+ * Move candidate `idRaw` into `stageRaw`, letting `placeInStage` couple the
+ * resulting status (entering the terminal stage marks them hired; leaving it
+ * clears a stale hired). No-ops when the candidate is missing or `stageRaw` is
+ * not one of the job's stages (see the inline guard). Side effect: a
+ * `board:candidates` cache revalidation.
+ */
 export async function moveStage(idRaw: number, stageRaw: string) {
   await requireUser();
   const id = zId.parse(idRaw);
@@ -130,6 +144,12 @@ export async function moveStage(idRaw: number, stageRaw: string) {
   revalidateTag(BOARD_TAGS.candidates);
 }
 
+/**
+ * Set candidate `idRaw`'s status to `statusRaw`, letting `placeWithStatus`
+ * couple the stage (setting `hired` pulls the card into the terminal stage when
+ * one exists). No-ops when the candidate is missing. Side effect: a
+ * `board:candidates` cache revalidation.
+ */
 export async function setStatus(idRaw: number, statusRaw: Status) {
   await requireUser();
   const id = zId.parse(idRaw);
