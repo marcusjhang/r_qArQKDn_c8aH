@@ -41,8 +41,10 @@ test.describe('add feedback to a candidate', () => {
     await form.locator('textarea').fill(note);
     await form.getByRole('button', { name: 'Add feedback' }).click();
 
-    // The new note shows up in the feedback list above the form.
-    await expect(drawer.locator('.feedback')).toContainText(note);
+    // The new note shows up as an entry in the feedback list above the form.
+    // (Target the entry note, not `.feedback` — both the section wrapper and the
+    // entries list carry that class, so it is ambiguous once entries render.)
+    await expect(drawer.locator('.fb-note', { hasText: note })).toBeVisible();
   });
 
   test('feedback persists across a reload', async ({ page }) => {
@@ -60,13 +62,19 @@ test.describe('add feedback to a candidate', () => {
     const note = `Persisted note ${Date.now()}`;
     await form.getByRole('button', { name: 'Yes', exact: true }).click();
     await form.locator('textarea').fill(note);
+    // Persistence is optimistic; wait for the write (a POST to the route) so the
+    // reload below reads back committed state rather than cancelling it.
+    const persisted = page.waitForResponse(
+      (r) => r.request().method() === 'POST'
+    );
     await form.getByRole('button', { name: 'Add feedback' }).click();
-    await expect(drawer.locator('.feedback')).toContainText(note);
+    await expect(drawer.locator('.fb-note', { hasText: note })).toBeVisible();
+    await persisted;
 
     await page.reload();
     await openCandidate(page, CANDIDATE);
     await expect(
-      page.locator('aside.drawer.open .feedback')
-    ).toContainText(note);
+      page.locator('aside.drawer.open').locator('.fb-note', { hasText: note })
+    ).toBeVisible();
   });
 });

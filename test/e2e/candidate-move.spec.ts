@@ -52,8 +52,17 @@ test.describe('move a candidate between stages', () => {
     // Read the current stage from the drawer footer, then advance.
     const footer = page.locator('.drawer-foot .stage-now');
     const before = (await footer.textContent())?.trim();
+
+    // Advancing is optimistic: the drawer closes immediately while the write is
+    // still in flight to the server action (a POST to the route). Reloading
+    // before it commits would cancel it and read back the old stage, so wait for
+    // that POST to settle first.
+    const persisted = page.waitForResponse(
+      (r) => r.request().method() === 'POST'
+    );
     await page.getByRole('button', { name: /Advance stage/ }).click();
     await expect(page.locator('aside.drawer.open')).toHaveCount(0);
+    await persisted;
 
     // Reopen after a reload: the persisted stage should differ from before.
     await page.reload();
