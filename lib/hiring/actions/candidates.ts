@@ -6,10 +6,8 @@
 // optimistic store and the server compute the same coupled (stage, status).
 
 import { eq } from 'drizzle-orm';
-import { revalidateTag } from 'next/cache';
 import { requireUser } from '@/lib/auth';
 import { db, candidates } from '@/lib/db';
-import { BOARD_TAGS } from '../cache';
 import { placeInStage, placeWithStatus } from '../helpers';
 import type { Status } from '../types';
 import {
@@ -58,7 +56,6 @@ export async function addCandidate(
       status: 'active'
     })
     .returning({ id: candidates.id });
-  revalidateTag(BOARD_TAGS.candidates);
   return row?.id ?? null;
 }
 
@@ -90,7 +87,6 @@ export async function editCandidate(
     .update(candidates)
     .set({ name, source, owner, linkedinUrl, githubUrl, yearsExperience })
     .where(eq(candidates.id, id));
-  revalidateTag(BOARD_TAGS.candidates);
 }
 
 /**
@@ -104,7 +100,6 @@ export async function setCandidateStarred(idRaw: number, starred: boolean) {
     .update(candidates)
     .set({ starred: !!starred })
     .where(eq(candidates.id, id));
-  revalidateTag(BOARD_TAGS.candidates);
 }
 
 export async function moveStage(idRaw: number, stageRaw: string) {
@@ -134,7 +129,6 @@ export async function moveStage(idRaw: number, stageRaw: string) {
   if (!stages.includes(stage)) return;
   const placement = placeInStage(stage, c, stages);
   await db.update(candidates).set(placement).where(eq(candidates.id, id));
-  revalidateTag(BOARD_TAGS.candidates);
 }
 
 export async function setStatus(idRaw: number, statusRaw: Status) {
@@ -157,5 +151,4 @@ export async function setStatus(idRaw: number, statusRaw: Status) {
   const stages = status === 'hired' ? await loadJobStages(c.jobId) : null;
   const placement = placeWithStatus(status, c, stages ?? []);
   await db.update(candidates).set(placement).where(eq(candidates.id, id));
-  revalidateTag(BOARD_TAGS.candidates);
 }
