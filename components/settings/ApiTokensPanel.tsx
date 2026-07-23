@@ -8,11 +8,7 @@
 
 import { useState, useTransition } from 'react';
 import type { ApiTokenSummary } from '@/lib/tokens';
-
-type CreateResult =
-  | { ok: true; token: string; command: string; prefix: string }
-  | { ok: false; error: string };
-type RevokeResult = { ok: true } | { ok: false; error: string };
+import type { CreateTokenResult, SettingsResult } from '@/lib/settings-types';
 
 const EXPIRY_OPTIONS: { label: string; days: number }[] = [
   { label: 'No expiry', days: 0 },
@@ -49,8 +45,11 @@ export default function ApiTokensPanel({
   revokeToken
 }: {
   tokens: ApiTokenSummary[];
-  createToken: (name: string, expiresInDays: number) => Promise<CreateResult>;
-  revokeToken: (id: number) => Promise<RevokeResult>;
+  createToken: (
+    name: string,
+    expiresInDays: number
+  ) => Promise<CreateTokenResult>;
+  revokeToken: (id: number) => Promise<SettingsResult>;
 }) {
   const [name, setName] = useState('');
   const [expiryDays, setExpiryDays] = useState(0);
@@ -106,7 +105,7 @@ export default function ApiTokensPanel({
         <h1 className="settings-title">MCP access tokens</h1>
         <p className="settings-sub">
           Tokens let Claude Code control your board over MCP, acting as{' '}
-          <strong>you</strong>. Treat them like passwords — each is shown once at
+          <strong>you</strong>. Treat them like passwords. Each is shown once at
           creation and stored only as a hash.
         </p>
       </div>
@@ -148,7 +147,7 @@ export default function ApiTokensPanel({
       {minted && (
         <div className="token-reveal" role="status">
           <div className="token-reveal-head">
-            <span>✓ Copy now — you won&apos;t see this again</span>
+            <span>✓ Copy it now. You won&apos;t see it again.</span>
             <button
               type="button"
               className="btn"
@@ -178,7 +177,7 @@ export default function ApiTokensPanel({
       <ul className="email-list">
         {tokens.length === 0 && (
           <li className="email-empty">
-            No tokens yet — create one to connect Claude Code.
+            No tokens yet. Create one to connect Claude Code.
           </li>
         )}
         {tokens.map((t) => {

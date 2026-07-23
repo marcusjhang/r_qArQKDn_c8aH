@@ -49,7 +49,10 @@ async function loadJobStages(jobId: number): Promise<string[] | null> {
 export interface CandidateWriteInput {
   name: string;
   source: number;
-  /** Accountable owner (a users.id). Defaults to the actor when omitted. */
+  /**
+   * Accountable owner (a users.id). On add, defaults to the actor when omitted;
+   * on edit, an omitted field keeps the candidate's current owner.
+   */
   owner?: number | null;
   linkedinUrl?: string | null;
   githubUrl?: string | null;
@@ -96,30 +99,55 @@ export async function addCandidateCore(
 }
 
 /**
- * Edit a candidate's core details, acting as `actorUserId` (the owner defaults
- * to the actor when omitted). Returns false when the candidate doesn't exist.
+ * Edit a candidate's core details. This is a PATCH: `name` and `source` are
+ * always supplied, but `owner`, the profile links, and years-of-experience only
+ * change when the caller actually provides them. An omitted field (`undefined`)
+ * keeps the candidate's current value — so a partial edit never silently
+ * reassigns `owner` to the caller (it's notNull) or wipes a link/years to null.
+ * Passing an explicit `null` for a link or years still clears it. (The web edit
+ * form submits every field, so it stays a full replace; only a partial MCP edit
+ * relies on the keep-on-omit behaviour.) Returns false when the candidate
+ * doesn't exist.
  */
 export async function editCandidateCore(
-  actorUserId: number,
+  _actorUserId: number,
   idRaw: number,
   input: CandidateWriteInput
 ): Promise<boolean> {
   const id = zId.parse(idRaw);
+  // Read the current row so any omitted field keeps its existing value — and to
+  // confirm the candidate exists before writing.
+  const [cur] = await db
+    .select({
+      owner: candidates.owner,
+      linkedinUrl: candidates.linkedinUrl,
+      githubUrl: candidates.githubUrl,
+      yearsExperience: candidates.yearsExperience
+    })
+    .from(candidates)
+    .where(eq(candidates.id, id))
+    .limit(1);
+  if (!cur) return false;
+
   const { name, source, owner, linkedinUrl, githubUrl, yearsExperience } =
     candidateEditSchema.parse({
       name: input.name,
       source: input.source,
-      owner: input.owner ?? actorUserId,
-      linkedinUrl: input.linkedinUrl ?? null,
-      githubUrl: input.githubUrl ?? null,
-      yearsExperience: input.yearsExperience ?? null
+      owner: input.owner ?? cur.owner,
+      linkedinUrl:
+        input.linkedinUrl === undefined ? cur.linkedinUrl : input.linkedinUrl,
+      githubUrl:
+        input.githubUrl === undefined ? cur.githubUrl : input.githubUrl,
+      yearsExperience:
+        input.yearsExperience === undefined
+          ? cur.yearsExperience
+          : input.yearsExperience
     });
-  const updated = await db
+  await db
     .update(candidates)
     .set({ name, source, owner, linkedinUrl, githubUrl, yearsExperience })
-    .where(eq(candidates.id, id))
-    .returning({ id: candidates.id });
-  return updated.length > 0;
+    .where(eq(candidates.id, id));
+  return true;
 }
 
 /**

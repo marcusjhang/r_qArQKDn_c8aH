@@ -215,8 +215,9 @@ export function registerHiringTools(server: McpServer): void {
     {
       title: 'Edit candidate',
       description:
-        'Update a candidate’s core details (name, source, owner, profile ' +
-        'links, years of experience). Owner defaults to you when omitted.',
+        'Update a candidate’s core details. name and source are required; ' +
+        'owner, the profile links, and years of experience are optional and ' +
+        'left unchanged when omitted (pass null to clear a link or years).',
       inputSchema: {
         id: z.number().int().positive().describe('Candidate id.'),
         name: z.string().describe('Candidate name.'),
@@ -230,20 +231,22 @@ export function registerHiringTools(server: McpServer): void {
           .int()
           .positive()
           .optional()
-          .describe('Owner user id; defaults to you when omitted.'),
+          .describe('Owner user id; omit to leave the current owner unchanged.'),
         linkedinUrl: z
           .string()
           .nullish()
-          .describe('LinkedIn URL, or null to clear.'),
+          .describe('LinkedIn URL; omit to leave unchanged, or null to clear.'),
         githubUrl: z
           .string()
           .nullish()
-          .describe('GitHub URL, or null to clear.'),
+          .describe('GitHub URL; omit to leave unchanged, or null to clear.'),
         yearsExperience: z
           .number()
           .int()
           .nullish()
-          .describe('Whole years of experience, or null to clear.')
+          .describe(
+            'Whole years of experience; omit to leave unchanged, or null to clear.'
+          )
       }
     },
     async (
@@ -260,13 +263,16 @@ export function registerHiringTools(server: McpServer): void {
     ): Promise<CallToolResult> => {
       try {
         const actor = requireActor(extra);
+        // Pass omitted fields through as `undefined` (not null) so the core
+        // keeps their current values — a partial edit must not wipe links/years
+        // or reassign the owner.
         const found = await editCandidateCore(actor, args.id, {
           name: args.name,
           source: args.source,
           owner: args.owner,
-          linkedinUrl: args.linkedinUrl ?? null,
-          githubUrl: args.githubUrl ?? null,
-          yearsExperience: args.yearsExperience ?? null
+          linkedinUrl: args.linkedinUrl,
+          githubUrl: args.githubUrl,
+          yearsExperience: args.yearsExperience
         });
         if (!found) return fail(`No candidate found with id ${args.id}.`);
         return ok(`Updated candidate ${args.id}.`);
@@ -298,7 +304,21 @@ export function registerHiringTools(server: McpServer): void {
       try {
         const actor = requireActor(extra);
         const placement = await moveStageCore(actor, args.id, args.stage);
-        if (!placement) return fail(`No candidate found with id ${args.id}.`);
+        if (!placement) {
+          // moveStageCore returns null for both "no such candidate" and "stage
+          // isn't on the candidate's job" — disambiguate so a mis-cased or
+          // unknown stage gets an actionable message instead of the model
+          // wrongly concluding the candidate is gone.
+          const board = await getBoard();
+          const candidate = board.candidates.find((c) => c.id === args.id);
+          if (!candidate) return fail(`No candidate found with id ${args.id}.`);
+          const job = board.jobs.find((j) => j.id === candidate.jobId);
+          const validStages = job?.stages ?? [];
+          return fail(
+            `"${args.stage}" is not a stage on that candidate’s job. ` +
+              `Valid stages: ${validStages.join(', ')}.`
+          );
+        }
         return ok(
           `Moved candidate ${args.id} to "${placement.stage}" ` +
             `(status: ${placement.status}).`
