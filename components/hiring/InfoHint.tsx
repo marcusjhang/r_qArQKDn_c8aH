@@ -11,12 +11,15 @@ import { useId, type ReactNode } from 'react';
 export default function InfoHint({
   label,
   title,
+  trigger = 'ⓘ',
   children
 }: {
   /** Accessible name for the trigger (what the hint explains). */
   label: string;
   /** Optional bold heading shown at the top of the tooltip. */
   title?: string;
+  /** What the hover target shows (defaults to the ⓘ glyph). */
+  trigger?: ReactNode;
   /** Tooltip body. */
   children: ReactNode;
 }) {
@@ -29,7 +32,7 @@ export default function InfoHint({
         aria-label={label}
         aria-describedby={id}
       >
-        ⓘ
+        {trigger}
       </button>
       <span className="info-hint-pop" id={id} role="tooltip">
         {title && <span className="info-hint-title">{title}</span>}

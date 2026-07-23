@@ -11,6 +11,9 @@ import { type StageGuard } from './stages';
 /** Max length of a trait name (kept in sync with the DB/zod bound). */
 export const MAX_TRAIT_NAME = 40;
 
+/** A trait is a short label: at most this many whitespace-separated words. */
+export const MAX_TRAIT_WORDS = 2;
+
 /** Max length of a job description / JD (kept in sync with the zod bound). */
 export const MAX_JOB_DESCRIPTION = 20000;
 
@@ -82,6 +85,12 @@ export function validateTraitName(traits: string[], name: string): StageGuard {
     return {
       ok: false,
       reason: `Trait must be ${MAX_TRAIT_NAME} characters or fewer.`
+    };
+  }
+  if (trimmed.split(/\s+/).length > MAX_TRAIT_WORDS) {
+    return {
+      ok: false,
+      reason: `Keep traits to ${MAX_TRAIT_WORDS} words or fewer.`
     };
   }
   if (traits.some((t) => t.toLowerCase() === trimmed.toLowerCase())) {

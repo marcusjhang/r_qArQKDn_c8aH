@@ -10,7 +10,11 @@ import 'server-only';
 // TRAIT_AI_MODEL and defaults to Claude Opus 4.8.
 
 import Anthropic from '@anthropic-ai/sdk';
-import { MAX_TRAIT_NAME, MAX_TRAIT_SUGGESTIONS } from './helpers';
+import {
+  MAX_TRAIT_NAME,
+  MAX_TRAIT_SUGGESTIONS,
+  MAX_TRAIT_WORDS
+} from './helpers';
 
 const MODEL = process.env.TRAIT_AI_MODEL || 'claude-opus-4-8';
 
@@ -59,7 +63,7 @@ export async function suggestTraits(
     `Rules:\n` +
     `- Order the list by importance, MOST important first — the order is the ` +
     `ranking and sets each trait's weight in the candidate's score.\n` +
-    `- Each trait is a short label of 1-4 words (e.g. "Systems design", ` +
+    `- Each trait is a short label of 1-2 words (e.g. "Systems design", ` +
     `"Ownership"), at most ${MAX_TRAIT_NAME} characters.\n` +
     `- Tailor them to this specific role; avoid generic filler.\n` +
     `- No duplicates, no numbering, no descriptions.\n\n` +
@@ -96,6 +100,7 @@ export async function suggestTraits(
     if (typeof item !== 'string') continue;
     const t = item.trim();
     if (!t || t.length > MAX_TRAIT_NAME) continue;
+    if (t.split(/\s+/).length > MAX_TRAIT_WORDS) continue;
     const key = t.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);

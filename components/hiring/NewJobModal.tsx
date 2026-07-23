@@ -9,6 +9,7 @@ import { useRef, useState } from 'react';
 import {
   validateTraitName,
   mergeTraitSuggestions,
+  reorderStages,
   MAX_JOB_DESCRIPTION,
   MAX_TRAIT_NAME
 } from '@/lib/hiring';
@@ -18,6 +19,7 @@ import { recommendTraits } from '@/lib/hiring/actions';
 import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
 import Modal from './Modal';
+import TraitRow from './TraitRow';
 
 export default function NewJobModal({
   aiEnabled = false,
@@ -81,8 +83,13 @@ export default function NewJobModal({
     }
   }
 
-  function removeTrait(index: number) {
-    setTraits((cur) => cur.filter((_, i) => i !== index));
+  // Reorder is the ranking: order 0 is rank #1. Reuses the shared ordered-list
+  // helper so the local list ranks the same way the server actions do.
+  function reorderTrait(index: number, dir: 1 | -1) {
+    setTraits((cur) => {
+      const result = reorderStages(cur, index, dir);
+      return result.ok ? result.stages : cur;
+    });
   }
 
   function submit(e: React.FormEvent) {
@@ -137,7 +144,7 @@ export default function NewJobModal({
 
         <div className="field">
           <div className="suggest-head">
-            <span className="label">Important traits</span>
+            <span className="label">Traits</span>
             {aiEnabled && (
               <Button
                 type="button"
@@ -150,21 +157,26 @@ export default function NewJobModal({
             )}
           </div>
           {traits.length > 0 && (
-            <div className="trait-chips">
+            <ol className="trait-list">
               {traits.map((t, i) => (
-                <span className="trait-chip" key={`${t}-${i}`}>
-                  {t}
-                  <button
-                    type="button"
-                    className="chip-x"
-                    aria-label={`Remove ${t}`}
-                    onClick={() => removeTrait(i)}
-                  >
-                    ✕
-                  </button>
-                </span>
+                <TraitRow
+                  key={`${t}-${i}`}
+                  trait={t}
+                  index={i}
+                  total={traits.length}
+                  otherTraits={traits.filter((_, j) => j !== i)}
+                  onRename={(idx, name) =>
+                    setTraits((cur) =>
+                      cur.map((x, j) => (j === idx ? name : x))
+                    )
+                  }
+                  onReorder={reorderTrait}
+                  onRemove={(idx) =>
+                    setTraits((cur) => cur.filter((_, j) => j !== idx))
+                  }
+                />
               ))}
-            </div>
+            </ol>
           )}
           <div className="add-trait-row">
             <input
@@ -189,13 +201,6 @@ export default function NewJobModal({
             </Button>
           </div>
           {traitError && <div className="form-error">{traitError}</div>}
-          {traits.length === 0 && (
-            <p className="settings-sub">
-              {aiEnabled
-                ? 'Add traits here, or later from the Traits button. AI can suggest a few from the title and JD.'
-                : 'Add traits here, or later from the Traits button.'}
-            </p>
-          )}
           {suggestMsg && <div className="settings-sub">{suggestMsg}</div>}
         </div>
 

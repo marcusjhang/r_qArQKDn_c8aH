@@ -40,19 +40,35 @@ export default function JobTabs({
   return (
     <div className="jobtabs" ref={menu.wrapRef}>
       {inline.map((j) => (
-        <button
+        <div
           key={j.id}
           className="jobtab"
           aria-current={j.id === activeJob ? 'true' : undefined}
-          onClick={() => onSelect(j.id)}
         >
-          {j.starred && (
-            <span className="tab-star" aria-hidden>
-              ★
-            </span>
-          )}
-          {j.title} <span className="count">{liveCount(j.id)}</span>
-        </button>
+          <button
+            type="button"
+            className="jobtab-star"
+            aria-pressed={j.starred}
+            disabled={!j.starred && favCount >= MAX_FAVORITES}
+            title={
+              j.starred
+                ? 'Unfavorite'
+                : favCount >= MAX_FAVORITES
+                  ? `You can favorite up to ${MAX_FAVORITES} jobs`
+                  : 'Favorite (pin as a tab)'
+            }
+            onClick={() => onToggleStar(j.id, !j.starred)}
+          >
+            {j.starred ? '★' : '☆'}
+          </button>
+          <button
+            type="button"
+            className="jobtab-select"
+            onClick={() => onSelect(j.id)}
+          >
+            {j.title} <span className="count">{liveCount(j.id)}</span>
+          </button>
+        </div>
       ))}
 
       <div className="jobmenu-wrap">

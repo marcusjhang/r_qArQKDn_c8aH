@@ -15,85 +15,12 @@ import {
   MAX_JOB_DESCRIPTION,
   MAX_TRAIT_NAME
 } from '@/lib/hiring';
+import { Calculator } from 'lucide-react';
 import { recommendTraits } from '@/lib/hiring/actions';
 import { Button } from '@/components/ui/button';
 import Modal from './Modal';
 import InfoHint from './InfoHint';
-import { useInlineEdit } from './hooks/useInlineEdit';
-
-/** One ranked trait: rank, click-to-rename name, reorder, remove. */
-function TraitRow({
-  trait,
-  index,
-  total,
-  otherTraits,
-  onRename,
-  onReorder,
-  onRemove
-}: {
-  trait: string;
-  index: number;
-  total: number;
-  otherTraits: string[];
-  onRename: (index: number, name: string) => void;
-  onReorder: (index: number, dir: 1 | -1) => void;
-  onRemove: (index: number) => void;
-}) {
-  // Rename is validated against the *other* traits so a trait can keep its own
-  // name, and the cap check never fires (renaming does not grow the list).
-  const edit = useInlineEdit({
-    value: trait,
-    validate: (text) => validateTraitName(otherTraits, text).ok,
-    onCommit: (text) => onRename(index, text)
-  });
-  return (
-    <li className="trait-row">
-      <span className="trait-rank">#{index + 1}</span>
-      <div
-        className="trait-name"
-        ref={edit.ref}
-        role="textbox"
-        tabIndex={0}
-        contentEditable
-        suppressContentEditableWarning
-        spellCheck={false}
-        title="Click to rename this trait"
-        onBlur={edit.onBlur}
-        onKeyDown={edit.onKeyDown}
-      >
-        {trait}
-      </div>
-      <span className="trait-rank-btns">
-        <button
-          type="button"
-          className="rank-btn"
-          aria-label={`Move ${trait} up`}
-          disabled={index === 0}
-          onClick={() => onReorder(index, -1)}
-        >
-          ↑
-        </button>
-        <button
-          type="button"
-          className="rank-btn"
-          aria-label={`Move ${trait} down`}
-          disabled={index === total - 1}
-          onClick={() => onReorder(index, 1)}
-        >
-          ↓
-        </button>
-      </span>
-      <button
-        type="button"
-        className="trait-remove"
-        aria-label={`Remove ${trait}`}
-        onClick={() => onRemove(index)}
-      >
-        ✕
-      </button>
-    </li>
-  );
-}
+import TraitRow from './TraitRow';
 
 export default function JobTraitsModal({
   jobTitle,
@@ -188,13 +115,27 @@ export default function JobTraitsModal({
         <div className="field">
           <div className="suggest-head">
             <span className="label label-hint">
-              Important traits
+              Traits
               <InfoHint label="How ranking works" title="How ranking works">
                 <p>
                   Drag rank with the arrows: rank #1 is the most important. A
                   candidate&rsquo;s overall score weights each trait by its
                   rank, so higher traits count for more.
                 </p>
+              </InfoHint>
+              <InfoHint
+                label="Show the scoring formula"
+                title="Formula"
+                trigger={<Calculator size={14} aria-hidden />}
+              >
+                <p>
+                  Each trait&rsquo;s score is the average of its 1 to 4 ratings
+                  across all feedback.
+                </p>
+                <p className="info-hint-formula">
+                  overall = sum(weight &times; trait average) / sum(weights)
+                </p>
+                <p>A trait at rank #k of N has weight N + 1 - k.</p>
               </InfoHint>
             </span>
             {aiEnabled && (

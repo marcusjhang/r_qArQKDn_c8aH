@@ -16,7 +16,12 @@ import {
   MAX_YEARS_EXPERIENCE,
   type RatingValue
 } from './primitives';
-import { MAX_TRAITS, MAX_TRAIT_NAME, MAX_JOB_DESCRIPTION } from './helpers';
+import {
+  MAX_TRAITS,
+  MAX_TRAIT_NAME,
+  MAX_TRAIT_WORDS,
+  MAX_JOB_DESCRIPTION
+} from './helpers';
 
 /* Scalar validators */
 export const zId = z.number().int().positive();
@@ -57,7 +62,14 @@ export const zRating = z
     { message: 'Rating must be 1–4' }
   );
 
-const zTraitName = z.string().trim().min(1).max(MAX_TRAIT_NAME);
+const zTraitName = z
+  .string()
+  .trim()
+  .min(1)
+  .max(MAX_TRAIT_NAME)
+  .refine((s) => s.split(/\s+/).length <= MAX_TRAIT_WORDS, {
+    message: `Traits must be ${MAX_TRAIT_WORDS} words or fewer.`
+  });
 
 /**
  * A job's trait list: capped, and case-insensitively unique after trimming
