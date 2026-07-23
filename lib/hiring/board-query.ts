@@ -20,8 +20,16 @@ import { drizzleChatStore } from './chat-store';
 import { getNotifications } from './chat-queries';
 import type { HiringState, Notification } from './types';
 
-/** Re-read the whole board. The queryFn behind the board cache. */
+/**
+ * Re-read the whole board. The queryFn behind the board cache. Requires a
+ * signed-in session: this is a directly POST-able `'use server'` action (its id
+ * ships in the client bundle), so — like every other action — it must check the
+ * session itself and not rely on the page middleware, which does not gate action
+ * POSTs. Without this guard an unauthenticated caller could dump the entire board.
+ */
 export async function fetchBoard(): Promise<HiringState> {
+  const session = await auth();
+  if (!session?.user) throw new Error('Unauthorized');
   return hiringService.getBoard();
 }
 
