@@ -8,9 +8,11 @@ import {
 } from '@/lib/hiring/primitives';
 import { getProfile } from '@/lib/profile';
 import { getApiTokens } from '@/lib/tokens';
+import { PASSWORD_MIN_LENGTH } from '@/lib/registration';
 import SettingsView from '@/components/settings/SettingsView';
 import {
   updateProfile,
+  updatePassword,
   addSource,
   renameSource,
   removeSource,
@@ -44,7 +46,9 @@ export default async function SettingsPage() {
       profile={profile}
       tokens={tokens}
       userEmail={session?.user?.email ?? null}
+      passwordMinLength={PASSWORD_MIN_LENGTH}
       updateProfile={updateProfile}
+      updatePassword={updatePassword}
       addSource={addSource}
       renameSource={renameSource}
       removeSource={removeSource}

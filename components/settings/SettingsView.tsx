@@ -15,6 +15,7 @@ import SourcesPanel from './SourcesPanel';
 import SeniorityBandsPanel from './SeniorityBandsPanel';
 import StageWarnPanel from './StageWarnPanel';
 import ProfilePanel from './ProfilePanel';
+import SecurityPanel from './SecurityPanel';
 import ApiTokensPanel from './ApiTokensPanel';
 import type { SettingsResult, CreateTokenResult } from '@/lib/settings-types';
 import type { ApiTokenSummary } from '@/lib/tokens';
@@ -29,7 +30,9 @@ export default function SettingsView({
   profile,
   tokens,
   userEmail,
+  passwordMinLength,
   updateProfile,
+  updatePassword,
   addSource,
   renameSource,
   removeSource,
@@ -48,9 +51,15 @@ export default function SettingsView({
   profile: { firstName: string; lastName: string };
   tokens: ApiTokenSummary[];
   userEmail?: string | null;
+  passwordMinLength: number;
   updateProfile: (
     firstName: string,
     lastName: string
+  ) => Promise<SettingsResult>;
+  updatePassword: (
+    currentPassword: string,
+    newPassword: string,
+    confirmPassword: string
   ) => Promise<SettingsResult>;
   addSource: (name: string) => Promise<SettingsResult>;
   renameSource: (id: number, name: string) => Promise<SettingsResult>;
@@ -101,6 +110,11 @@ export default function SettingsView({
             lastName={profile.lastName}
             email={userEmail}
             updateProfile={updateProfile}
+          />
+
+          <SecurityPanel
+            minLength={passwordMinLength}
+            updatePassword={updatePassword}
           />
 
           <SourcesPanel

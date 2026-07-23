@@ -44,6 +44,19 @@ describe('overlayReducer', () => {
     });
   });
 
+  it('opens the CSV import dialog', () => {
+    expect(overlayReducer(NO_OVERLAY, { type: 'openImport' })).toEqual({
+      kind: 'import'
+    });
+  });
+
+  it('swaps a different overlay out when opening import (only one at a time)', () => {
+    const open: Overlay = { kind: 'detail', candidateId: 3, focusMessageId: null };
+    expect(overlayReducer(open, { type: 'openImport' })).toEqual({
+      kind: 'import'
+    });
+  });
+
   it('closes any open overlay', () => {
     const open: Overlay = { kind: 'addCandidate' };
     expect(overlayReducer(open, { type: 'close' })).toEqual(NO_OVERLAY);

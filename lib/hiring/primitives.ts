@@ -21,3 +21,9 @@ export const MAX_YEARS_EXPERIENCE = 60;
 // year — this is about catching stalled applicants, not archival).
 export const DEFAULT_STAGE_WARN_DAYS = 5;
 export const MAX_STAGE_WARN_DAYS = 365;
+
+// Most candidates a single CSV import may create at once. Single-sourced here so
+// the server's zod bound (schemas.ts) and the client resolver/preview
+// (import.ts) enforce the same limit — the client blocks over-cap uploads before
+// submit rather than letting the server reject them with a stuck dialog.
+export const MAX_IMPORT_ROWS = 1000;
