@@ -44,11 +44,9 @@ jobs:
   knip:
     name: Dead code audit (knip)
     runs-on: ubuntu-latest
-    # Advisory during rollout: knip exits non-zero on any finding, but this job
-    # is marked continue-on-error so a finding surfaces as a non-blocking result
-    # and never blocks a merge while the existing backlog is worked down. Drop
-    # this line to make the audit enforcing (see README → "Continuous integration").
-    continue-on-error: true
+    # Enforcing: the dead-code backlog is cleared, so knip's non-zero exit on any
+    # new finding fails this job and blocks the merge. To temporarily un-gate,
+    # add `continue-on-error: true` back here (see README → "Continuous integration").
     steps:
       - uses: actions/checkout@v4
 

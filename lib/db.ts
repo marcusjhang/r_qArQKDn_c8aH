@@ -5,21 +5,9 @@ import postgres from 'postgres';
 import type { Options as PostgresOptions } from 'postgres';
 import * as schema from './schema';
 
-export { users, type SelectUser, allowedEmails, type SelectAllowedEmail } from './schema';
-export { rateLimitHits, type SelectRateLimitHit } from './schema';
-export {
-  jobs,
-  candidates,
-  feedback,
-  messages,
-  mentions,
-  candidateStatusEnum,
-  type SelectJob,
-  type SelectCandidate,
-  type SelectFeedback,
-  type SelectMessage,
-  type SelectMention
-} from './schema';
+export { users, allowedEmails } from './schema';
+export { rateLimitHits } from './schema';
+export { jobs, candidates, feedback, messages, mentions } from './schema';
 
 /**
  * Build a Drizzle client for an explicit connection string. Factored out of the

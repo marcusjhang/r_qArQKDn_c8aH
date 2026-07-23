@@ -11,5 +11,3 @@ export const BOARD_TAGS = {
   jobs: 'board:jobs',
   candidates: 'board:candidates'
 } as const;
-
-export type BoardTag = (typeof BOARD_TAGS)[keyof typeof BOARD_TAGS];
