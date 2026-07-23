@@ -58,12 +58,41 @@ function fail(text: string): CallToolResult {
   return { isError: true, content: [{ type: 'text', text }] };
 }
 
+// Translate a Postgres constraint violation into a clean, caller-safe sentence.
+// Drizzle wraps the driver error (its `.message` is the raw "Failed query: …"
+// SQL), so walk the `.cause` chain for the postgres.js error, which carries the
+// SQLSTATE `code` and `constraint_name`. Returning a friendly string here also
+// stops the raw SQL / table names from leaking back to the MCP caller.
+function pgViolation(error: unknown): string | null {
+  let e: unknown = error;
+  while (e instanceof Error) {
+    const code = (e as { code?: string }).code;
+    const constraint = (e as { constraint_name?: string }).constraint_name;
+    if (code === '23505') {
+      // unique_violation
+      if (constraint === 'feedback_candidate_by_user_unique') {
+        return (
+          'You have already left feedback on this candidate; edit the ' +
+          'existing entry instead of adding a second one.'
+        );
+      }
+      return 'That conflicts with an existing record (a unique value is already taken).';
+    }
+    if (code === '23503') {
+      // foreign_key_violation
+      return 'A referenced record (job, source, or user) does not exist.';
+    }
+    e = (e as { cause?: unknown }).cause;
+  }
+  return null;
+}
+
 /** Flatten any thrown error into an actionable, human-readable message. */
 function reason(error: unknown): string {
   if (error instanceof z.ZodError) {
     return error.issues.map((i) => i.message).join('; ');
   }
-  return error instanceof Error ? error.message : String(error);
+  return pgViolation(error) ?? (error instanceof Error ? error.message : String(error));
 }
 
 /** Resolve the acting user, or throw a clean error if the token didn't carry one. */
@@ -432,15 +461,9 @@ export function registerHiringTools(server: McpServer): void {
           `Recorded feedback (rating ${args.rating}) on candidate ${args.id}.`
         );
       } catch (error) {
-        // A unique constraint allows one entry per person per candidate.
-        const msg = reason(error);
-        if (/feedback_candidate_by_user_unique/i.test(msg)) {
-          return fail(
-            'You have already left feedback on this candidate; edit the ' +
-              'existing entry instead of adding a second one.'
-          );
-        }
-        return fail(msg);
+        // reason() maps the one-entry-per-person unique violation (and other
+        // Postgres constraint errors) to a clean, caller-safe message.
+        return fail(reason(error));
       }
     }
   );

@@ -54,12 +54,15 @@ export default function ApiTokensPanel({
   const [name, setName] = useState('');
   const [expiryDays, setExpiryDays] = useState(0);
   const [error, setError] = useState('');
-  // The just-minted secret + command, shown once until dismissed / re-minted.
+  // The just-minted secret + connect command, shown once until dismissed /
+  // re-minted. The plaintext token is only ever held here in memory.
   const [minted, setMinted] = useState<{
+    token: string;
     command: string;
-    prefix: string;
   } | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copiedField, setCopiedField] = useState<'token' | 'command' | null>(
+    null
+  );
   const [pending, startTransition] = useTransition();
 
   function create(e: React.FormEvent) {
@@ -72,8 +75,8 @@ export default function ApiTokensPanel({
     startTransition(async () => {
       const res = await createToken(v, expiryDays);
       if (res.ok) {
-        setMinted({ command: res.command, prefix: res.prefix });
-        setCopied(false);
+        setMinted({ token: res.token, command: res.command });
+        setCopiedField(null);
         setName('');
         setError('');
       } else {
@@ -89,25 +92,20 @@ export default function ApiTokensPanel({
     });
   }
 
-  async function copy(command: string) {
+  async function copy(text: string, field: 'token' | 'command') {
     try {
-      await navigator.clipboard.writeText(command);
-      setCopied(true);
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
     } catch {
-      /* clipboard unavailable — the command stays visible to copy manually */
+      /* clipboard unavailable — the text stays visible to copy manually */
     }
   }
 
   return (
     <section className="settings-panel">
       <div>
-        <p className="settings-section-title">API tokens</p>
-        <h1 className="settings-title">MCP access tokens</h1>
-        <p className="settings-sub">
-          Tokens let Claude Code control your board over MCP, acting as{' '}
-          <strong>you</strong>. Treat them like passwords. Each is shown once at
-          creation and stored only as a hash.
-        </p>
+        <p className="settings-section-title">MCP</p>
+        <h1 className="settings-title">API Tokens</h1>
       </div>
 
       <form className="settings-add" onSubmit={create}>
@@ -157,19 +155,25 @@ export default function ApiTokensPanel({
               Done
             </button>
           </div>
-          <code className="token-cmd">{minted.command}</code>
+          <code className="token-cmd">{minted.token}</code>
           <div className="token-reveal-foot">
             <button
               type="button"
               className="btn primary"
-              onClick={() => copy(minted.command)}
+              onClick={() => copy(minted.token, 'token')}
             >
-              {copied ? 'Copied ✓' : 'Copy command'}
+              {copiedField === 'token' ? 'Copied ✓' : 'Copy token'}
             </button>
-            <span className="settings-sub">
-              Stored as a SHA-256 hash · display prefix{' '}
-              <strong>{minted.prefix}…</strong>
-            </span>
+          </div>
+          <code className="token-cmd">mcp: {minted.command}</code>
+          <div className="token-reveal-foot">
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => copy(minted.command, 'command')}
+            >
+              {copiedField === 'command' ? 'Copied ✓' : 'Copy command'}
+            </button>
           </div>
         </div>
       )}
