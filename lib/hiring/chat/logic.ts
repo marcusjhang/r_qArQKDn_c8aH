@@ -1,14 +1,14 @@
 import 'server-only';
 
-// Barrel for the chat read/write logic, split by concern into ./chat-messages
-// (the per-candidate thread) and ./chat-notifications (the mention inbox), with
-// the shared shaping/identity primitives in ./chat-shaping. All of it is
-// expressed against an injectable `ChatStore` seam (see ./chat-store) rather
+// Barrel for the chat read/write logic, split by concern into ./messages
+// (the per-candidate thread) and ./notifications (the mention inbox), with
+// the shared shaping/identity primitives in ./shaping. All of it is
+// expressed against an injectable `ChatStore` seam (see ./store) rather
 // than the `db` singleton — so it is unit-testable in a plain Node environment
 // with an in-memory fake, and importing it never constructs the postgres
-// client. The thin `'use server'` adapters in ./chat-actions call these with
+// client. The thin `'use server'` adapters in ./actions call these with
 // the Drizzle-backed store (the default); the server component's notification
-// read (./chat-queries) calls `getNotificationsWith` likewise.
+// read (./queries) calls `getNotificationsWith` likewise.
 //
 // The current-user identity is passed in as an `email` (resolved from the auth
 // session by the caller) — this module never imports `@/lib/auth`, keeping the
@@ -17,15 +17,15 @@ import 'server-only';
 // Re-exports the same surface the callers and chat-logic.test.ts import, so the
 // split is invisible to them.
 
-export { loadThreadWith, postMessageWith } from './chat-messages';
+export { loadThreadWith, postMessageWith } from './messages';
 export {
   markNotificationReadWith,
   markAllNotificationsReadWith,
   dismissNotificationWith,
   dismissAllNotificationsWith,
   getNotificationsWith
-} from './chat-notifications';
+} from './notifications';
 
 // Re-export the production store as the default so callers that don't inject
 // one still get the Drizzle-backed implementation.
-export { drizzleChatStore } from './chat-store';
+export { drizzleChatStore } from './store';

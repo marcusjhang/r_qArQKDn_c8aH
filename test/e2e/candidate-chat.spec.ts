@@ -3,7 +3,7 @@ import { loginToBoard, openCandidate } from './helpers';
 
 // Happy path: the per-applicant discussion thread (ChatPanel) inside the detail
 // drawer. Messages load when a candidate opens, and sending appends the message
-// optimistically (store/chat-actions.postMessage) and persists it against the
+// optimistically (store + chat/actions.postMessage) and persists it against the
 // candidate so the thread "follows the applicant". We also exercise the
 // @-mention autocomplete, which tags a teammate.
 //

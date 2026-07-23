@@ -5,7 +5,7 @@
 // resolves the caller's email from the auth session (the whole app is gated by
 // the auth middleware, so a caller here is always an authenticated user — the
 // client never gets to pick who "I" am) and delegates to the injectable chat
-// logic (./chat-logic) with the production Drizzle-backed store. The seam keeps
+// logic (./logic) with the production Drizzle-backed store. The seam keeps
 // the logic unit-testable without a database; see chat-logic.test.ts.
 //
 // These actions mutate and return without any server-side cache invalidation —
@@ -22,8 +22,8 @@ import {
   markAllNotificationsReadWith,
   markNotificationReadWith,
   postMessageWith
-} from './chat-logic';
-import type { ChatMessage } from './types';
+} from './logic';
+import type { ChatMessage } from '../types';
 
 /** The signed-in caller's email from the session, or null when not signed in. */
 async function callerEmail(): Promise<string | null> {
