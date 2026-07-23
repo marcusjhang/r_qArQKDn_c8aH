@@ -31,7 +31,7 @@ function tooManyRequests(retryAfterMs: number) {
 export async function POST(request: Request) {
   try {
     const ip = clientIp(request);
-    const ipHit = registerIpLimiter.check(`register:ip:${ip}`);
+    const ipHit = await registerIpLimiter.check(`register:ip:${ip}`);
     if (!ipHit.allowed) return tooManyRequests(ipHit.retryAfterMs);
 
     const body = await request.json();
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     // single account/allowlist entry. Only meaningful when an email is present;
     // registerUser still owns the real validation.
     if (typeof body?.email === 'string' && body.email.trim()) {
-      const emailHit = registerEmailLimiter.check(
+      const emailHit = await registerEmailLimiter.check(
         `register:email:${normalizeEmail(body.email)}`
       );
       if (!emailHit.allowed) return tooManyRequests(emailHit.retryAfterMs);

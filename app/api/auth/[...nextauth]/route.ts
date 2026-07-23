@@ -11,7 +11,7 @@ export const { GET } = handlers;
 // POSTs (csrf, signout) pass through untouched.
 export async function POST(request: NextRequest) {
   if (new URL(request.url).pathname.endsWith('/callback/credentials')) {
-    const hit = loginIpLimiter.check(`login:ip:${clientIp(request)}`);
+    const hit = await loginIpLimiter.check(`login:ip:${clientIp(request)}`);
     if (!hit.allowed) {
       const retryAfter = Math.max(1, Math.ceil(hit.retryAfterMs / 1000));
       return NextResponse.json(
