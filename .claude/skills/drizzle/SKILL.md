@@ -6,7 +6,7 @@ description: >-
   db:generate → keep the seed in sync → db:setup → typecheck), writing
   server-only reads and zod-validated write actions, hand-authoring idempotent
   migrations, and the drizzle-orm/drizzle-kit upgrade rules. Use whenever a task
-  touches lib/schema.ts, drizzle/**, db/** (migrate/seed), lib/**/queries.ts,
+  touches lib/schema.ts, drizzle/**, db/** (migrate/seed), lib/hiring/service.ts,
   lib/**/actions.ts, lib/hiring/primitives.ts, lib/hiring/schemas.ts, or bumps a
   drizzle-* dependency. For *reviewing* Drizzle changes, use the pr-code-review
   skill (references/backend.md + type-management.md) — this skill is for
@@ -51,7 +51,7 @@ silently drift:
 | `lib/hiring/seed.ts` | Typed seed *data* (`SEED_JOBS`, `SEED_CANDIDATES`). |
 | `lib/hiring/primitives.ts` | The single-sourced value-set tuples. |
 | `lib/hiring/schemas.ts` | zod validators for the server-action boundary (`drizzle-zod` insert shapes + refinements). |
-| `lib/hiring/queries.ts` | `server-only` relational reads. |
+| `lib/hiring/service.ts` | `server-only` relational reads (the read facade). |
 | `lib/hiring/actions.ts` | `'use server'` zod-validated mutations (the single write path). |
 
 Commands (bun): `db:generate` (drizzle-kit generate) · `db:migrate` · `db:seed`
@@ -107,13 +107,13 @@ exactly the drift this pattern prevents — don't.
 
 ## Recipe: write a read (query)
 
-- Put it in a `import 'server-only'` module (`lib/hiring/queries.ts`). Never
+- Put it in a `import 'server-only'` module (`lib/hiring/service.ts`). Never
   import a query — or `lib/db` — into a client component.
 - Use the **relational query API with a `columns` allowlist** so the result *is*
   the UI type with no casts, no manual grouping, no field renames. Nest related
   rows with `with:` (one query) rather than per-row follow-ups (N+1).
 - Parallelize independent reads with `Promise.all`.
-- **Keep the injectable-reader seam.** `getBoardData(reader: BoardReader =
+- **Keep the injectable-reader seam.** `getBoard(reader: BoardReader =
   drizzleReader)` reads through an interface and imports `db` **lazily**, so the
   logic unit-tests with a fake reader and no `DATABASE_URL`. Don't hard-code the
   `db` singleton where composition should be injectable, and don't add a

@@ -7,7 +7,7 @@ Two layers, matching the two testing frameworks configured in `package.json`.
 Fast, pure-function tests with no database or browser. They target the
 framework-free hiring business logic in `lib/hiring/helpers.ts` (status/stage
 placement, stage-array edits, name validation, board filtering + sorting) and
-the dependency-injected `getBoardData` reader in `lib/hiring/queries.ts`.
+the dependency-injected `getBoard` reader in `lib/hiring/service.ts`.
 
 ```bash
 bun run test           # run the unit suite once
@@ -46,6 +46,6 @@ will skip the managed web server.
 - Unit: prefer testing pure functions in `lib/hiring/helpers.ts`. When adding
   new business rules, put the decision logic there (not inline in `actions.ts` /
   `store.ts` / components) so it stays testable and shared across layers.
-- Injecting data: follow the `BoardReader` pattern in `queries.ts` — accept the
+- Injecting data: follow the `BoardReader` pattern in `service.ts` — accept the
   data dependency as an argument with a production default, so tests can pass a
   fake.
