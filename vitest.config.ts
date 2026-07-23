@@ -19,7 +19,7 @@ export default defineConfig({
       // numbers reflect real, testable code rather than being diluted by
       // untestable surface area.
       provider: 'v8',
-      reporter: ['text', 'lcov'],
+      reporter: ['text'],
       reportsDirectory: './coverage',
       include: ['lib/**/*.ts'],
       exclude: [
