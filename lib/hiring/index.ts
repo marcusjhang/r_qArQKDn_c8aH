@@ -5,10 +5,10 @@
 // predictable import path for constants, helpers, types, and the client store.
 //
 // Deliberately EXCLUDED from this barrel:
-//  - `queries.ts` and `schemas.ts` carry `import 'server-only'`; re-exporting
+//  - `service/` and `schemas.ts` carry `import 'server-only'`; re-exporting
 //    them here would break the build for any client component that imports
 //    `@/lib/hiring`.
-//  - `actions.ts` (`'use server'`) is imported directly by the store; routing
+//  - `actions/` (`'use server'`) is imported directly by the store; routing
 //    it through this barrel would create a circular dependency
 //    (index → store → actions → index). Server code keeps its sibling imports.
 //

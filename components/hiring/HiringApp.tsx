@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
+  findUserIdByEmail,
   formatJobMeta,
   jobStats,
   liveCount,
@@ -53,8 +54,7 @@ export default function HiringApp({
 
   // The logged-in user's id (matched by email) — used to default the feedback
   // author to whoever is actually leaving the review.
-  const currentUserId =
-    state.users.find((u) => u.email === userEmail)?.id ?? null;
+  const currentUserId = findUserIdByEmail(state.users, userEmail);
 
   // Thin adapter so JobTabs keeps its (jobId) => number prop contract.
   const jobLiveCount = (jobId: number) => liveCount(state.candidates, jobId);
