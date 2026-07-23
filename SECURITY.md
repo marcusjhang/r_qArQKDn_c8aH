@@ -42,7 +42,7 @@ a demo convenience only.
 
 Because that password is shared and well-known, each seeded account is created
 with a `must_change_password` flag set (`lib/schema/auth.ts`, set true in
-`db/seed.ts`). On first login the `authorized` gate (`lib/auth.ts`) confines the
+`db/seed.ts`). On first login the `authorized` gate (`lib/auth.config.ts`) confines the
 account to `/change-password` — it cannot reach any other page — until it sets
 its own password, which clears the flag. Re-seeding resets the shared password
 and re-arms the flag. Self-registered accounts (`/api/register`) choose their
@@ -54,10 +54,12 @@ accounts' passwords after seeding). Do not deploy with the default in place.
 ## Authentication model
 
 - The entire app is gated behind login. Enforcement lives in the `authorized`
-  callback in [`lib/auth.ts`](./lib/auth.ts): the middleware runs on every
-  matched request and only `/login` is public. The callback gates **page
-  routes** — it returns `false` for an unauthenticated request and NextAuth
-  redirects it to `/login`.
+  callback in [`lib/auth.config.ts`](./lib/auth.config.ts) — the edge-safe auth
+  config that [`middleware.ts`](./middleware.ts) builds the gate from (and that
+  [`lib/auth.ts`](./lib/auth.ts) extends with the DB-backed credentials provider
+  for the Node runtime). The middleware runs on every matched request and only
+  `/login` is public. The callback gates **page routes** — it returns `false`
+  for an unauthenticated request and NextAuth redirects it to `/login`.
 - **Forced first-login password change.** The same callback adds a second gate:
   a signed-in account whose `must_change_password` flag is set (the seeded
   accounts — see "Default seed credentials") is redirected to `/change-password`

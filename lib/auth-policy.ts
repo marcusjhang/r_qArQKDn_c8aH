@@ -19,13 +19,20 @@ export const LOGIN_PATH = '/login';
 export const CHANGE_PASSWORD_PATH = '/change-password';
 
 /**
- * The middleware matcher (single source of truth, consumed by `middleware.ts`).
+ * The middleware matcher — the behavioural source of truth for which requests
+ * reach the auth gate (unit-tested here via `gateMatchesPath`).
  *
  * Everything the app serves as a *page* must reach the auth gate, so the pattern
  * matches every path EXCEPT the NextAuth/register API routes, Next internals,
  * and static assets. The `api/` exclusion is anchored with a trailing slash so a
  * page route that merely starts with "api" (e.g. a future `/api-docs`) is still
  * gated rather than accidentally left public.
+ *
+ * `middleware.ts` cannot import this constant: Next statically analyses its
+ * `config.matcher` at build time and rejects a non-literal value, so it inlines
+ * an identical string literal. The drift guard in `test/unit/auth-gate.test.ts`
+ * asserts the two stay in sync — change this pattern and the middleware copy
+ * together.
  */
 export const GATE_MATCHER =
   '/((?!api/|_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|bmp|woff|woff2|ttf|otf|eot|txt|xml|webmanifest)$).*)';
