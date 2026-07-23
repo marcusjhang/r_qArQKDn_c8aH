@@ -19,7 +19,7 @@ import {
   candidateInsertSchema,
   candidateEditSchema
 } from '../schemas';
-import { loadJobStages } from './support';
+import { loadJobStages, lockJobStages } from './support';
 
 /** Returns the new candidate's id so the client can reconcile its optimistic row. */
 export async function addCandidate(
@@ -42,24 +42,32 @@ export async function addCandidate(
       githubUrl: githubUrlRaw,
       yearsExperience: yearsExperienceRaw
     });
-  const stages = await loadJobStages(jobId);
-  if (!stages) return null;
-  const [row] = await db
-    .insert(candidates)
-    .values({
-      jobId,
-      name,
-      stage: stages[0],
-      owner,
-      source,
-      linkedinUrl,
-      githubUrl,
-      yearsExperience,
-      status: 'active'
-    })
-    .returning({ id: candidates.id });
-  revalidateTag(BOARD_TAGS.candidates);
-  return row?.id ?? null;
+  // Read the job's stages and insert the candidate into the first one inside a
+  // single transaction that row-locks the job (same lock the stage mutations
+  // take). Without this, a concurrent rename/reorder/delete of the first stage
+  // could slip between an unlocked read and the insert, stranding the new
+  // candidate in a column the job no longer has.
+  const id = await db.transaction(async (tx) => {
+    const stages = await lockJobStages(tx, jobId);
+    if (!stages) return null;
+    const [row] = await tx
+      .insert(candidates)
+      .values({
+        jobId,
+        name,
+        stage: stages[0],
+        owner,
+        source,
+        linkedinUrl,
+        githubUrl,
+        yearsExperience,
+        status: 'active'
+      })
+      .returning({ id: candidates.id });
+    return row?.id ?? null;
+  });
+  if (id != null) revalidateTag(BOARD_TAGS.candidates);
+  return id;
 }
 
 /**
