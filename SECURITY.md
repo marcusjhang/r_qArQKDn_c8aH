@@ -47,11 +47,21 @@ accounts' passwords after seeding). Do not deploy with the default in place.
 
 - The entire app is gated behind login. Enforcement lives in the `authorized`
   callback in [`lib/auth.ts`](./lib/auth.ts): the middleware runs on every
-  matched request and only `/login` is public.
+  matched request and only `/login` is public. The callback gates **page
+  routes** — it returns `false` for an unauthenticated request and NextAuth
+  redirects it to `/login`.
 - [`middleware.ts`](./middleware.ts) excludes only the NextAuth/register API
   routes, Next internals, and static assets from the gate. The `api/` exclusion
   is anchored so a page route that merely starts with `api` is not accidentally
   left public.
+- **Mutations are not gated by the middleware directly.** Writes go through the
+  `'use server'` server actions in [`lib/hiring/actions.ts`](./lib/hiring/actions.ts),
+  which are the board's single write path. They are protected by being behind
+  the login gate (the pages that invoke them are unreachable without a session)
+  and by validating every input at runtime with a zod schema
+  (`lib/hiring/schemas.ts`) before touching the database. The actions
+  themselves do not independently re-check the session — they rely on the login
+  gate for authentication.
 - Signups are restricted to an allowlist (`lib/allowlist.ts`), enforced in
   `POST /api/register` and managed from `/members`.
 - Passwords are hashed with bcrypt (cost 12) and never logged or returned.
@@ -74,3 +84,18 @@ app is served at `*.lightsprint.ai` but forwarded with an `x-forwarded-host` of
   convenience; when it is unset in production nothing is trusted (fail-closed).
 - The dev-server cross-origin allowance (`allowedDevOrigins`) is likewise scoped
   to the exact host when `PREVIEW_ORIGIN` is set.
+### Registration enumeration
+
+`POST /api/register` must not reveal whether an email is allowlisted or already
+has an account — either signal would let an unauthenticated attacker enumerate
+the allowlist and existing users. The endpoint therefore returns a **single
+generic response** (`202` with a neutral "if this email is eligible…" message)
+for every request that passes input validation, whether the account was newly
+created, already existed, or the email was not on the allowlist. The allowlist
+and duplicate checks still fully gate account creation server-side
+(`lib/registration.ts`); only the *response* is uniform, and the internal
+`created` flag it returns is never echoed to the client.
+
+Genuine input-validation failures (missing email/password, password shorter
+than the minimum length) still return a clear `400` — these describe the
+request, not account existence, so they leak nothing.

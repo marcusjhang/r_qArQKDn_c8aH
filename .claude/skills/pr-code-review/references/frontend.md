@@ -18,7 +18,7 @@ new/changed component against these:
   renders — split it.
 - **Separate presentation from logic.** Prefer "dumb" presentational components
   that take data + callbacks via props, with logic lifted into hooks/services
-  (here: the store, server actions, queries). Flag side effects (API calls,
+  (here: the store, server actions, the read facade). Flag side effects (API calls,
   mutations) buried inside a display component. This repo extracts multi-step
   orchestration into co-located hooks — `app/login/useLoginForm.ts` owns the
   register → `signIn` → redirect flow and `components/hiring/useFeedbackDraft.ts`
@@ -87,7 +87,7 @@ from './actions'`) — that's fine — but never import DB/Drizzle/postgres into
   `import type` so schema/Drizzle runtime deps never enter the client bundle
   (see `lib/hiring/types.ts` for the established pattern).
 - Pages/layouts under `app/**` that fetch data should do so in a Server
-  Component via a `server-only` query (`lib/**/queries.ts`), then pass plain data
+  Component via a `server-only` read facade (`lib/hiring/service.ts`), then pass plain data
   to the client store — not fetch on the client.
 
 ## Data flow & state

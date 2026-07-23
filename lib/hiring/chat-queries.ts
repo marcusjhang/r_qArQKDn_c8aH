@@ -1,14 +1,16 @@
 import 'server-only';
 
-// Server-side reads for the mention notification inbox. Loaded by the dashboard
+// Server-side read for the mention notification inbox. Loaded by the dashboard
 // server component (page.tsx) and handed to the client; the client triggers
 // further reads/writes through ./chat-actions. The pool of accounts that can be
 // @-mentioned is the board's canonical user list (HiringState.users), so the
 // chat does not query users separately.
+//
+// This is a thin delegate over the injectable chat logic (./chat-logic) with
+// the production Drizzle-backed store — the seam keeps the read (and its
+// per-user scoping) unit-testable without a database.
 
-import { desc, eq } from 'drizzle-orm';
-import { db, users, messages, mentions, candidates } from '@/lib/db';
-import { displayName } from './helpers';
+import { drizzleChatStore, getNotificationsWith } from './chat-logic';
 import type { Notification } from './types';
 
 /**
@@ -20,41 +22,5 @@ export async function getNotifications(
   userId: number,
   limit = 50
 ): Promise<Notification[]> {
-  const rows = await db
-    .select({
-      id: mentions.id,
-      readAt: mentions.readAt,
-      messageId: messages.id,
-      body: messages.body,
-      createdAt: messages.createdAt,
-      authorFirstName: users.firstName,
-      authorLastName: users.lastName,
-      authorEmail: users.email,
-      candidateId: candidates.id,
-      candidateName: candidates.name,
-      jobId: candidates.jobId
-    })
-    .from(mentions)
-    .innerJoin(messages, eq(mentions.messageId, messages.id))
-    .innerJoin(candidates, eq(messages.candidateId, candidates.id))
-    .innerJoin(users, eq(messages.authorId, users.id))
-    .where(eq(mentions.userId, userId))
-    .orderBy(desc(messages.createdAt))
-    .limit(limit);
-
-  return rows.map((r) => ({
-    id: r.id,
-    messageId: r.messageId,
-    candidateId: r.candidateId,
-    candidateName: r.candidateName,
-    jobId: r.jobId,
-    authorName: displayName({
-      firstName: r.authorFirstName,
-      lastName: r.authorLastName,
-      email: r.authorEmail
-    }),
-    body: r.body,
-    createdAt: r.createdAt.toISOString(),
-    read: r.readAt != null
-  }));
+  return getNotificationsWith(drizzleChatStore, userId, limit);
 }

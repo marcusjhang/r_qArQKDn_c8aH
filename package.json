@@ -9,9 +9,11 @@
     "db:seed": "npx tsx db/seed.ts",
     "db:setup": "npm run db:migrate && npm run db:seed",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
     "detect:dead-code": "knip",
     "test": "vitest run",
     "test:unit": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "test:e2e": "playwright test"
   },
@@ -54,7 +56,11 @@
     "trailingComma": "none"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.6",
     "@playwright/test": "^1.61.1",
+    "@vitest/coverage-v8": "4.1.10",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.18",
     "knip": "^6.27.0",
     "vitest": "^4.1.10"
   }
