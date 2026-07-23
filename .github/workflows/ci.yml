@@ -1,0 +1,62 @@
+name: CI
+
+# Runs on every pull request and every push to `main`, so the Codecov coverage
+# check and the knip dead-code audit run on every change (see README →
+# "Continuous integration"). This file has to be added by a maintainer: GitHub
+# refuses to let a GitHub App create/update anything under `.github/workflows/`
+# without the `workflows` permission, which the bot's token lacks.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Typecheck, tests & coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Type-check
+        run: bun run typecheck
+
+      - name: Unit tests + coverage
+        run: bun run test:coverage
+
+      # Uploads ./coverage/lcov.info (vitest v8 lcov reporter). Codecov then
+      # posts the per-PR patch-coverage status gated at 80% by codecov.yml.
+      # A repo-level CODECOV_TOKEN secret is used when present; fail_ci_if_error
+      # is false so a transient upload hiccup never fails the build (the gate is
+      # Codecov's own status check, not this step).
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          fail_ci_if_error: false
+
+  knip:
+    name: Dead code audit (knip)
+    runs-on: ubuntu-latest
+    # Advisory during rollout: knip exits non-zero on any finding, but this job
+    # is marked continue-on-error so a finding surfaces as a non-blocking result
+    # and never blocks a merge while the existing backlog is worked down. Drop
+    # this line to make the audit enforcing (see README → "Continuous integration").
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Audit dead code
+        run: bun run detect:dead-code
