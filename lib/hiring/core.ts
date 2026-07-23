@@ -3,16 +3,18 @@ import 'server-only';
 // Actor-scoped write core — the single write path for candidate & feedback
 // mutations, shared by two front doors:
 //
-//   1. the web `'use server'` actions (lib/hiring/actions.ts), which resolve the
-//      caller from the next-auth session and revalidate the board afterwards;
+//   1. the web `'use server'` actions (lib/hiring/actions/**), which resolve the
+//      caller from the next-auth session;
 //   2. the MCP tools (app/api/mcp/route.ts), which resolve the caller from a
-//      bearer token and revalidate the same tags.
+//      bearer token.
 //
 // Each function takes an explicit `actorUserId` (the user the write acts as),
 // does zod-parse → guard → Drizzle write, and returns a small result the caller
-// can use for its own concerns. It deliberately does NOT call `auth()` or
-// `revalidateTag`/`revalidatePath` — attribution and cache invalidation belong
-// to the front doors, so the two paths can never drift on the write itself.
+// can use for its own concerns. It deliberately does NOT call `auth()` — auth
+// resolution belongs to the front doors, so the two paths can never drift on the
+// write itself. Nothing revalidates a server cache: the board is uncached and
+// TanStack Query is the client's only cache, so a write just persists to
+// Postgres and the next board fetch reflects it.
 //
 // Convention for "the thing you named doesn't exist": these functions return a
 // sentinel (`null` / `false`) rather than throwing, mirroring the web actions'
@@ -132,8 +134,15 @@ export async function moveStageCore(
 ): Promise<Placement | null> {
   const id = zId.parse(idRaw);
   const stage = zStageName.parse(stageRaw);
+  // Only the placement inputs are read — jobId (to load the stage list) and the
+  // current stage/status that placeInStage keys off — so project to those three
+  // columns instead of a SELECT * of the whole candidate row.
   const [c] = await db
-    .select()
+    .select({
+      jobId: candidates.jobId,
+      stage: candidates.stage,
+      status: candidates.status
+    })
     .from(candidates)
     .where(eq(candidates.id, id))
     .limit(1);
@@ -160,8 +169,14 @@ export async function setStatusCore(
 ): Promise<Placement | null> {
   const id = zId.parse(idRaw);
   const status = zStatus.parse(statusRaw);
+  // Same projection as moveStageCore: placeWithStatus only needs the current
+  // stage (and jobId to load the stage list), so avoid a SELECT * of the row.
   const [c] = await db
-    .select()
+    .select({
+      jobId: candidates.jobId,
+      stage: candidates.stage,
+      status: candidates.status
+    })
     .from(candidates)
     .where(eq(candidates.id, id))
     .limit(1);

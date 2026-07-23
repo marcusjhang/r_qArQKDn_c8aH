@@ -1,11 +1,12 @@
 // Server actions — the single write path for the board. Each validates its
-// input at runtime (zod, from ../schemas), mutates Postgres, then revalidates
-// only the cache tag(s) whose rows it changed — `board:jobs`, `board:candidates`,
-// or both (see ../cache and the tagged reads in ../service). Because these
-// actions are the board's sole write path, per-tag invalidation keeps the Data
-// Cache consistent without a cache-wide `revalidatePath('/')`. They mirror the
-// store's mutation surface one-to-one so the client can call them optimistically.
-// A parse failure throws → the store's resync() reverts the optimistic change.
+// input at runtime (zod, from ../schemas) and mutates Postgres. There is no
+// server-side cache to invalidate: the board's reads are uncached (see
+// ../service/reader) and TanStack Query is the sole caching layer on the client,
+// so a write is reflected either by the store's optimistic update or by its
+// resync refetch (fetchBoard) — never by a `revalidateTag`/`revalidatePath`.
+// They mirror the store's mutation surface one-to-one so the client can call
+// them optimistically. A parse failure throws → the store's resync() reverts the
+// optimistic change.
 //
 // The middleware only gates *page* routes; Server Actions dispatch by action id
 // and can be POSTed to the public /login route, so the page gate never protects

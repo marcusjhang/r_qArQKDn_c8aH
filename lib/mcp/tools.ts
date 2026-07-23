@@ -8,19 +8,19 @@ import 'server-only';
 // Structural job/stage ops (group D) are intentionally not exposed.
 //
 // Every write maps 1:1 to an actor-scoped core function (lib/hiring/core.ts) —
-// the same code the web server actions call — then revalidates the same board
-// cache tags the web path uses, so an open dashboard reflects an MCP change on
-// its next load. All input flows through the shared zod schemas, and guard/
-// validation failures come back as structured tool errors (isError:true) with a
-// human-readable reason the model can act on, rather than opaque protocol errors.
+// the same code the web server actions call — and persists straight to Postgres.
+// The board's reads are uncached (TanStack Query is the client's only cache), so
+// an open dashboard reflects an MCP change on its next board fetch; neither front
+// door revalidates a server cache. All input flows through the shared zod
+// schemas, and guard/validation failures come back as structured tool errors
+// (isError:true) with a human-readable reason the model can act on, rather than
+// opaque protocol errors.
 
 import { z } from 'zod';
-import { revalidateTag } from 'next/cache';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { getBoard } from '@/lib/hiring/service';
-import { BOARD_TAGS } from '@/lib/hiring/cache';
 import { STATUSES } from '@/lib/hiring/primitives';
 import type { Status } from '@/lib/hiring/types';
 import {
@@ -203,7 +203,6 @@ export function registerHiringTools(server: McpServer): void {
           yearsExperience: args.yearsExperience ?? null
         });
         if (id == null) return fail(`No job found with id ${args.jobId}.`);
-        revalidateTag(BOARD_TAGS.candidates);
         return ok(`Added candidate "${args.name}" (id ${id}).`);
       } catch (error) {
         return fail(reason(error));
@@ -270,7 +269,6 @@ export function registerHiringTools(server: McpServer): void {
           yearsExperience: args.yearsExperience ?? null
         });
         if (!found) return fail(`No candidate found with id ${args.id}.`);
-        revalidateTag(BOARD_TAGS.candidates);
         return ok(`Updated candidate ${args.id}.`);
       } catch (error) {
         return fail(reason(error));
@@ -301,7 +299,6 @@ export function registerHiringTools(server: McpServer): void {
         const actor = requireActor(extra);
         const placement = await moveStageCore(actor, args.id, args.stage);
         if (!placement) return fail(`No candidate found with id ${args.id}.`);
-        revalidateTag(BOARD_TAGS.candidates);
         return ok(
           `Moved candidate ${args.id} to "${placement.stage}" ` +
             `(status: ${placement.status}).`
@@ -334,7 +331,6 @@ export function registerHiringTools(server: McpServer): void {
         const actor = requireActor(extra);
         const placement = await setStatusCore(actor, args.id, args.status);
         if (!placement) return fail(`No candidate found with id ${args.id}.`);
-        revalidateTag(BOARD_TAGS.candidates);
         return ok(
           `Set candidate ${args.id} status to "${placement.status}" ` +
             `(stage: ${placement.stage}).`
@@ -369,7 +365,6 @@ export function registerHiringTools(server: McpServer): void {
           args.starred
         );
         if (!found) return fail(`No candidate found with id ${args.id}.`);
-        revalidateTag(BOARD_TAGS.candidates);
         return ok(
           `${args.starred ? 'Starred' : 'Unstarred'} candidate ${args.id}.`
         );
@@ -413,7 +408,6 @@ export function registerHiringTools(server: McpServer): void {
         if (feedbackId == null) {
           return fail(`No candidate found with id ${args.id}.`);
         }
-        revalidateTag(BOARD_TAGS.candidates);
         return ok(
           `Recorded feedback (rating ${args.rating}) on candidate ${args.id}.`
         );

@@ -6,13 +6,12 @@
 // These are thin wrappers over the actor-scoped core in ../core, which both this
 // web path and the MCP tools (app/api/mcp/route.ts) share — one write path, two
 // front doors, so they can never drift. Each wrapper confirms the session
-// (requireUser), calls the core with the acting user, then revalidates; the core
-// does the zod-parse + guard + placement + DB write and neither resolves auth nor
-// revalidates.
+// (requireUser) and calls the core with the acting user; the core does the
+// zod-parse + guard + placement + DB write and does not resolve auth. Neither
+// side revalidates: the board is uncached and TanStack Query is the client's
+// only cache (see ./index).
 
-import { revalidateTag } from 'next/cache';
 import { requireUser } from '@/lib/auth';
-import { BOARD_TAGS } from '../cache';
 import type { Status } from '../types';
 import {
   addCandidateCore,
@@ -34,7 +33,7 @@ export async function addCandidate(
 ): Promise<number | null> {
   // The client picks the owner in the form; the actor is the signed-in user.
   const actor = await requireUser();
-  const id = await addCandidateCore(actor, jobIdRaw, {
+  return addCandidateCore(actor, jobIdRaw, {
     name: nameRaw,
     source: sourceRaw,
     owner: ownerRaw,
@@ -42,8 +41,6 @@ export async function addCandidate(
     githubUrl: githubUrlRaw,
     yearsExperience: yearsExperienceRaw
   });
-  revalidateTag(BOARD_TAGS.candidates);
-  return id;
 }
 
 /**
@@ -68,7 +65,6 @@ export async function editCandidate(
     githubUrl: githubUrlRaw,
     yearsExperience: yearsExperienceRaw
   });
-  revalidateTag(BOARD_TAGS.candidates);
 }
 
 /**
@@ -78,17 +74,14 @@ export async function editCandidate(
 export async function setCandidateStarred(idRaw: number, starred: boolean) {
   const actor = await requireUser();
   await setCandidateStarredCore(actor, idRaw, starred);
-  revalidateTag(BOARD_TAGS.candidates);
 }
 
 export async function moveStage(idRaw: number, stageRaw: string) {
   const actor = await requireUser();
   await moveStageCore(actor, idRaw, stageRaw);
-  revalidateTag(BOARD_TAGS.candidates);
 }
 
 export async function setStatus(idRaw: number, statusRaw: Status) {
   const actor = await requireUser();
   await setStatusCore(actor, idRaw, statusRaw);
-  revalidateTag(BOARD_TAGS.candidates);
 }

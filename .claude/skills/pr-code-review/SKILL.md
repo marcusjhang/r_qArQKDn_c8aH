@@ -45,7 +45,8 @@ Assign exactly one severity to **every** finding — the stack-checklist finding
   missing server-side guard/validation, a schema/seed/migration drift that
   breaks the environment, a client bundle importing server-only code.
 - **Medium** — a should-fix that is not an immediate breakage: a missing
-  `revalidatePath`, an un-parallelized read, a duplicated component, a
+  `revalidatePath` on a server-rendered page, an un-parallelized read, a
+  duplicated component, a
   convention violation with real maintenance cost, or a probable-but-unconfirmed
   bug.
 - **Low** — nits: style, naming, dead code, formatting, minor cleanups. Never
@@ -123,9 +124,9 @@ handler, query, schema table), trace how it is reached and what it reaches:
   ```
   UI event (components/**, 'use client')
     → orchestration hook (components/**/use*.ts, app/**/use*.ts)
-      → store action (lib/**/store.ts, optimistic; pure rules from helpers.ts)
-        → server action (lib/**/actions.ts, 'use server', zod-validated)
-          → Drizzle write (lib/db, lib/schema.ts)  → revalidatePath('/')
+      → store action (lib/**/store.ts, optimistic setQueryData; pure rules from helpers/**)
+        → server action (lib/**/actions/**, 'use server', zod-validated)
+          → Drizzle write (lib/db, lib/schema/**)   // board: no revalidate — TanStack Query resyncs
   Server Component / page (app/**)
     → read facade (lib/hiring/service.ts, 'server-only', reads via injected reader)
       → Drizzle relational read → typed HiringState
@@ -141,7 +142,9 @@ handler, query, schema table), trace how it is reached and what it reaches:
   without an auth/validation hop.
 - Flag anything the graph reveals: a client component importing server-only
   code, a write path that skips the zod-validated action, a query that isn't
-  `server-only`, a mutation with no `revalidatePath`.
+  `server-only`, a board action that adds a stray `revalidate*` (the board is
+  TanStack-Query-cached, not server-cached), or a `/settings`/`/members` action
+  (those pages are server-rendered) with no `revalidatePath`.
 - **Schema is a node too.** If the diff touches `lib/schema.ts`, follow its edges
   to the migration (`drizzle/**`) and the seed (`db/seed.ts` +
   `lib/hiring/seed.ts`) — a schema change that doesn't reach both is drift.
@@ -253,10 +256,12 @@ For each medium-and-above finding:
 - **Re-open the cited `file:line`** and confirm the code actually says what the
   finding claims. A stale line number or a misquoted snippet ⇒ `false-positive`.
 - **Walk the call graph (Step 2)** to confirm the problem is reachable and the
-  claimed consequence is real — e.g. a "missing `revalidatePath`" is only real if
-  the action mutates DB-backed state that a cached page reads; a "missing zod
-  parse" is only real if the arg is actually caller-controlled and unvalidated
-  upstream. Try to **refute** the finding, not confirm it.
+  claimed consequence is real — e.g. a "missing `revalidatePath`" is only real on
+  a *server-rendered* page like `/settings`/`/members`; on the board it's a
+  false positive, since the board is uncached and TanStack Query resyncs the
+  client. A "missing zod parse" is only real if the arg is actually
+  caller-controlled and unvalidated upstream. Try to **refute** the finding, not
+  confirm it.
 - **Check it isn't already handled** elsewhere (a server guard the client
   mirrors, a DB `CHECK`/`notNull`, an upstream parse, an existing test).
 - Mark the finding `verified` (the problem is real, at the stated severity — or

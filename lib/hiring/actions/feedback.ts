@@ -9,9 +9,7 @@
 // to the signed-in user resolved by email (currentUserId), the MCP path to the
 // token's owner. The core does the zod-parse + DB write and does not revalidate.
 
-import { revalidateTag } from 'next/cache';
 import { requireUser } from '@/lib/auth';
-import { BOARD_TAGS } from '../cache';
 import { addFeedbackCore } from '../core';
 import { currentUserId } from './support';
 
@@ -28,8 +26,5 @@ export async function addFeedback(
   await requireUser();
   const byUser = await currentUserId();
   if (byUser == null) return null;
-  const id = await addFeedbackCore(byUser, idRaw, ratingRaw, noteRaw);
-  // Feedback is nested inside the candidates read, so invalidate that tag.
-  revalidateTag(BOARD_TAGS.candidates);
-  return id;
+  return addFeedbackCore(byUser, idRaw, ratingRaw, noteRaw);
 }
