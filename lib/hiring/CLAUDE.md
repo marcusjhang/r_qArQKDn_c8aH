@@ -11,10 +11,13 @@ which side each module lives on.
   never drift from the schema. Reads are expressed against an injectable
   `BoardReader` (production default is Drizzle-backed; tests pass an in-memory
   fake). No ORM types cross this line.
-- **Writes** go through the `'use server'` actions in `actions.ts`, each parsing
-  input with a zod schema from `schemas.ts` (`server-only`) before touching the
-  DB, then calling `revalidatePath`. See the **server-actions** skill for the
-  full optimistic-store → action → revalidate → rollback recipe.
+- **Writes** go through the `'use server'` actions in `actions/**` (split by
+  entity behind `actions/index.ts`), each parsing input with a zod schema from
+  `schemas.ts` (`server-only`) before touching the DB. They do **not** revalidate
+  any server cache — the board is uncached and TanStack Query is the client's
+  only cache, so the store resyncs itself on a failed write. See the
+  **server-actions** skill for the full optimistic-store → action →
+  resync-on-failure recipe.
 - **Client state** is backed by **TanStack Query** (`QueryClientProvider` in the
   root layout). Server truth lives in the query cache, seeded from RSC props via
   `initialData`. `store.ts` (`useHiringStore`) holds the board cache and applies

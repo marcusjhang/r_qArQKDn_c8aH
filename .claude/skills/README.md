@@ -9,7 +9,7 @@ Two kinds of skill live here, and they work as a pair.
 | `pr-code-review` | **Review** — what to flag | The whole diff, via per-area checklists in `references/`: frontend, backend, type-management, testability | all authoring skills below |
 | `drizzle` | **Authoring** — how to build it | Data layer: schema, migrations, seed, reads | `backend.md` (DB), `type-management.md` |
 | `auth` | **Authoring** | The login gate, middleware matcher, allowlist/registration, secrets | `backend.md` (Auth & API routes), `SECURITY.md` |
-| `server-actions` | **Authoring** | The single write path: optimistic store → zod action → revalidate → rollback | `backend.md` (server actions), `type-management.md` |
+| `server-actions` | **Authoring** | The single write path: optimistic TanStack Query store → zod action → Drizzle write → resync-on-failure | `backend.md` (server actions), `type-management.md` |
 
 - **Review vs authoring.** `pr-code-review` is the *reviewer's* lens — it lists
   what to flag. The authoring skills are the *builder's* lens — step-by-step

@@ -127,8 +127,10 @@ exactly the drift this pattern prevents — don't.
   (`zId.parse`, `candidateInsertSchema.parse`, …) before touching the DB. Let a
   parse failure throw — the client store's resync reverts the optimistic change;
   don't swallow it.
-- **`revalidatePath('/')`** (or the affected path) after a mutation, or cached
-  pages go stale.
+- **Cache resync is layer-specific.** The board is uncached server-side —
+  TanStack Query is its only cache — so a board action does **not** `revalidate*`
+  (the client store resyncs). Only the server-rendered `/settings` and `/members`
+  pages `revalidatePath` their own route after a write.
 - **Wrap multi-statement invariants in `db.transaction`** (e.g. `renameStage`
   updates the job's `stages` array *and* re-points candidates).
 - Use bound Drizzle helpers (`eq`, `and`, `ne`, `sql`) — never string-interpolate
