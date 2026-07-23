@@ -18,8 +18,12 @@ test.describe('time-in-stage', () => {
     await expect(page.locator('.card .time-tag').first()).toBeVisible();
     await expect(page.locator('.card .time-tag.overdue').first()).toBeVisible();
 
-    // The backdated Applied candidate is flagged overdue with a day-count label.
-    const overdueCard = page.locator('.card', { hasText: 'Marcus Webb' });
+    // A backdated candidate is flagged overdue with a day-count label. Uses Sofia
+    // Kim (9d, Offer) rather than Marcus Webb: candidate-move.spec advances
+    // Marcus Webb in a parallel worker, which resets his stage clock, so reading
+    // him here would race that file's writes. Sofia Kim is read-only across the
+    // suite.
+    const overdueCard = page.locator('.card', { hasText: 'Sofia Kim' });
     await expect(overdueCard.locator('.time-tag.overdue')).toHaveText(/^\d+d$/);
 
     // A fresh candidate (Ava Chen, 3d in Screen, under the 5-day threshold)
@@ -36,7 +40,8 @@ test.describe('time-in-stage', () => {
     page
   }) => {
     await loginToBoard(page);
-    await openCandidate(page, 'Marcus Webb');
+    // Sofia Kim (9d, overdue), not Marcus Webb — see the board-tag test above.
+    await openCandidate(page, 'Sofia Kim');
 
     const age = page.locator('aside.drawer.open .stage-age');
     await expect(age).toBeVisible();
@@ -87,7 +92,10 @@ test.describe('time-in-stage', () => {
   test('notification bell surfaces the owner’s stalled candidates', async ({
     page
   }) => {
-    // benchan owns overdue candidates (Marcus Webb, Sofia Kim).
+    // benchan owns overdue candidates (Marcus Webb, Sofia Kim). We assert on
+    // Sofia Kim: Marcus Webb is advanced by candidate-move.spec in a parallel
+    // worker (resetting his clock), so he may not be stalled by the time this
+    // runs. Sofia Kim is read-only across the suite.
     await login(page, 'benchan@lightsprint.ai', 'password');
     await page.goto('/');
     await expect(
@@ -101,7 +109,7 @@ test.describe('time-in-stage', () => {
 
     // A stalled-candidate alert names an overdue candidate benchan owns and
     // states how long they've been in stage — no "limit" language.
-    const alert = menu.locator('.notif-item.alert', { hasText: 'Marcus Webb' });
+    const alert = menu.locator('.notif-item.alert', { hasText: 'Sofia Kim' });
     await expect(alert).toBeVisible();
     await expect(alert).toContainText('Stalled candidate');
     await expect(alert).toContainText(/has been in .+ for \d+ days?/);
