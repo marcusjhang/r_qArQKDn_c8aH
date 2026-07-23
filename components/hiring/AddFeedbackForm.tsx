@@ -1,54 +1,43 @@
 'use client';
 
-// Add-feedback form: interviewer + 4-point rating picker + note. The draft
-// state, reset-on-candidate-change and validation live in useFeedbackDraft;
-// this component is the presentational shell around that hook.
+// Add-feedback form: 4-point rating picker + note. Feedback is always authored
+// by the signed-in user (derived server-side), so there is no interviewer
+// picker — `canReview` gates whether the form shows at all: the current user
+// gets one entry per candidate (enforced by a DB unique constraint), so once
+// they've reviewed, the form is replaced with a done message. The draft state,
+// reset-on-candidate-change and validation live in useFeedbackDraft; this
+// component is the presentational shell around that hook.
 
-import { RATINGS, displayName, type RatingValue, type User } from '@/lib/hiring';
+import { RATINGS, type RatingValue } from '@/lib/hiring';
 import { useFeedbackDraft, type FeedbackEntry } from './useFeedbackDraft';
 
 const RATING_ORDER: RatingValue[] = [1, 2, 3, 4];
 
 export default function AddFeedbackForm({
   resetKey,
-  users,
-  currentUserId,
+  canReview,
   onAdd
 }: {
   /** Identity of the open candidate — the draft resets when it changes. */
   resetKey: number | null;
-  /** Interviewers who haven't reviewed this candidate yet (one entry each). */
-  users: User[];
-  /** The logged-in user's id — the default author when they can still review. */
-  currentUserId: number | null;
+  /** Whether the signed-in user can still leave feedback (one entry each). */
+  canReview: boolean;
   onAdd: (entry: FeedbackEntry) => void;
 }) {
-  const fb = useFeedbackDraft(resetKey, users, currentUserId, onAdd);
+  const fb = useFeedbackDraft(resetKey, onAdd);
 
-  // Every interviewer has already reviewed this candidate — nothing to add.
-  if (users.length === 0) {
+  // The signed-in user has already reviewed this candidate (or isn't a
+  // resolvable reviewer) — nothing to add.
+  if (!canReview) {
     return (
       <div className="add-fb">
-        <div className="fb-empty">Everyone has left feedback.</div>
+        <div className="fb-empty">You&rsquo;ve already left feedback.</div>
       </div>
     );
   }
 
   return (
     <div className="add-fb">
-      <div className="field">
-        <span className="label">Interviewer</span>
-        <select
-          value={fb.who}
-          onChange={(e) => fb.setWho(Number(e.target.value))}
-        >
-          {users.map((u) => (
-            <option key={u.id} value={u.id}>
-              {displayName(u)}
-            </option>
-          ))}
-        </select>
-      </div>
       <div className="field">
         <span className="label">Rating</span>
         <div className="rating-picker">
