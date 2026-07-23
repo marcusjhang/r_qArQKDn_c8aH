@@ -5,22 +5,26 @@ which side each module lives on.
 
 ## Read / write / client boundaries
 
-- **Reads** go through the `service/` facade (`import 'server-only'`, entry
-  `service/index.ts`). It owns the UI-shaped DTOs (`Job`, `Candidate`,
-  `Feedback`, `HiringState`, in `service/dtos.ts`) and projects them from the
-  Drizzle rows with a compile-time conformance guard, so the DTOs never drift
-  from the schema. Reads are expressed against an injectable `BoardReader`
-  (production default `service/reader.ts` is Drizzle-backed; tests pass an
-  in-memory fake). No ORM types cross this line.
-- **Writes** go through the `'use server'` actions in `actions/` (split by
-  entity — `jobs.ts` / `candidates.ts` / `feedback.ts` / `stages.ts`, barreled
-  by `actions/index.ts`; shared server-only helpers in `actions/support.ts`),
-  each parsing input with a zod schema from `schemas.ts` (`server-only`) before
-  touching the DB, then calling `revalidateTag`. See the **server-actions**
-  skill for the full optimistic-store → action → revalidate → rollback recipe.
-- **Client state** lives in `store.ts` + `reducer.ts` — optimistic updates with
-  temp ids, rolled back if the server action rejects. Client code imports from
-  the `index.ts` barrel (`@/lib/hiring`), never from `service/`/`schemas.ts`.
+- **Reads** go through the `service.ts` facade (`import 'server-only'`). It owns
+  the UI-shaped DTOs (`Job`, `Candidate`, `Feedback`, `HiringState`) and projects
+  them from the Drizzle rows with a compile-time conformance guard, so the DTOs
+  never drift from the schema. Reads are expressed against an injectable
+  `BoardReader` (production default is Drizzle-backed; tests pass an in-memory
+  fake). No ORM types cross this line.
+- **Writes** go through the `'use server'` actions in `actions.ts`, each parsing
+  input with a zod schema from `schemas.ts` (`server-only`) before touching the
+  DB, then calling `revalidatePath`. See the **server-actions** skill for the
+  full optimistic-store → action → revalidate → rollback recipe.
+- **Client state** is backed by **TanStack Query** (`QueryClientProvider` in the
+  root layout). Server truth lives in the query cache, seeded from RSC props via
+  `initialData`. `store.ts` (`useHiringStore`) holds the board cache and applies
+  optimistic updates by running the pure `reducer.ts` events straight into the
+  cache (`setQueryData`), with temp-id reconciliation for creates; a failed write
+  resyncs by invalidating the board query (refetch via the `fetchBoard` action in
+  `board-query.ts`). Query keys are centralized in `query-keys.ts`. Client code
+  imports from the `index.ts` barrel (`@/lib/hiring`), never from
+  `service.ts`/`schemas.ts`. The chat thread (`useChatThread`) and the
+  notification bell use `useQuery`/`useMutation` the same way.
 
 ## Where logic goes
 

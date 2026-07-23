@@ -1,4 +1,5 @@
 import './globals.css';
+import QueryProvider from '@/components/providers/QueryProvider';
 
 export const metadata = {
   title: 'Hiring Pipeline Tracker',
@@ -20,7 +21,9 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
-      <body className="flex min-h-screen w-full flex-col">{children}</body>
+      <body className="flex min-h-screen w-full flex-col">
+        <QueryProvider>{children}</QueryProvider>
+      </body>
     </html>
   );
 }
