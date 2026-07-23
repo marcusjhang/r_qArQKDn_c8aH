@@ -8,7 +8,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { requireUser } from '@/lib/auth';
 import { db, jobs } from '@/lib/db';
 import { MAX_FAVORITES, reorderStages } from '../helpers';
-import { DEFAULT_STAGES, DEFAULT_TRAITS } from '../config';
+import { DEFAULT_STAGES } from '../config';
 import {
   zId,
   zIndex,
@@ -23,8 +23,8 @@ import { loadJobTraits } from './support';
 /**
  * Create a new job with the compulsory default stages. Returns the new id so
  * the client can reconcile its optimistic job and switch the board to it.
- * `traits` seeds the job's important-traits list (empty → the defaults) and
- * `description` the pasteable JD.
+ * `traits` seeds the job's important-traits list; a job created with none
+ * simply starts empty and traits are added later. `description` is the JD.
  */
 export async function createJob(
   titleRaw: string,
@@ -34,12 +34,11 @@ export async function createJob(
   await requireUser();
   const title = zJobTitle.parse(titleRaw);
   const description = zJobDescription.parse(descriptionRaw ?? '');
-  // Use the caller's chosen traits (e.g. AI suggestions accepted at creation)
-  // when provided and non-empty; otherwise fall back to the defaults.
-  const traits =
-    traitsRaw && traitsRaw.length
-      ? zTraitList.parse(traitsRaw).map((t) => t.trim())
-      : [...DEFAULT_TRAITS];
+  // Use the caller's chosen traits (e.g. AI suggestions accepted at creation);
+  // no traits means the job starts with an empty list, not a default set.
+  const traits = traitsRaw?.length
+    ? zTraitList.parse(traitsRaw).map((t) => t.trim())
+    : [];
   const [{ maxPos }] = await db
     .select({ maxPos: sql<number>`coalesce(max(${jobs.position}), -1)` })
     .from(jobs);

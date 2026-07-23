@@ -11,7 +11,7 @@
 // removeStage) so the reducer, the store's pre-checks, and the server actions
 // all compute the same result from the same code.
 
-import { DEFAULT_STAGES, DEFAULT_TRAITS } from './config';
+import { DEFAULT_STAGES } from './config';
 import {
   addStageToPipeline,
   placeInStage,
@@ -121,7 +121,7 @@ export function hiringReducer(
             id: event.tempId,
             title: event.title,
             stages: [...DEFAULT_STAGES],
-            traits: event.traits.length ? event.traits : [...DEFAULT_TRAITS],
+            traits: event.traits,
             description: event.description || null,
             starred: false
           }
