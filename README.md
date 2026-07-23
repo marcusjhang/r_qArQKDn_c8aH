@@ -98,6 +98,20 @@ reports an item:
 Run `bun run detect:dead-code` before opening a PR that adds or removes modules
 or dependencies, and clear new findings you introduce.
 
+### Continuous integration
+
+The audit also runs automatically on every push to `main` and on every pull
+request via the **Dead code audit (knip)** job in
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml). It installs
+dependencies from the frozen lockfile and runs the same
+`bun run detect:dead-code` command.
+
+During the initial rollout the job is **advisory**: it is marked
+`continue-on-error`, so a finding shows up as a neutral check and never blocks a
+merge while the existing backlog is being worked down. The knip command itself
+still exits non-zero on findings, so once that backlog is cleared, drop the
+`continue-on-error: true` line from the workflow to make the audit enforcing.
+
 ## Database Schema
 
 Schema is in `lib/schema.ts`; migrations live in `drizzle/`.
