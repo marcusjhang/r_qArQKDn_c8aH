@@ -1,10 +1,20 @@
-export { auth as middleware } from '@/lib/auth';
+import NextAuth from 'next-auth';
+import { authConfig } from '@/lib/auth.config';
 
-// The `authorized` callback in lib/auth.ts gates every matched request behind
-// login (only /login is public). The matcher below decides WHICH requests reach
-// that callback — everything the app serves must be covered so no page route
-// slips through ungated, while non-page requests stay excluded so assets and
-// the NextAuth handlers aren't redirected to /login.
+// Build the gate from the EDGE-SAFE `authConfig` (lib/auth.config.ts) instead of
+// the full `lib/auth.ts`. Middleware runs on the Edge runtime, and the full
+// config imports the DB-backed credentials provider (lib/db.ts → postgres,
+// Node-only) — pulling it in here bundles postgres into the Edge middleware and
+// warns "A Node.js module is loaded ('stream') … not supported in the Edge
+// Runtime". The edge config has no provider (session strategy is `jwt`, so the
+// gate verifies the cookie without a DB lookup), keeping the middleware clean.
+export const { auth: middleware } = NextAuth(authConfig);
+
+// The `authorized` callback in lib/auth.config.ts gates every matched request
+// behind login (only /login is public). The matcher below decides WHICH requests
+// reach that callback — everything the app serves must be covered so no page
+// route slips through ungated, while non-page requests stay excluded so assets
+// and the NextAuth handlers aren't redirected to /login.
 //
 // Excluded (must NOT be gated):
 //   - `api/`   NextAuth handlers + /api/register (self-guarded by the allowlist).
