@@ -27,6 +27,7 @@ import JobTabs from './JobTabs';
 import TopBar from './TopBar';
 import { ACCOUNT_LINKS } from './UserMenu';
 import NotificationBell from './NotificationBell';
+import CandidateSearch from './CandidateSearch';
 import './hiring.css';
 
 export default function HiringApp({
@@ -94,6 +95,17 @@ export default function HiringApp({
     [state.jobs]
   );
 
+  // Jump to a candidate picked from the global search: switch to their job (so
+  // the board behind the drawer is the right one) and open their detail drawer.
+  const openCandidateInJob = useCallback(
+    (candidateId: number, jobId: number) => {
+      if (state.jobs.some((j) => j.id === jobId)) setActiveJob(jobId);
+      setFocusMessageId(null);
+      setOpenId(candidateId);
+    },
+    [state.jobs]
+  );
+
   const meta = formatJobMeta(
     job
       ? jobStats(state.candidates, job.id)
@@ -135,6 +147,14 @@ export default function HiringApp({
           <h1 className="jobtitle">{job?.title ?? '—'}</h1>
           <div className="jobmeta">{meta}</div>
         </div>
+        <CandidateSearch
+          candidates={state.candidates}
+          jobs={state.jobs}
+          users={state.users}
+          sources={state.sources}
+          bands={state.bands}
+          onSelect={openCandidateInJob}
+        />
         <div className="spacer" />
         <label className="toggle">
           <input
