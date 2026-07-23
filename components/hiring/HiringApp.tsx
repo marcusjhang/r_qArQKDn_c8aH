@@ -15,6 +15,7 @@ import {
   type HiringState,
   type Notification
 } from '@/lib/hiring';
+import { Button } from '@/components/ui/button';
 import Board from './Board';
 import DetailDrawer from './DetailDrawer';
 import AddCandidateModal from './AddCandidateModal';
@@ -102,9 +103,9 @@ export default function HiringApp({
           />
         }
       >
-        <button className="btn primary" onClick={() => setCreatingJob(true)}>
+        <Button variant="appPrimary" onClick={() => setCreatingJob(true)}>
           ＋ New job
-        </button>
+        </Button>
         <JobTabs
           jobs={state.jobs}
           activeJob={activeJob}
@@ -129,13 +130,13 @@ export default function HiringApp({
           />{' '}
           Show rejected
         </label>
-        <button
-          className="btn primary"
+        <Button
+          variant="appPrimary"
           onClick={() => setAddingCandidate(true)}
           disabled={!job}
         >
           ＋ Add candidate
-        </button>
+        </Button>
       </div>
 
       <Board

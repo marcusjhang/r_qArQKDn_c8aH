@@ -17,6 +17,7 @@ import {
   mentionHighlightPattern
 } from '@/lib/hiring/helpers';
 import type { User } from '@/lib/hiring/types';
+import { Button } from '@/components/ui/button';
 import { useChatThread } from './hooks/useChatThread';
 
 /** Render a body, highlighting the `@name` tokens for accounts that were tagged. */
@@ -163,13 +164,13 @@ export default function ChatPanel({
             </div>
             <div className="chat-compose-foot">
               <span className="chat-hint">⌘/Ctrl + Enter to send</span>
-              <button
-                className="btn primary"
+              <Button
+                variant="appPrimary"
                 onClick={send}
                 disabled={sending || !body.trim()}
               >
                 Send
-              </button>
+              </Button>
             </div>
           </>
         )}
