@@ -111,8 +111,15 @@ export async function moveStage(idRaw: number, stageRaw: string) {
   await requireUser();
   const id = zId.parse(idRaw);
   const stage = zStageName.parse(stageRaw);
+  // Only the placement inputs are read — jobId (to load the stage list) and the
+  // current stage/status that placeInStage keys off — so project to those three
+  // columns instead of a SELECT * of the whole candidate row.
   const [c] = await db
-    .select()
+    .select({
+      jobId: candidates.jobId,
+      stage: candidates.stage,
+      status: candidates.status
+    })
     .from(candidates)
     .where(eq(candidates.id, id))
     .limit(1);
@@ -134,8 +141,14 @@ export async function setStatus(idRaw: number, statusRaw: Status) {
   await requireUser();
   const id = zId.parse(idRaw);
   const status = zStatus.parse(statusRaw);
+  // Same projection as moveStage: placeWithStatus only needs the current stage
+  // (and jobId to load the stage list), so avoid a SELECT * of the row.
   const [c] = await db
-    .select()
+    .select({
+      jobId: candidates.jobId,
+      stage: candidates.stage,
+      status: candidates.status
+    })
     .from(candidates)
     .where(eq(candidates.id, id))
     .limit(1);
