@@ -57,7 +57,8 @@ export function canDeleteStage(
 export interface HiringActions {
   /**
    * Create a job (with default stages). `traits` seeds the job's trait list
-   * (empty → defaults); onReady fires with the new job id.
+   * (empty → empty; default traits are seed-only); onReady fires with the new
+   * job id.
    */
   createJob: (
     title: string,

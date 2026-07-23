@@ -7,6 +7,15 @@ import { normalizeEmail } from '@/lib/allowlist';
 import { credentialsSchema, resolveUserId } from '@/lib/auth-policy';
 import { authConfig } from '@/lib/auth.config';
 
+// A fixed, valid bcrypt hash (cost 12, of a value nothing will ever equal) used
+// only to spend the same ~bcrypt time on a login for a non-existent email as on
+// a real one. Without it, a missing user returns immediately while an existing
+// user pays the compare cost, letting an attacker time the response to
+// enumerate which emails have accounts. Comparing against this hash is a
+// deliberate no-op that always fails.
+const DUMMY_PASSWORD_HASH =
+  '$2b$12$Xeks340lYa0VBDkQ8Sbgbev6kWU96I4DaBZ3YZMKwOBmEVp4cPi2K';
+
 // The full, Node-runtime auth config: the edge-safe `authConfig` (pages, session
 // strategy, and the authorized/jwt/session callbacks) plus the DB-backed
 // credentials provider. This module imports `lib/db.ts` (postgres) and bcryptjs,
@@ -32,10 +41,14 @@ export const { handlers, auth } = NextAuth({
           .where(eq(users.email, normalizeEmail(email)))
           .limit(1);
 
-        if (!user) return null;
-
-        const valid = await compare(password, user.passwordHash);
-        if (!valid) return null;
+        // Always run a bcrypt compare — against the real hash, or a dummy of the
+        // same cost when the email has no account — so the response time doesn't
+        // reveal whether the account exists (a login-enumeration timing oracle).
+        const valid = await compare(
+          password,
+          user?.passwordHash ?? DUMMY_PASSWORD_HASH
+        );
+        if (!user || !valid) return null;
 
         return {
           id: String(user.id),

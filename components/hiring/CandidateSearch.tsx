@@ -19,6 +19,7 @@ import {
   type SeniorityBand,
   type User
 } from '@/lib/hiring';
+import { Search } from 'lucide-react';
 
 export default function CandidateSearch({
   candidates,
@@ -109,7 +110,7 @@ export default function CandidateSearch({
     <div className="cand-search" ref={wrapRef}>
       <div className="cand-search-field">
         <span className="cand-search-icon" aria-hidden>
-          🔍
+          <Search size={14} aria-hidden />
         </span>
         <input
           className="cand-search-input"

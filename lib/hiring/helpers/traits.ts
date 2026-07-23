@@ -5,7 +5,7 @@
 // score is the rank-weighted average of each trait's average score across
 // feedback entries. Trait-name validation mirrors the stage-name rules.
 
-import type { Candidate, Feedback, RatingValue } from '../types';
+import type { Candidate, Feedback, RatingValue, TraitScores } from '../types';
 import { type StageGuard } from './stages';
 
 /** Max length of a trait name (kept in sync with the DB/zod bound). */
@@ -68,7 +68,9 @@ export function overallScore(traits: string[], c: Candidate): number | null {
  * that entry scored no traits. Used for the collapsed per-entry summary.
  */
 export function entryTraitAvg(f: Feedback): number | null {
-  const scores = Object.values(f.traitScores ?? {});
+  const scores = Object.values(f.traitScores ?? {}).filter(
+    (v): v is RatingValue => v != null
+  );
   if (!scores.length) return null;
   return scores.reduce((a, v) => a + v, 0) / scores.length;
 }
@@ -120,4 +122,79 @@ export function mergeTraitSuggestions(
     }
   }
   return { traits, added };
+}
+
+/**
+ * Normalize a raw list of AI trait suggestions (the untrusted `traits` array
+ * parsed from the model's JSON) into a clean, length- and count-bounded list:
+ * trim; drop empties, over-length (> MAX_TRAIT_NAME) and multi-word
+ * (> MAX_TRAIT_WORDS) labels — skipping rather than truncating, since a
+ * truncated label is worse than a missing one; de-dupe case-insensitively; and
+ * keep only the first MAX_TRAIT_SUGGESTIONS. Pure and framework-free so the
+ * AI wrapper (lib/hiring/ai.ts) stays a thin I/O shell and this rule is unit-
+ * tested in one place. `raw` is `unknown` because it comes straight from
+ * `JSON.parse`.
+ */
+export function normalizeTraitSuggestions(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== 'string') continue;
+    const t = item.trim();
+    if (!t || t.length > MAX_TRAIT_NAME) continue;
+    if (t.split(/\s+/).length > MAX_TRAIT_WORDS) continue;
+    const key = t.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(t);
+    if (out.length >= MAX_TRAIT_SUGGESTIONS) break;
+  }
+  return out;
+}
+
+/**
+ * Detect whether the transition from `oldTraits` to `newTraits` is a single
+ * trait *rename* (exactly one label removed and one added, everything else
+ * unchanged) and, if so, return the `{ from, to }` mapping — otherwise null.
+ *
+ * A pure add (nothing removed), pure remove (nothing added) and a reorder (same
+ * set) all return null, so the caller only remaps recorded feedback scores on an
+ * unambiguous 1-for-1 rename — the case the inline "click to rename" affordance
+ * produces. Comparison is exact-string so a case-only rename ("Comunication" →
+ * "Communication") is still detected and its scores carried over.
+ */
+export function detectTraitRename(
+  oldTraits: string[],
+  newTraits: string[]
+): { from: string; to: string } | null {
+  const removed = oldTraits.filter((t) => !newTraits.includes(t));
+  const added = newTraits.filter((t) => !oldTraits.includes(t));
+  if (removed.length === 1 && added.length === 1) {
+    return { from: removed[0]!, to: added[0]! };
+  }
+  return null;
+}
+
+/**
+ * Rewrite a feedback entry's recorded trait scores when a trait is renamed:
+ * move the score stored under `from` to `to`, leaving every other trait's score
+ * untouched. A no-op when the entry never scored `from`, or when `to` already
+ * has a score (the existing value wins — a rename never overwrites a real
+ * score). Pure, so the optimistic reducer and the server action share the rule.
+ */
+export function renameTraitScoreKey(
+  scores: TraitScores,
+  from: string,
+  to: string
+): TraitScores {
+  const moved = scores[from];
+  if (moved == null || scores[to] != null) return scores;
+  const next: TraitScores = {};
+  for (const [k, v] of Object.entries(scores)) {
+    if (k === from) continue;
+    next[k] = v;
+  }
+  next[to] = moved;
+  return next;
 }

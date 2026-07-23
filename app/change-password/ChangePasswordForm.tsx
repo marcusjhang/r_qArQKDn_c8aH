@@ -121,7 +121,7 @@ export default function ChangePasswordForm({
             <p className="text-sm text-muted-foreground">
               Must be at least {minLength} characters.
             </p>
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
           </CardContent>
           <CardFooter>
             <Button type="submit" className="w-full" disabled={loading}>

@@ -265,7 +265,10 @@ export async function setCandidateStarredCore(
 export async function addFeedbackCore(
   actorUserId: number,
   candidateIdRaw: number,
-  traitScoresRaw: Record<string, number>,
+  // Untrusted raw input, re-validated by feedbackInsertSchema below. Values may
+  // be absent (the web path passes a sparse TraitScores map), so the value type
+  // allows `undefined`; the zod parse drops anything that isn't a 1–4 rating.
+  traitScoresRaw: Record<string, number | undefined>,
   noteRaw: string
 ): Promise<number | null> {
   const candidateId = zId.parse(candidateIdRaw);

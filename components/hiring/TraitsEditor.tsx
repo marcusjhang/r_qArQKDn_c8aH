@@ -9,7 +9,7 @@
 
 import { useRef, useState } from 'react';
 import { validateTraitName, MAX_TRAIT_NAME } from '@/lib/hiring';
-import { Calculator } from 'lucide-react';
+import { Calculator, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import InfoHint from './InfoHint';
 import TraitRow from './TraitRow';
@@ -62,7 +62,7 @@ export default function TraitsEditor({
           Traits
           <InfoHint label="How ranking works" title="How ranking works">
             <p>
-              Drag rank with the arrows: rank #1 is the most important. A
+              Use the arrows to rank: rank #1 is the most important. A
               candidate&rsquo;s overall score weights each trait by its rank, so
               higher traits count for more.
             </p>
@@ -86,10 +86,17 @@ export default function TraitsEditor({
           <Button
             type="button"
             variant="app"
+            className="btn-suggest"
             disabled={suggesting}
             onClick={onSuggest}
           >
-            {suggesting ? 'Thinking…' : '✨ Suggest from JD'}
+            {suggesting ? (
+              'Thinking…'
+            ) : (
+              <>
+                <Sparkles size={14} aria-hidden /> Suggest from JD
+              </>
+            )}
           </Button>
         )}
       </div>

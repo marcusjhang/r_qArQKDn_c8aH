@@ -4,10 +4,10 @@
 // path — see ./index for the boundary contract (zod-validate → mutate → store
 // rollback on throw) shared by every action module.
 
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { requireUser } from '@/lib/auth';
-import { db, jobs } from '@/lib/db';
-import { MAX_FAVORITES, reorderStages } from '../helpers';
+import { db, jobs, candidates, feedback } from '@/lib/db';
+import { MAX_FAVORITES, reorderStages, detectTraitRename } from '../helpers';
 import { DEFAULT_STAGES } from '../config';
 import {
   zId,
@@ -18,7 +18,7 @@ import {
   zTraitList
 } from '../schemas';
 import { suggestTraits } from '../ai';
-import { loadJobTraits } from './support';
+import { lockJobTraits } from './support';
 
 /**
  * Create a new job with the compulsory default stages. Returns the new id so
@@ -67,21 +67,58 @@ export async function setJobDescription(
 }
 
 /**
- * Replace a job's important-traits list (add/remove/reorder). Validated
- * (capped, unique) then written in one update. Historical feedback keeps any
- * scores it recorded; the UI only surfaces scores for traits still on the job.
+ * Replace a job's important-traits list (add/remove/reorder/rename). Validated
+ * (capped, unique) then written under a row lock so a concurrent trait edit
+ * can't clobber it.
+ *
+ * When the change is a single *rename* (one label swapped for another), the
+ * recorded feedback scores keyed by the old name are carried over to the new
+ * name in the same transaction — otherwise a founder fixing a typo would
+ * silently orphan every score under the old key. This mirrors how `renameStage`
+ * re-points the candidates sitting in a renamed stage.
  */
 export async function setJobTraits(jobIdRaw: number, traitsRaw: string[]) {
   await requireUser();
   const jobId = zId.parse(jobIdRaw);
   const traits = zTraitList.parse(traitsRaw).map((t) => t.trim());
-  await db.update(jobs).set({ traits }).where(eq(jobs.id, jobId));
+  await db.transaction(async (tx) => {
+    const current = await lockJobTraits(tx, jobId);
+    if (!current) return;
+    const rename = detectTraitRename(current, traits);
+    if (rename) {
+      // Move the score stored under the old key to the new key for every
+      // feedback row on this job's candidates — but never overwrite a score the
+      // new name already has (the existing value wins). `jsonb_exists` is the
+      // function form of the `?` key-test, avoiding any `?`-placeholder clash.
+      await tx
+        .update(feedback)
+        .set({
+          traitScores: sql`(${feedback.traitScores} - ${rename.from}) || jsonb_build_object(${rename.to}::text, ${feedback.traitScores} -> ${rename.from})`
+        })
+        .where(
+          and(
+            inArray(
+              feedback.candidateId,
+              tx
+                .select({ id: candidates.id })
+                .from(candidates)
+                .where(eq(candidates.jobId, jobId))
+            ),
+            sql`jsonb_exists(${feedback.traitScores}, ${rename.from})`,
+            sql`not jsonb_exists(${feedback.traitScores}, ${rename.to})`
+          )
+        );
+    }
+    await tx.update(jobs).set({ traits }).where(eq(jobs.id, jobId));
+  });
 }
 
 /**
  * Swap a trait with its neighbour to re-rank it. Reuses the shared
  * `reorderStages` ordered-list helper — traits are just another ordered
- * string[], so the swap+bounds rule is identical.
+ * string[], so the swap+bounds rule is identical. Runs inside a transaction that
+ * row-locks the job (see `lockJobTraits`) so a concurrent trait edit can't read
+ * the same array and clobber this reorder with a stale write.
  */
 export async function reorderTrait(
   jobIdRaw: number,
@@ -92,14 +129,13 @@ export async function reorderTrait(
   const jobId = zId.parse(jobIdRaw);
   const index = zIndex.parse(indexRaw);
   const dir = zDir.parse(dirRaw);
-  const traits = await loadJobTraits(jobId);
-  if (!traits) return;
-  const result = reorderStages(traits, index, dir);
-  if (!result.ok) return;
-  await db
-    .update(jobs)
-    .set({ traits: result.stages })
-    .where(eq(jobs.id, jobId));
+  await db.transaction(async (tx) => {
+    const traits = await lockJobTraits(tx, jobId);
+    if (!traits) return;
+    const result = reorderStages(traits, index, dir);
+    if (!result.ok) return;
+    await tx.update(jobs).set({ traits: result.stages }).where(eq(jobs.id, jobId));
+  });
 }
 
 /**

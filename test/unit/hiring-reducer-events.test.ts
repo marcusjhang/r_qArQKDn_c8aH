@@ -118,6 +118,113 @@ describe('hiringReducer', () => {
     });
   });
 
+  describe('setJobDescription', () => {
+    it('coerces an empty string to null', () => {
+      const initial = state({ jobs: [job({ id: 1, description: 'old' })] });
+      const result = hiringReducer(initial, {
+        type: 'setJobDescription',
+        jobId: 1,
+        description: ''
+      });
+      expect(result.jobs[0].description).toBeNull();
+    });
+
+    it('stores a non-empty description as-is', () => {
+      const initial = state({ jobs: [job({ id: 1, description: null })] });
+      const result = hiringReducer(initial, {
+        type: 'setJobDescription',
+        jobId: 1,
+        description: 'Build the platform'
+      });
+      expect(result.jobs[0].description).toBe('Build the platform');
+    });
+  });
+
+  describe('setJobTraits', () => {
+    it('replaces the trait list and leaves candidates untouched (no rename)', () => {
+      const initial = state({
+        jobs: [job({ id: 1, traits: ['A', 'B'] })],
+        candidates: [candidate({ id: 1, jobId: 1 })]
+      });
+      // A pure add is not a 1-for-1 rename, so feedback is not remapped and the
+      // candidates array is preserved by reference.
+      const result = hiringReducer(initial, {
+        type: 'setJobTraits',
+        jobId: 1,
+        traits: ['A', 'B', 'C']
+      });
+      expect(result.jobs[0].traits).toEqual(['A', 'B', 'C']);
+      expect(result.candidates).toBe(initial.candidates);
+    });
+
+    it('remaps recorded feedback scores from the old key to the new on a rename', () => {
+      const initial = state({
+        jobs: [job({ id: 1, traits: ['A', 'B'] })],
+        candidates: [
+          candidate({
+            id: 1,
+            jobId: 1,
+            feedback: [
+              {
+                id: 1,
+                byUser: 1,
+                traitScores: { A: 4, B: 3 },
+                note: '',
+                stage: 'Applied'
+              }
+            ]
+          })
+        ]
+      });
+      // Old [A, B] → new [X, B]: A is renamed to X, so the score recorded under
+      // A must carry over to X (renameTraitScoreKey), B untouched.
+      const result = hiringReducer(initial, {
+        type: 'setJobTraits',
+        jobId: 1,
+        traits: ['X', 'B']
+      });
+      expect(result.jobs[0].traits).toEqual(['X', 'B']);
+      const scores = result.candidates[0].feedback[0].traitScores;
+      expect(scores).toEqual({ B: 3, X: 4 });
+      expect(scores.A).toBeUndefined();
+    });
+  });
+
+  describe('reorderTrait', () => {
+    it('swaps a trait with its neighbour', () => {
+      const initial = state({ jobs: [job({ id: 1, traits: ['A', 'B', 'C'] })] });
+      const result = hiringReducer(initial, {
+        type: 'reorderTrait',
+        jobId: 1,
+        index: 0,
+        dir: 1
+      });
+      expect(result.jobs[0].traits).toEqual(['B', 'A', 'C']);
+    });
+
+    it('is a no-op when the move would fall off the edge', () => {
+      const initial = state({ jobs: [job({ id: 1, traits: ['A', 'B'] })] });
+      const result = hiringReducer(initial, {
+        type: 'reorderTrait',
+        jobId: 1,
+        index: 0,
+        dir: -1
+      });
+      expect(result.jobs[0].traits).toEqual(['A', 'B']);
+    });
+
+    it('is a no-op when the job is missing', () => {
+      const initial = state({ jobs: [job({ id: 1, traits: ['A', 'B'] })] });
+      const result = hiringReducer(initial, {
+        type: 'reorderTrait',
+        jobId: 404,
+        index: 0,
+        dir: 1
+      });
+      expect(result.jobs).toEqual(initial.jobs);
+    });
+  });
+
   describe('deleteJob', () => {
     it('removes the job and all of its candidates', () => {
       const initial = state({

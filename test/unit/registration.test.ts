@@ -36,7 +36,12 @@ vi.mock('bcryptjs', () => ({
   hash: vi.fn(async () => 'hashed')
 }));
 
-import { registerUser, PASSWORD_MIN_LENGTH } from '@/lib/registration';
+import { hash } from 'bcryptjs';
+import {
+  registerUser,
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_COST
+} from '@/lib/registration';
 
 const validPassword = 'a'.repeat(PASSWORD_MIN_LENGTH);
 
@@ -45,6 +50,8 @@ beforeEach(() => {
   insertValues.mockReset();
   selectResult.mockReset();
   selectResult.mockResolvedValue([]);
+  // Clear call history only — keep the async impl that returns 'hashed'.
+  vi.mocked(hash).mockClear();
 });
 
 describe('registerUser input validation (safe to report distinctly)', () => {
@@ -83,6 +90,23 @@ describe('registerUser enumeration safety (uniform outcome)', () => {
     });
 
     expect(result).toEqual({ ok: true, created: false });
+    expect(insertValues).not.toHaveBeenCalled();
+  });
+
+  it('still hashes the password on the non-allowlisted path (uniform timing)', async () => {
+    // The enumeration-timing fix hashes up front on EVERY validated request, so
+    // the allowlist-miss path pays the same bcrypt cost as a real signup and
+    // cannot be distinguished by response time. Assert the hash ran even though
+    // no account is created.
+    isEmailAllowed.mockResolvedValue(false);
+
+    await registerUser({
+      email: 'stranger@example.com',
+      password: validPassword
+    });
+
+    expect(hash).toHaveBeenCalledTimes(1);
+    expect(hash).toHaveBeenCalledWith(validPassword, PASSWORD_COST);
     expect(insertValues).not.toHaveBeenCalled();
   });
 
