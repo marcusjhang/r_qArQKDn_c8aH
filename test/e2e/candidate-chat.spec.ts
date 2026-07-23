@@ -18,7 +18,12 @@ test.describe('candidate discussion chat', () => {
   test('sending a message appends it to the thread', async ({ page }) => {
     await openCandidate(page, CANDIDATE);
     const chat = page.locator('aside.drawer.open .chat');
-    await expect(chat.getByText('Discussion')).toBeVisible();
+    // Match the static section header exactly — a bare getByText('Discussion')
+    // also matches the "Loading discussion…" placeholder (case-insensitive
+    // substring), so while the thread query is still resolving the locator is
+    // ambiguous and the assertion times out. `exact` pins it to the header,
+    // which renders immediately regardless of the query.
+    await expect(chat.getByText('Discussion', { exact: true })).toBeVisible();
 
     const message = `Looks strong, let's schedule onsite ${Date.now()}`;
     await chat.locator('textarea').fill(message);
