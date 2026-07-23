@@ -94,8 +94,26 @@ export default function JobTabs({
                   <span className="jobmenu-title">{j.title}</span>
                   <span className="count">{liveCount(j.id)}</span>
                 </button>
-                {confirmId === j.id ? (
-                  <span className="jobmenu-confirm">
+                <button
+                  className="jobmenu-del"
+                  title={
+                    jobs.length <= 1 ? 'Can’t delete the only job' : 'Delete job'
+                  }
+                  disabled={jobs.length <= 1}
+                  aria-haspopup="dialog"
+                  aria-expanded={confirmId === j.id}
+                  onClick={() =>
+                    setConfirmId(confirmId === j.id ? null : j.id)
+                  }
+                >
+                  ✕
+                </button>
+                {confirmId === j.id && (
+                  <div
+                    className="jobmenu-confirm"
+                    role="dialog"
+                    aria-label={`Delete ${j.title}?`}
+                  >
                     <button
                       className="jobmenu-del danger"
                       onClick={() => {
@@ -112,20 +130,7 @@ export default function JobTabs({
                     >
                       Cancel
                     </button>
-                  </span>
-                ) : (
-                  <button
-                    className="jobmenu-del"
-                    title={
-                      jobs.length <= 1
-                        ? 'Can’t delete the only job'
-                        : 'Delete job'
-                    }
-                    disabled={jobs.length <= 1}
-                    onClick={() => setConfirmId(j.id)}
-                  >
-                    ✕
-                  </button>
+                  </div>
                 )}
               </div>
             ))}

@@ -1479,6 +1479,7 @@
   gap: 2px;
 }
 .ht-root .jobmenu-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1554,9 +1555,22 @@
   color: var(--rej-fg);
   font-weight: 600;
 }
+/* Delete confirmation floats over the row as a popup so the menu row never
+   reflows when it opens (the ✕ trigger stays put underneath). */
 .ht-root .jobmenu-confirm {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  z-index: 30;
   display: inline-flex;
-  gap: 4px;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
 }
 .ht-root .jobmenu-cancel {
   border: none;
