@@ -62,3 +62,19 @@ accounts' passwords after seeding). Do not deploy with the default in place.
 - Signups are restricted to an allowlist (`lib/allowlist.ts`), enforced in
   `POST /api/register` and managed from `/members`.
 - Passwords are hashed with bcrypt (cost 12) and never logged or returned.
+
+### Registration enumeration
+
+`POST /api/register` must not reveal whether an email is allowlisted or already
+has an account — either signal would let an unauthenticated attacker enumerate
+the allowlist and existing users. The endpoint therefore returns a **single
+generic response** (`202` with a neutral "if this email is eligible…" message)
+for every request that passes input validation, whether the account was newly
+created, already existed, or the email was not on the allowlist. The allowlist
+and duplicate checks still fully gate account creation server-side
+(`lib/registration.ts`); only the *response* is uniform, and the internal
+`created` flag it returns is never echoed to the client.
+
+Genuine input-validation failures (missing email/password, password shorter
+than the minimum length) still return a clear `400` — these describe the
+request, not account existence, so they leak nothing.
