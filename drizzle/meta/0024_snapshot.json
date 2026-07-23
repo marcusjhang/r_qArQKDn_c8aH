@@ -1,6 +1,6 @@
 {
-  "id": "6ced3ec8-a3cc-43e5-ae61-aae5d57fb1a9",
-  "prevId": "83faed69-6c60-42f1-9702-be22cdb0a595",
+  "id": "49314be5-0e09-4176-a66b-2655cf071a40",
+  "prevId": "6ced3ec8-a3cc-43e5-ae61-aae5d57fb1a9",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -220,6 +220,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "stage_entered_at": {
+          "name": "stage_entered_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
         },
         "owner": {
           "name": "owner",
@@ -719,6 +726,65 @@
       },
       "policies": {},
       "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.stage_slas": {
+      "name": "stage_slas",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "stage": {
+          "name": "stage",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "max_days": {
+          "name": "max_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "stage_slas_stage_lower_unique": {
+          "name": "stage_slas_stage_lower_unique",
+          "columns": [
+            {
+              "expression": "lower(\"stage\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "stage_slas_max_days_range": {
+          "name": "stage_slas_max_days_range",
+          "value": "\"stage_slas\".\"max_days\" between 1 and 365"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.rate_limit_hits": {

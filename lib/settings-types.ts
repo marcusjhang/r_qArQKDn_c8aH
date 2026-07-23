@@ -6,3 +6,12 @@
 
 /** Success, or a caller-facing message the settings UI renders inline. */
 export type SettingsResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Result of minting an MCP API token: on success the full secret is returned
+ * exactly once, alongside a ready-to-paste `claude mcp add` command. The secret
+ * is never retrievable again — only its hash and display prefix are persisted.
+ */
+export type CreateTokenResult =
+  | { ok: true; token: string; command: string; prefix: string }
+  | { ok: false; error: string };

@@ -4,6 +4,7 @@ import { getSeniorityBands } from '@/lib/seniority';
 import { getStageSlas } from '@/lib/stage-slas';
 import { MAX_YEARS_EXPERIENCE, MAX_SLA_DAYS } from '@/lib/hiring/primitives';
 import { getProfile } from '@/lib/profile';
+import { getApiTokens } from '@/lib/tokens';
 import SettingsView from '@/components/settings/SettingsView';
 import {
   updateProfile,
@@ -15,19 +16,23 @@ import {
   removeBand,
   addStageSla,
   updateStageSla,
-  removeStageSla
+  removeStageSla,
+  createApiToken,
+  revokeApiToken
 } from './actions';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage() {
-  const [sources, bands, stageSlas, profile, session] = await Promise.all([
-    getSources(),
-    getSeniorityBands(),
-    getStageSlas(),
-    getProfile(),
-    auth()
-  ]);
+  const [sources, bands, stageSlas, profile, tokens, session] =
+    await Promise.all([
+      getSources(),
+      getSeniorityBands(),
+      getStageSlas(),
+      getProfile(),
+      getApiTokens(),
+      auth()
+    ]);
   return (
     <SettingsView
       sources={sources}
@@ -36,6 +41,7 @@ export default async function SettingsPage() {
       maxYears={MAX_YEARS_EXPERIENCE}
       maxSlaDays={MAX_SLA_DAYS}
       profile={profile}
+      tokens={tokens}
       userEmail={session?.user?.email ?? null}
       updateProfile={updateProfile}
       addSource={addSource}
@@ -47,6 +53,8 @@ export default async function SettingsPage() {
       addStageSla={addStageSla}
       updateStageSla={updateStageSla}
       removeStageSla={removeStageSla}
+      createToken={createApiToken}
+      revokeToken={revokeApiToken}
     />
   );
 }

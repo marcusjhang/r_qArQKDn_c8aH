@@ -1246,6 +1246,92 @@
   padding-top: 2px;
 }
 
+/* ---------- API tokens panel (MCP access) ---------- */
+.ht-root .token-expiry-select {
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: inherit;
+}
+/* Reveal-once box: the minted secret is shown exactly once. */
+.ht-root .token-reveal {
+  border: 1px solid var(--syes-fg);
+  background: var(--syes-bg);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ht-root .token-reveal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--syes-fg);
+}
+.ht-root .token-cmd {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  background: var(--surface);
+  border: 1px solid var(--syes-fg);
+  border-radius: var(--radius-sm);
+  padding: 9px;
+  color: var(--text);
+  word-break: break-all;
+}
+.ht-root .token-reveal-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+/* Token list row identity + metadata. */
+.ht-root .token-ident {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+.ht-root .token-name {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ht-root .token-prefix {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.ht-root .token-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+.ht-root .token-badge {
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: var(--radius-pill);
+  padding: 1px 8px;
+  color: var(--no-fg);
+  background: var(--no-bg);
+}
+.ht-root .token-badge.expired {
+  color: var(--rej-fg);
+  background: var(--rej-bg);
+}
+
 /* ---------- Dark theme (toggled via <html class="dark"> from Settings) ---------- */
 .dark .ht-root {
   --bg: #0f1115;

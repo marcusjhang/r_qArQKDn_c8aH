@@ -1,7 +1,7 @@
 'use client';
 
 // Settings: manage appearance, your profile, candidate sources, seniority
-// bands, and stage time-limits. Styled with the board's design system
+// bands, stage time-limits, and MCP API tokens. Styled with the board's design system
 // (.ht-root) so it matches the rest of the app. Server actions are passed in
 // from the page (the @/app path isn't aliased). The signup allowlist lives on
 // /members (it governs who can become a member), reachable from the account
@@ -15,7 +15,9 @@ import SourcesPanel from './SourcesPanel';
 import SeniorityBandsPanel from './SeniorityBandsPanel';
 import StageTimeLimitsPanel from './StageTimeLimitsPanel';
 import ProfilePanel from './ProfilePanel';
-import type { SettingsResult } from '@/lib/settings-types';
+import ApiTokensPanel from './ApiTokensPanel';
+import type { SettingsResult, CreateTokenResult } from '@/lib/settings-types';
+import type { ApiTokenSummary } from '@/lib/tokens';
 import '@/components/hiring/hiring.css';
 
 export default function SettingsView({
@@ -25,6 +27,7 @@ export default function SettingsView({
   maxYears,
   maxSlaDays,
   profile,
+  tokens,
   userEmail,
   updateProfile,
   addSource,
@@ -35,7 +38,9 @@ export default function SettingsView({
   removeBand,
   addStageSla,
   updateStageSla,
-  removeStageSla
+  removeStageSla,
+  createToken,
+  revokeToken
 }: {
   sources: { id: number; name: string }[];
   bands: { id: number; label: string; minYears: number }[];
@@ -43,6 +48,7 @@ export default function SettingsView({
   maxYears: number;
   maxSlaDays: number;
   profile: { firstName: string; lastName: string };
+  tokens: ApiTokenSummary[];
   userEmail?: string | null;
   updateProfile: (
     firstName: string,
@@ -65,6 +71,11 @@ export default function SettingsView({
     maxDays: number
   ) => Promise<SettingsResult>;
   removeStageSla: (id: number) => Promise<SettingsResult>;
+  createToken: (
+    name: string,
+    expiresInDays: number
+  ) => Promise<CreateTokenResult>;
+  revokeToken: (id: number) => Promise<SettingsResult>;
 }) {
   return (
     <div className="ht-root ht-settings">
@@ -121,6 +132,12 @@ export default function SettingsView({
             addStageSla={addStageSla}
             updateStageSla={updateStageSla}
             removeStageSla={removeStageSla}
+          />
+
+          <ApiTokensPanel
+            tokens={tokens}
+            createToken={createToken}
+            revokeToken={revokeToken}
           />
         </div>
       </div>
