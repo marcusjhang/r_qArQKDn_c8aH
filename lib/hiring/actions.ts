@@ -184,7 +184,9 @@ export async function moveStage(idRaw: number, stageRaw: string) {
     .where(eq(candidates.id, id))
     .limit(1);
   if (!c) return;
-  const placement = placeInStage(stage, c);
+  // Resolve "terminal" structurally (last stage), so auto-hire survives a rename.
+  const stages = (await loadJobStages(c.jobId)) ?? [];
+  const placement = placeInStage(stage, c, stages);
   await db.update(candidates).set(placement).where(eq(candidates.id, id));
   revalidateTag(BOARD_TAGS.candidates);
 }

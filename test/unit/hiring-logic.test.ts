@@ -8,7 +8,8 @@ import {
   validateStageName,
   stageDeletable,
   selectStageCards,
-  HIRED_STAGE,
+  terminalStage,
+  isTerminalStage,
   type Placement
 } from '@/lib/hiring/helpers';
 import type { Candidate, Status } from '@/lib/hiring/types';
@@ -32,57 +33,98 @@ function candidate(over: Partial<Candidate> = {}): Candidate {
   };
 }
 
+describe('terminalStage / isTerminalStage', () => {
+  it('resolves the terminal stage as the last one', () => {
+    expect(terminalStage(['Applied', 'Interview', 'Hired'])).toBe('Hired');
+  });
+
+  it('returns undefined for an empty pipeline', () => {
+    expect(terminalStage([])).toBeUndefined();
+  });
+
+  it('recognizes the last stage as terminal regardless of its name', () => {
+    const stages = ['Applied', 'Interview', 'Onboarded'];
+    expect(isTerminalStage(stages, 'Onboarded')).toBe(true);
+    expect(isTerminalStage(stages, 'Interview')).toBe(false);
+    expect(isTerminalStage([], 'Onboarded')).toBe(false);
+  });
+});
+
 describe('placeInStage', () => {
-  it('marks a candidate hired when moved into the Hired column', () => {
+  const stages = ['Applied', 'Interview', 'Hired'];
+
+  it('marks a candidate hired when moved into the terminal column', () => {
     const cases: Status[] = ['active', 'onhold', 'rejected'];
     for (const status of cases) {
-      expect(placeInStage(HIRED_STAGE, { stage: 'Interview', status })).toEqual(
-        {
-          stage: HIRED_STAGE,
-          status: 'hired'
-        }
-      );
+      expect(
+        placeInStage('Hired', { stage: 'Interview', status }, stages)
+      ).toEqual({ stage: 'Hired', status: 'hired' });
     }
   });
 
-  it('re-activates a hired candidate moved out of the Hired column', () => {
+  it('re-activates a hired candidate moved out of the terminal column', () => {
     expect(
-      placeInStage('Interview', { stage: HIRED_STAGE, status: 'hired' })
+      placeInStage('Interview', { stage: 'Hired', status: 'hired' }, stages)
     ).toEqual({ stage: 'Interview', status: 'active' });
   });
 
   it('preserves the status for any other move', () => {
     const cases: Status[] = ['active', 'onhold', 'rejected'];
     for (const status of cases) {
-      expect(placeInStage('Interview', { stage: 'Applied', status })).toEqual({
-        stage: 'Interview',
-        status
-      });
+      expect(
+        placeInStage('Interview', { stage: 'Applied', status }, stages)
+      ).toEqual({ stage: 'Interview', status });
     }
+  });
+
+  it('auto-hires by position, so a renamed terminal column still hires', () => {
+    // The terminal column was renamed 'Hired' -> 'Onboarded'; auto-hire must
+    // follow the last stage, not the old literal.
+    const renamed = ['Applied', 'Interview', 'Onboarded'];
+    expect(
+      placeInStage(
+        'Onboarded',
+        { stage: 'Interview', status: 'active' },
+        renamed
+      )
+    ).toEqual({ stage: 'Onboarded', status: 'hired' });
+    // A column that merely happens to be named 'Hired' but isn't last does NOT.
+    const moved = ['Applied', 'Hired', 'Onboarded'];
+    expect(
+      placeInStage('Hired', { stage: 'Applied', status: 'active' }, moved)
+    ).toEqual({ stage: 'Hired', status: 'active' });
   });
 });
 
 describe('placeWithStatus', () => {
   const stages = ['Applied', 'Interview', 'Hired'];
 
-  it('pulls a newly-hired candidate into the Hired column when one exists', () => {
+  it('pulls a newly-hired candidate into the terminal column when one exists', () => {
     expect(
       placeWithStatus('hired', { stage: 'Interview', status: 'active' }, stages)
     ).toEqual({ stage: 'Hired', status: 'hired' });
   });
 
-  it('leaves the stage untouched when the candidate is already in Hired', () => {
+  it('pulls into the terminal column by position, even when renamed', () => {
+    const renamed = ['Applied', 'Interview', 'Onboarded'];
+    expect(
+      placeWithStatus(
+        'hired',
+        { stage: 'Interview', status: 'active' },
+        renamed
+      )
+    ).toEqual({ stage: 'Onboarded', status: 'hired' });
+  });
+
+  it('leaves the stage untouched when the candidate is already terminal', () => {
     expect(
       placeWithStatus('hired', { stage: 'Hired', status: 'hired' }, stages)
     ).toEqual({ stage: 'Hired', status: 'hired' });
   });
 
-  it('leaves the stage untouched when the job has no Hired column', () => {
+  it('leaves the stage untouched when the job has no stages', () => {
     expect(
-      placeWithStatus('hired', { stage: 'Interview', status: 'active' }, [
-        'Applied',
-        'Interview'
-      ])
+      placeWithStatus('hired', { stage: 'Interview', status: 'active' }, [])
     ).toEqual({ stage: 'Interview', status: 'hired' });
   });
 

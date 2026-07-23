@@ -171,12 +171,13 @@ export function hiringReducer(
       }));
 
     case 'moveStage':
-      // placeInStage couples the (stage, status) pair — entering Hired marks
-      // the candidate hired, leaving it clears a stale hired back to active.
-      return mapCandidate(state, event.id, (c) => ({
-        ...c,
-        ...placeInStage(event.stage, c)
-      }));
+      // placeInStage couples the (stage, status) pair — entering the terminal
+      // (last) stage marks the candidate hired, leaving it clears a stale hired
+      // back to active. Terminal is resolved from the job's stages by position.
+      return mapCandidate(state, event.id, (c) => {
+        const job = state.jobs.find((j) => j.id === c.jobId);
+        return { ...c, ...placeInStage(event.stage, c, job?.stages ?? []) };
+      });
 
     case 'editCandidate':
       return mapCandidate(state, event.id, (c) => ({
