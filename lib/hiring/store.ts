@@ -38,6 +38,7 @@ import { hiringReducer, type HiringEvent } from './reducer';
 import * as api from './actions';
 import { fetchBoard } from './board-query';
 import { hiringKeys } from './query-keys';
+import type { ImportRow } from './import';
 import type { HiringState, RatingValue, Status } from './types';
 
 /** Pure guard used by the board's column menu before calling deleteStage. */
@@ -90,6 +91,15 @@ export interface HiringActions {
   addStage: (jobId: number, name: string) => void;
   reorderStage: (jobId: number, index: number, dir: 1 | -1) => void;
   deleteStage: (jobId: number, index: number) => void;
+  /**
+   * Bulk-import resolved CSV rows. Not optimistic — a bulk insert can create
+   * jobs and sources too, so on success we resync from the server rather than
+   * projecting many temp rows into the cache. `onDone` fires with the count.
+   */
+  importCandidates: (
+    rows: ImportRow[],
+    onDone: (result: { inserted: number }) => void
+  ) => void;
 }
 
 /** The persistence unit: a server-action thunk plus an optional id reconciler. */
@@ -455,6 +465,25 @@ export function useHiringStore(initial: HiringState): {
     [dispatch, persist, snapshot, whenReconciled]
   );
 
+  const importCandidates = useCallback(
+    (rows: ImportRow[], onDone: (result: { inserted: number }) => void) => {
+      if (rows.length === 0) {
+        onDone({ inserted: 0 });
+        return;
+      }
+      // Not optimistic: the bulk write can create jobs + sources too, so we let
+      // the server commit, then resync the board query to adopt the new rows.
+      persist({
+        run: () => api.importCandidates(rows),
+        onResult: (result) => {
+          onDone(result as { inserted: number });
+          resync();
+        }
+      });
+    },
+    [persist, resync]
+  );
+
   const actions: HiringActions = {
     createJob,
     setJobStarred,
@@ -469,7 +498,8 @@ export function useHiringStore(initial: HiringState): {
     renameStage,
     addStage,
     reorderStage,
-    deleteStage
+    deleteStage,
+    importCandidates
   };
 
   return { state, actions };

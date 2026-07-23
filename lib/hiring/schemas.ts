@@ -84,3 +84,28 @@ export const feedbackInsertSchema = createInsertSchema(feedback, {
   rating: zRating,
   note: zNote
 }).pick({ byUser: true, rating: true, note: true });
+
+/* CSV import ------------------------------------------------------------ */
+
+// One resolved import row (see lib/hiring/import.ts). Ids are resolved on the
+// client for the preview, but re-validated here — the action never trusts them
+// blindly and the FKs on owner/source are the existence guards. `jobId` is null
+// when a job must be created from `jobTitle`; `source` is null when a source
+// must be created from `sourceName`. `stage` is optional (server defaults it to
+// the job's first stage); `status` defaults to active.
+const candidateImportRowSchema = z.object({
+  name: zName,
+  jobId: zId.nullable(),
+  jobTitle: zJobTitle,
+  stage: zStageName.optional(),
+  status: zStatus.default('active'),
+  owner: zId,
+  source: zId.nullable(),
+  sourceName: zName,
+  yearsExperience: zYears,
+  linkedinUrl: zProfileUrl,
+  githubUrl: zProfileUrl
+});
+
+// A single import call is bounded so one upload can't insert unboundedly.
+export const importCandidatesSchema = z.array(candidateImportRowSchema).max(1000);

@@ -28,6 +28,8 @@ import TopBar from './TopBar';
 import { ACCOUNT_LINKS } from './UserMenu';
 import NotificationBell from './NotificationBell';
 import CandidateSearch from './CandidateSearch';
+import CsvMenu from './CsvMenu';
+import ImportDialog from './ImportDialog';
 import './hiring.css';
 
 export default function HiringApp({
@@ -42,6 +44,7 @@ export default function HiringApp({
   const { state, actions } = useHiringStore(initial);
   const [activeJob, setActiveJob] = useState<number>(state.jobs[0]?.id ?? 0);
   const [showRejected, setShowRejected] = useState(false);
+  const [importing, setImporting] = useState(false);
   // A single overlay state machine replaces the old cluster of open/adding/
   // creating flags: at most one overlay is open at a time, so the drawer and
   // the two modals are variants of one discriminated union (see ./overlay).
@@ -100,8 +103,7 @@ export default function HiringApp({
   const openCandidateInJob = useCallback(
     (candidateId: number, jobId: number) => {
       if (state.jobs.some((j) => j.id === jobId)) setActiveJob(jobId);
-      setFocusMessageId(null);
-      setOpenId(candidateId);
+      dispatchOverlay({ type: 'openCandidate', candidateId });
     },
     [state.jobs]
   );
@@ -156,6 +158,13 @@ export default function HiringApp({
           onSelect={openCandidateInJob}
         />
         <div className="spacer" />
+        <CsvMenu
+          state={state}
+          onImport={() => {
+            dispatchOverlay({ type: 'close' });
+            setImporting(true);
+          }}
+        />
         <label className="toggle">
           <input
             type="checkbox"
@@ -217,6 +226,15 @@ export default function HiringApp({
           onCreate={(title) =>
             actions.createJob(title, (id) => setActiveJob(id))
           }
+        />
+      )}
+
+      {importing && (
+        <ImportDialog
+          state={state}
+          currentUserId={currentUserId}
+          onImport={actions.importCandidates}
+          onClose={() => setImporting(false)}
         />
       )}
     </div>

@@ -23,7 +23,8 @@ export {
   editCandidate,
   setCandidateStarred,
   moveStage,
-  setStatus
+  setStatus,
+  importCandidates
 } from './candidates';
 export { addFeedback } from './feedback';
 export { addStage, renameStage, reorderStage, deleteStage } from './stages';
