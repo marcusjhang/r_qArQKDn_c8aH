@@ -8,11 +8,10 @@
 // logic (./chat-logic) with the production Drizzle-backed store. The seam keeps
 // the logic unit-testable without a database; see chat-logic.test.ts.
 //
-// Chat data (messages/mentions) lives outside the board's tag-scoped Data
-// Cache, so these actions mutate and return without a cache-wide
-// revalidatePath — the board cache stays warm and the client reconciles its own
-// TanStack Query caches (optimistic thread update in useChatThread; the
-// NotificationBell invalidates its notifications query to re-read the inbox).
+// These actions mutate and return without any server-side cache invalidation —
+// TanStack Query is the sole client cache, so the client reconciles its own
+// caches (optimistic thread update in useChatThread; the NotificationBell
+// invalidates its notifications query to re-read the inbox).
 
 import { auth } from '@/lib/auth';
 import {

@@ -56,8 +56,8 @@ for a REST/GraphQL/RPC handler:
 ## Server actions — the single write path
 
 > Authoring recipe for this path (new mutation: zod schema → optimistic store
-> action → `'use server'` action → revalidate → rollback): the **`server-actions`**
-> skill.
+> action → `'use server'` action → TanStack Query resync on failure): the
+> **`server-actions`** skill.
 
 - Every mutation is a server action (`'use server'`). Flag a write performed
   outside an action (e.g. a `route.ts` doing an ad-hoc DB write that the action
@@ -67,9 +67,15 @@ for a REST/GraphQL/RPC handler:
   `candidateInsertSchema.parse`, …) before touching the DB. Flag any action that
   trusts a raw `number`/`string` argument. A parse failure should throw so the
   client store's `resync()` reverts the optimistic change — don't swallow it.
-- **Revalidate after a mutation.** DB-backed pages are cached; an action that
-  changes data must call `revalidatePath('/')` (or the affected path). Flag a
-  mutation with no revalidation — the UI will go stale after a resync.
+- **Cache resync after a mutation — know which layer.** The hiring board has
+  **no** server-side Data Cache: its reads are uncached and **TanStack Query is
+  the sole cache**, so a board action must NOT `revalidateTag`/`revalidatePath`
+  (the client store updates optimistically and, on a failed write, `resync()`s by
+  `invalidateQueries` → refetch). Flag a board action that adds a stray
+  `revalidate*`. The *server-rendered* `/settings` and `/members` pages are the
+  opposite case — they don't use TanStack Query, so their actions must
+  `revalidatePath('/settings')` / `revalidatePath('/members')` after a write, or
+  the page goes stale on navigation; flag one of those with no revalidation.
 - **Multi-statement invariants use a transaction.** When an update must stay
   consistent across tables/rows (e.g. `renameStage` updates the job's stage
   array _and_ re-points candidates), wrap it in `db.transaction`. Flag

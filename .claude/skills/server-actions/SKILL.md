@@ -2,13 +2,13 @@
 name: server-actions
 description: >-
   How to add or change a mutation in this repo — the single write path from an
-  optimistic client store through a zod-validated 'use server' action to a
-  Drizzle write and revalidatePath, with rollback on failure. Covers the exact
-  recipe for a new mutation (zod schema → optimistic store action with temp ids
-  → server action that parses, guards, transacts, and revalidates), where the
-  shared pure rules live, and how failures roll back. Use whenever a task adds or
-  edits a mutation in lib/hiring/actions.ts, lib/hiring/store.ts,
-  lib/hiring/schemas.ts, lib/hiring/helpers.ts, or a component that triggers a
+  optimistic TanStack Query client store through a zod-validated 'use server'
+  action to a Drizzle write, with rollback on failure. Covers the exact recipe
+  for a new mutation (zod schema → optimistic store action with temp ids →
+  server action that parses, guards, and transacts), where the shared pure rules
+  live, and how a failed write resyncs the TanStack Query cache. Use whenever a
+  task adds or edits a mutation in lib/hiring/actions/**, lib/hiring/store.ts,
+  lib/hiring/schemas.ts, lib/hiring/helpers/**, or a component that triggers a
   write. For *reviewing* these changes use the pr-code-review skill
   (references/backend.md + type-management.md); for reads/schema use the drizzle
   skill — this skill is for authoring the write path.
@@ -27,20 +27,26 @@ belong to the **`drizzle`** skill.
 
 ```
 UI event (components/hiring/**, 'use client')
-  → orchestration hook (use*.ts)        // multi-step flows only
-    → store action (lib/hiring/store.ts) // optimistic: mutate local state now
-      → server action (lib/hiring/actions.ts, 'use server')
+  → orchestration hook (use*.ts)         // multi-step flows only
+    → store action (lib/hiring/store.ts)  // optimistic: setQueryData into the board cache now
+      → server action (lib/hiring/actions/**, 'use server')
         → zod .parse (lib/hiring/schemas.ts)   // boundary validation
           → Drizzle write (single stmt, or db.transaction for invariants)
-            → revalidatePath('/')
-  on throw → store resync() → router.refresh()  // rolls back the optimistic change
+  on throw → useMutation onError → resync() → invalidateQueries(board) → refetch (fetchBoard)
+             // rolls back the optimistic change
 ```
 
-The store applies the change immediately, then calls the action inside
-`startTransition`. If the action throws (e.g. a zod parse failure), the store's
-`resync()` sets a flag and `router.refresh()`es, so fresh server props replace
-the failed optimistic state. **This is why actions must `.parse` and must not
-swallow errors** — the throw *is* the rollback signal.
+The board's client state is backed by **TanStack Query** — there is no
+server-side Data Cache, so a board action just validates, writes, and returns
+(handing back a created row's id for temp-id reconciliation); it does **not**
+`revalidateTag`/`revalidatePath`. The store applies the change immediately by
+writing the optimistic projection straight into the board query cache
+(`setQueryData`) and persists it through a single `useMutation`. If the action
+throws (e.g. a zod parse failure), the mutation's `onError` calls `resync()`,
+which `invalidateQueries` the board so it refetches the authoritative rows (via
+the `fetchBoard` server action) and replaces the optimistic cache. **This is why
+actions must `.parse` and must not swallow errors** — the throw *is* the rollback
+signal.
 
 ## Recipe: add a mutation
 
@@ -49,7 +55,8 @@ swallow errors** — the throw *is* the rollback signal.
    `zStatus`, `zOwner`, …) and the `drizzle-zod` insert shapes
    (`candidateInsertSchema`, `feedbackInsertSchema`). Everything is built from
    the single-sourced tuples in `primitives.ts` — don't hand-list values.
-2. **Add the server action** in `lib/hiring/actions.ts` (file is `'use server'`):
+2. **Add the server action** in `lib/hiring/actions/**` (split by entity behind
+   the `actions/index.ts` barrel; each file is `'use server'`):
    - **Parse every raw arg first**: `const id = zId.parse(idRaw)` — never touch
      the DB with an unvalidated `number`/`string`. Let a parse failure throw.
    - **Reach for shared rules, don't re-inline them** — the pure helpers in
@@ -60,14 +67,22 @@ swallow errors** — the throw *is* the rollback signal.
      failure rather than throwing.
    - **Multi-statement invariants use `db.transaction`** — e.g. `renameStage`
      updates the job's `stages` array *and* re-points candidates in one tx.
-   - **`revalidatePath('/')`** at the end so the cached board re-reads.
+   - **No server-side revalidation.** The board's reads are uncached and TanStack
+     Query is the sole cache, so the action just returns after its write (return
+     a created row's id for temp-id reconciliation). Do **not** add a
+     `revalidateTag`/`revalidatePath` — the client resyncs its own cache. (The
+     exception is the *server-rendered* `/settings` and `/members` pages, which
+     don't use TanStack Query and still `revalidatePath` their own route.)
 3. **Add the optimistic store action** in `lib/hiring/store.ts`:
-   - Mutate local state immediately; wrap the persist in `startTransition`.
+   - Apply the change immediately with `setQueryData` into the board query cache
+     (via the shared `dispatch`), then persist through the shared `useMutation`
+     (`persist`).
    - For created rows, use a **negative temp id** (`tempId.current--`) until the
      server returns the real id (e.g. `createJob` returns `number | null`,
      adopted via `onReady`). Never let a temp id reach anything persisted.
-   - In the `catch`, call `resync()` — every optimistic action needs this
-     rollback path.
+   - Rollback is centralized: the shared `useMutation`'s `onError` calls
+     `resync()` (which `invalidateQueries` the board → refetch), so you don't
+     hand-write a `catch` per action — just route the write through `persist`.
 4. **Trigger it from the component** via the store action (or an orchestration
    `use*` hook for multi-step flows). A display component must not call a server
    action directly or do its own DB write.
