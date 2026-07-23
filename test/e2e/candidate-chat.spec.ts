@@ -18,7 +18,14 @@ test.describe('candidate discussion chat', () => {
   test('sending a message appends it to the thread', async ({ page }) => {
     await openCandidate(page, CANDIDATE);
     const chat = page.locator('aside.drawer.open .chat');
-    await expect(chat.getByText('Discussion')).toBeVisible();
+    // Match the title exactly — a substring match also hits the
+    // "Loading discussion…" placeholder (strict-mode violation). Then wait for
+    // that placeholder to clear so the optimistic post below isn't clobbered
+    // when the initial thread load resolves.
+    await expect(chat.getByText('Discussion', { exact: true })).toBeVisible();
+    await expect(
+      chat.locator('.chat-empty', { hasText: 'Loading' })
+    ).toHaveCount(0);
 
     const message = `Looks strong, let's schedule onsite ${Date.now()}`;
     await chat.locator('textarea').fill(message);
@@ -32,6 +39,10 @@ test.describe('candidate discussion chat', () => {
     await openCandidate(page, CANDIDATE);
     const chat = page.locator('aside.drawer.open .chat');
     const composer = chat.locator('textarea');
+    // Let the thread finish loading before composing/posting.
+    await expect(
+      chat.locator('.chat-empty', { hasText: 'Loading' })
+    ).toHaveCount(0);
 
     // Typing "@" opens the mention menu over the board's users.
     await composer.fill('cc ');
@@ -58,6 +69,10 @@ test.describe('candidate discussion chat', () => {
   test('messages persist across a reload', async ({ page }) => {
     await openCandidate(page, CANDIDATE);
     const chat = page.locator('aside.drawer.open .chat');
+    // Let the thread finish loading so the optimistic post survives it.
+    await expect(
+      chat.locator('.chat-empty', { hasText: 'Loading' })
+    ).toHaveCount(0);
 
     const message = `Persisted chat ${Date.now()}`;
     await chat.locator('textarea').fill(message);
