@@ -36,7 +36,7 @@ async function callerEmail(): Promise<string | null> {
 export async function loadThread(
   candidateIdRaw: number
 ): Promise<ChatMessage[]> {
-  return loadThreadWith(drizzleChatStore, candidateIdRaw);
+  return loadThreadWith(drizzleChatStore, await callerEmail(), candidateIdRaw);
 }
 
 /**

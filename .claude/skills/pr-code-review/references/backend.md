@@ -62,6 +62,12 @@ for a REST/GraphQL/RPC handler:
 - Every mutation is a server action (`'use server'`). Flag a write performed
   outside an action (e.g. a `route.ts` doing an ad-hoc DB write that the action
   layer should own).
+- **Client-callable _reads_ must guard too.** A `'use server'` read used as a
+  TanStack Query `queryFn` (`fetchBoard`, `loadThread`, `fetchNotifications`) is
+  just as directly POST-able as a write — its action id ships in the client
+  bundle and the page middleware does NOT gate action POSTs. Flag any such read
+  that skips the session check (`auth()` / `callerEmail()` / `requireUser()`): it
+  is an unauthenticated data-dump bypass, not just a missing-revalidate nit.
 - **Validate every input with zod at the boundary.** Each action's raw args must
   be parsed through the validators in `lib/**/schemas.ts` (`zId.parse`,
   `candidateInsertSchema.parse`, …) before touching the DB. Flag any action that

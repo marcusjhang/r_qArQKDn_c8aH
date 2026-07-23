@@ -40,6 +40,11 @@ new/changed component against these:
   parent must orchestrate and notify via callbacks. Minimize internal state to
   maximize reuse — and there must be a single source of truth (no duplicated
   state that can drift).
+- **One client-state system for server data.** Server data on the client goes
+  through TanStack Query (the single client cache). Flag a new hand-rolled
+  store/reducer for server data, or a second client cache running alongside the
+  Query cache — that duplication is the "two coexisting caches" App-Router
+  anti-pattern and can silently drift.
 - **Low coupling, high cohesion.** No cross-feature reach-ins, no deep imports
   into another module's internals, no circular dependencies. Business logic must
   not leak into shared UI primitives.
