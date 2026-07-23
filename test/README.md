@@ -1,6 +1,22 @@
 # Tests
 
-Two layers, matching the two testing frameworks configured in `package.json`.
+Three layers: fast pure **unit** tests and DB-backed **integration** tests (both
+Vitest), plus browser **e2e** tests (Playwright).
+
+## Test environment
+
+Environment inputs are resolved once, into a typed object, by
+[`test/env.ts`](./env.ts) — tests import structured values from there instead of
+reading or mutating the global `process.env` (shared mutable state makes suites
+order-dependent). `readTestEnv` is also exported as a pure function so a test can
+model a specific environment by passing a plain object. The same
+structured-override principle applies elsewhere: e.g. `createDefaultStore(env)`
+in `lib/rate-limit.ts` takes an env argument so the store-selection logic is
+tested without touching `process.env`.
+
+Database selection precedence (integration + e2e): `TEST_DATABASE_URL` (a
+dedicated, throwaway database — **preferred**) → `DATABASE_URL` (dev fallback).
+Set `TEST_DATABASE_URL` for any run that must not touch development data.
 
 ## Unit tests — Vitest (`test/unit/`)
 
@@ -8,6 +24,14 @@ Fast, pure-function tests with no database or browser. They target the
 framework-free hiring business logic in `lib/hiring/helpers.ts` (status/stage
 placement, stage-array edits, name validation, board filtering + sorting) and
 the dependency-injected `getBoard` reader in `lib/hiring/service.ts`.
+
+Security policy is unit-tested here too, via the framework-free
+[`lib/auth-policy.ts`](../lib/auth-policy.ts) (the auth decisions were extracted
+out of `lib/auth.ts`, which can't be imported outside a Next runtime). See
+`test/unit/auth-gate.test.ts`: the whole-app login gate, the forced first-login
+`mustChangePassword` confinement, the middleware route matcher, the
+Server-Action `resolveUserId` guard, and anomalous credentials-input rejection —
+i.e. the authorization/edge cases from `SECURITY.md`, not just the happy path.
 
 ```bash
 bun run test           # run the unit suite once
@@ -35,6 +59,33 @@ today (they report but don't block merges); tune the gates in `codecov.yml` at
 the repo root. Private repos additionally need a `CODECOV_TOKEN` in the repo's
 GitHub Actions secrets.
 
+## Integration tests — Vitest (`test/integration/`)
+
+DB-backed tests that talk to a **real Postgres**, run explicitly:
+
+```bash
+bun run test:integration   # vitest --config vitest.integration.config.ts
+```
+
+They use the harness in [`test/integration/helpers/db.ts`](./integration/helpers/db.ts),
+which builds an isolated client via `createDb` (`lib/db.ts`) against the resolved
+test database and provides two isolation strategies:
+
+- **`withRollback(fn)`** — runs `fn` inside a transaction that is **always rolled
+  back**, so nothing it writes is ever committed. This is the default: it's safe
+  even against the shared dev `DATABASE_URL`, giving each test a clean, ephemeral
+  slice of the database.
+- **`resetTables(tables)`** — `TRUNCATE … RESTART IDENTITY CASCADE` for tests
+  needing committed state. Destructive, so it **refuses to run** unless a
+  dedicated `TEST_DATABASE_URL` is configured — it can never wipe a database the
+  harness merely fell back to.
+
+When no database is reachable, the suites `describe.skipIf(!hasTestDatabase)`
+themselves, so the layer is safe to run anywhere (and in CI without a database).
+Current specs cover the harness's own isolation guarantee, the `allowed_emails`
+unique constraint, and the atomic `rate_limit_hit()` SQL limiter behind
+`PostgresRateLimitStore` (the production rate-limiting path — see `SECURITY.md`).
+
 ## End-to-end tests — Playwright (`test/e2e/`)
 
 Browser-level tests covering the core happy paths:
@@ -56,7 +107,9 @@ bun run test:e2e           # boots the app via playwright.config.ts and runs spe
 ```
 
 Set `PLAYWRIGHT_BASE_URL` to point at an already-running instance and Playwright
-will skip the managed web server.
+will skip the managed web server. When Playwright boots the server itself and
+`TEST_DATABASE_URL` is set, the managed app is pointed at that dedicated database
+(via `webServer.env`) so e2e runs never mutate development data.
 
 ## Adding tests
 
@@ -65,4 +118,10 @@ will skip the managed web server.
   `store.ts` / components) so it stays testable and shared across layers.
 - Injecting data: follow the `BoardReader` pattern in `service.ts` — accept the
   data dependency as an argument with a production default, so tests can pass a
-  fake.
+  fake. For environment inputs, take a structured override argument defaulting to
+  `process.env` (as `createDefaultStore(env)` does) rather than reading globals.
+- Security/policy: put a decision that must be tested outside a Next runtime in a
+  framework-free module (like `lib/auth-policy.ts`) and have the Next glue adapt
+  it, so the decision is unit-testable without booting middleware/next-auth.
+- Integration (needs a DB): wrap the body in `withRollback` so it leaves no
+  state behind, and gate the suite with `describe.skipIf(!hasTestDatabase)`.

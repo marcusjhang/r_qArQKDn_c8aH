@@ -3,13 +3,14 @@ import type { JWT } from 'next-auth/jwt';
 import Credentials from 'next-auth/providers/credentials';
 import { NextResponse } from 'next/server';
 import { compare } from 'bcryptjs';
-import { z } from 'zod';
 import { db, users } from '@/lib/db';
 import { normalizeEmail } from '@/lib/allowlist';
 import { eq } from 'drizzle-orm';
-
-/** Path of the forced first-login password-change page (see the gate below). */
-const CHANGE_PASSWORD_PATH = '/change-password';
+import {
+  credentialsSchema,
+  evaluateAccess,
+  resolveUserId
+} from '@/lib/auth-policy';
 
 declare module 'next-auth' {
   interface Session {
@@ -35,13 +36,6 @@ declare module 'next-auth/jwt' {
     mustChangePassword?: boolean;
   }
 }
-
-// Validate the untyped credentials payload at the authorize boundary. On any
-// parse failure we return null (an authentication failure) rather than throw.
-const credentialsSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1)
-});
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   pages: {
@@ -82,27 +76,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   session: { strategy: 'jwt' },
   callbacks: {
-    // Runs in middleware for every matched route (see middleware.ts). Gates the
-    // whole app behind login: only the sign-in page is public. Returning false
-    // redirects to pages.signIn ('/login') with a callbackUrl back to the route.
-    //
-    // Second gate: an account that still carries the seeded default password
-    // (mustChangePassword) is confined to the /change-password page until it
-    // picks a new one — every other page route redirects there, and once the
-    // flag is cleared the page itself redirects back to the board.
+    // Runs in middleware for every matched route (see middleware.ts). Thin
+    // adapter over the framework-free `evaluateAccess` policy (lib/auth-policy):
+    // it gates the whole app behind login (only the sign-in page is public) and
+    // confines a seeded default-password account (mustChangePassword) to
+    // /change-password until it picks a new one. Here we only translate the
+    // decision into what NextAuth expects — the decision itself is unit-tested.
     authorized({ auth, request }) {
-      const { pathname } = request.nextUrl;
-      if (pathname === '/login') return true;
-      if (!auth?.user) return false;
-
-      const mustChange = auth.user.mustChangePassword === true;
-      if (mustChange && pathname !== CHANGE_PASSWORD_PATH) {
-        return NextResponse.redirect(new URL(CHANGE_PASSWORD_PATH, request.nextUrl));
+      const decision = evaluateAccess({
+        pathname: request.nextUrl.pathname,
+        isLoggedIn: !!auth?.user,
+        mustChangePassword: auth?.user?.mustChangePassword === true
+      });
+      switch (decision.type) {
+        case 'public':
+        case 'allow':
+          return true;
+        case 'unauthenticated':
+          // NextAuth redirects to pages.signIn ('/login') with a callbackUrl.
+          return false;
+        case 'redirect':
+          return NextResponse.redirect(new URL(decision.to, request.nextUrl));
       }
-      if (!mustChange && pathname === CHANGE_PASSWORD_PATH) {
-        return NextResponse.redirect(new URL('/', request.nextUrl));
-      }
-      return true;
     },
     jwt({ token, user }) {
       if (user) {
@@ -132,11 +127,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
  *
  * Uses the numeric id set on the session (see the `session` callback) as the
  * "signed in" signal, matching how `lib/profile.ts` and the settings actions
- * already read it.
+ * already read it. The session→id resolution is the pure, unit-tested
+ * `resolveUserId` (lib/auth-policy); this wrapper only supplies the live session.
  */
 export async function requireUser(): Promise<number> {
-  const session = await auth();
-  const id = Number(session?.user?.id);
-  if (!id) throw new Error('Unauthorized');
-  return id;
+  return resolveUserId(await auth());
 }
