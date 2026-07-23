@@ -41,6 +41,14 @@ which side each module lives on.
   a duplicate list.
 - `cache.ts` = `BOARD_TAGS` used by `service.ts` (`unstable_cache`) and the
   `revalidate*` calls in `actions.ts`. `seed.ts` = demo data.
+- Chat logic is split by concern behind the `chat-logic.ts` barrel:
+  `chat-messages.ts` (the per-candidate thread — `loadThreadWith`,
+  `postMessageWith`), `chat-notifications.ts` (the mention inbox read/writes),
+  and `chat-shaping.ts` (the shared `toChatMessage` shaper, `currentUserId`, and
+  the body/mention validators). All are `server-only` and expressed against the
+  injectable `ChatStore` seam (`chat-store.ts`); the `'use server'` adapters live
+  in `chat-actions.ts` and the server read in `chat-queries.ts`. Callers import
+  from `@/lib/hiring/chat-logic`, unchanged by the split.
 
 ## Barrel (`index.ts`)
 
