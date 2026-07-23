@@ -13,6 +13,9 @@
     with `openssl rand -base64 32`.
   - `SEED_PASSWORD` — shared password for the seeded accounts (**optional**;
     defaults to `password` — see below).
+  - `PREVIEW_ORIGIN` — the exact origin/host this deployment is served from
+    (**optional**; scopes the Server Actions CSRF allowlist — see
+    "Server Actions origin allowlist" below).
 - Lightsprint-managed repos receive `DATABASE_URL` and `AUTH_SECRET`
   automatically; no manual setup is needed for those.
 
@@ -63,6 +66,24 @@ accounts' passwords after seeding). Do not deploy with the default in place.
   `POST /api/register` and managed from `/members`.
 - Passwords are hashed with bcrypt (cost 12) and never logged or returned.
 
+## Server Actions origin allowlist
+
+Next 15's Server Actions enforce a CSRF check that rejects requests whose
+`Origin` doesn't match the deployment's host. Behind the Lightsprint proxy the
+app is served at `*.lightsprint.ai` but forwarded with an `x-forwarded-host` of
+`*.e2b.app`, so the trusted origins are configured in
+[`next.config.ts`](./next.config.ts) (`experimental.serverActions.allowedOrigins`).
+
+- **In production the allowlist is scoped to the single exact host** from
+  `PREVIEW_ORIGIN`. It does **not** trust the broad `*.lightsprint.ai` /
+  `*.e2b.app` wildcards — those are shared multi-tenant domains, so a wildcard
+  would trust every other tenant's sandbox as a same-site origin (previously
+  only mitigated by `SameSite=Lax` cookies).
+- **The wildcards are a non-production fallback only.** When `PREVIEW_ORIGIN` is
+  unset (local `bun run dev`), the broad preview domains are allowed as a
+  convenience; when it is unset in production nothing is trusted (fail-closed).
+- The dev-server cross-origin allowance (`allowedDevOrigins`) is likewise scoped
+  to the exact host when `PREVIEW_ORIGIN` is set.
 ### Registration enumeration
 
 `POST /api/register` must not reveal whether an email is allowlisted or already
