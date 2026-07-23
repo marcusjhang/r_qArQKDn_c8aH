@@ -8,14 +8,16 @@
 // stays scannable — click the row to expand it.
 
 import { useState } from 'react';
+import { MessageSquare, PartyPopper, Star } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { formatMessageTime } from '@/lib/hiring';
 import type { Member, MemberActivityKind } from '@/lib/members-types';
 
-// A small glyph per action kind, so the timeline scans at a glance.
-const KIND_ICON: Record<MemberActivityKind, string> = {
-  joined: '🎉',
-  feedback: '⭐',
-  message: '💬'
+// A small icon per action kind, so the timeline scans at a glance.
+const KIND_ICON: Record<MemberActivityKind, LucideIcon> = {
+  joined: PartyPopper,
+  feedback: Star,
+  message: MessageSquare
 };
 
 export default function MembersPanel({ members }: { members: Member[] }) {
@@ -67,10 +69,10 @@ function MemberCard({ member }: { member: Member }) {
         </div>
         <div className="member-stats">
           <span title="Feedback left">
-            {KIND_ICON.feedback} {member.feedbackCount}
+            <Star size={13} aria-hidden /> {member.feedbackCount}
           </span>
           <span title="Messages posted">
-            {KIND_ICON.message} {member.messageCount}
+            <MessageSquare size={13} aria-hidden /> {member.messageCount}
           </span>
         </div>
       </button>
@@ -80,10 +82,12 @@ function MemberCard({ member }: { member: Member }) {
           {activityCount === 0 && (
             <li className="activity-more">No activity yet.</li>
           )}
-          {member.activity.map((a) => (
+          {member.activity.map((a) => {
+            const Icon = KIND_ICON[a.kind];
+            return (
             <li className="activity-row" key={a.id}>
               <span className="activity-icon" aria-hidden>
-                {KIND_ICON[a.kind]}
+                <Icon size={14} />
               </span>
               <span className="activity-text">
                 {a.summary}
@@ -98,7 +102,8 @@ function MemberCard({ member }: { member: Member }) {
                 {formatMessageTime(a.at)}
               </time>
             </li>
-          ))}
+            );
+          })}
           {member.activityTruncated && (
             <li className="activity-more">Older activity hidden</li>
           )}

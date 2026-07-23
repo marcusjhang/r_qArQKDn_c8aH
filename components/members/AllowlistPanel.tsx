@@ -76,7 +76,7 @@ export default function AllowlistPanel({
       pending={list.pending}
       error={list.error}
       items={emails}
-      emptyText="No emails yet — no one can sign up."
+      emptyText="No emails yet. No one can sign up."
       renderRow={(e) => (
         <>
           <span className="email-addr">{e.email}</span>

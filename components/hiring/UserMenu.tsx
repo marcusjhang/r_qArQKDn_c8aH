@@ -18,8 +18,8 @@ import { useDismissableMenu } from './hooks/useDismissableMenu';
  * other) without repeating the label + route literals.
  */
 export const ACCOUNT_LINKS = {
-  settings: { href: '/settings', label: '⚙ Settings' },
-  members: { href: '/members', label: '👥 Members' }
+  settings: { href: '/settings', label: 'Settings' },
+  members: { href: '/members', label: 'Members' }
 } as const;
 
 export default function UserMenu({

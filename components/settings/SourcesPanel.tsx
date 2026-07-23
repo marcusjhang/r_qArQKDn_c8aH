@@ -61,7 +61,7 @@ export default function SourcesPanel({
       pending={list.pending}
       error={list.error}
       items={sources}
-      emptyText="No sources yet — add one so candidates can be tagged."
+      emptyText="No sources yet. Add one to tag candidates."
       renderRow={(s) =>
         list.editingId === s.id ? (
           <>
