@@ -24,7 +24,11 @@ which side each module lives on.
   optimistic updates by running the pure `reducer.ts` events straight into the
   cache (`setQueryData`), with temp-id reconciliation for creates; a failed write
   resyncs by invalidating the board query (refetch via the `fetchBoard` action in
-  `board-query.ts`). Query keys are centralized in `query-keys.ts`. Client code
+  `board-query.ts`). The optimistic-sync mechanics — temp-id counter, the
+  reconcile queue (`whenReconciled`/`flushPending`), the single persist
+  `useMutation`, and `resync` — are factored out of the store into `sync.ts`
+  (`useOptimisticSync`), so `store.ts` stays the cache wiring plus the action
+  definitions. Query keys are centralized in `query-keys.ts`. Client code
   imports from the `index.ts` barrel (`@/lib/hiring`), never from
   `service.ts`/`schemas.ts`. The chat thread (`useChatThread`) and the
   notification bell use `useQuery`/`useMutation` the same way.
