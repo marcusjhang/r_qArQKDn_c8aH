@@ -309,6 +309,40 @@ describe('useHiringStore orchestration', () => {
     expect(fetchBoard).toHaveBeenCalledTimes(1);
   });
 
+  it('resyncs when saveFeedback resolves null (server persisted nothing), rolling back the optimistic entry', async () => {
+    // saveFeedback signals a soft rejection by *resolving* null (not throwing):
+    // the candidate was gone, or every scored trait was stale and got scoped out
+    // against the job's current traits. The optimistic row must still roll back.
+    const settled = defer<number | null>();
+    vi.mocked(api.saveFeedback).mockReturnValue(settled.promise);
+    // The authoritative board has no feedback on the candidate.
+    vi.mocked(fetchBoard).mockResolvedValue(makeState());
+
+    const { result } = renderHook(() => useHiringStore(makeState()), {
+      wrapper: createWrapper()
+    });
+
+    await act(async () => {
+      result.current.actions.saveFeedback(10, {
+        byUser: 1,
+        traitScores: { 'Systems design': 4 },
+        note: 'strong'
+      });
+    });
+    // The optimistic feedback row is visible while the write is in flight.
+    expect(result.current.state.candidates[0].feedback).toHaveLength(1);
+
+    // The server resolves null — no throw, so only the null-result branch can
+    // trigger the rollback. The store refetches the authoritative board (no
+    // feedback), replacing the optimistic cache.
+    await act(async () => settled.resolve(null));
+
+    await waitFor(() =>
+      expect(result.current.state.candidates[0].feedback).toHaveLength(0)
+    );
+    expect(fetchBoard).toHaveBeenCalledTimes(1);
+  });
+
   it('does not clobber in-flight optimistic state on a routine re-render', async () => {
     const pending = defer<void>();
     vi.mocked(api.setJobStarred).mockReturnValue(pending.promise);

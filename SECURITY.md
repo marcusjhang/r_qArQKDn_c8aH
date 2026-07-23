@@ -16,6 +16,12 @@
   - `PREVIEW_ORIGIN` — the exact origin/host this deployment is served from
     (**optional**; scopes the Server Actions CSRF allowlist — see
     "Server Actions origin allowlist" below).
+  - `ANTHROPIC_API_KEY` — provider key for the AI "Suggest from JD" trait
+    recommender (`lib/hiring/ai.ts`) (**optional**; when unset the recommender is
+    disabled and the Traits modal falls back to manual entry). Read only from the
+    environment — never hardcoded, logged, or returned to the client. Optional
+    companions: `ANTHROPIC_BASE_URL` (route through a gateway) and
+    `TRAIT_AI_MODEL` (override the default model).
 - Lightsprint-managed repos receive `DATABASE_URL` and `AUTH_SECRET`
   automatically; no manual setup is needed for those.
 

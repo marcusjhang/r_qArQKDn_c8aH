@@ -441,20 +441,27 @@ export function useHiringStore(initial: HiringState): {
         persist({
           run: () => api.saveFeedback(realId, entry.note, entry.traitScores),
           onResult: (fbId) => {
-            // Adopt the server's id so a newly-appended row leaves temp-id
-            // state (a no-op when an existing entry was edited in place).
             if (typeof fbId === 'number') {
+              // Adopt the server's id so a newly-appended row leaves temp-id
+              // state (a no-op when an existing entry was edited in place).
               dispatch({
                 type: 'reconcileFeedbackId',
                 tempId: temp,
                 realId: fbId
               });
+            } else {
+              // The server resolved without persisting — the candidate is gone,
+              // or every scored trait was stale and got scoped out against the
+              // job's current traits. That's a soft failure the thrown-error
+              // path never sees, so roll the optimistic entry back by refetching
+              // the authoritative board.
+              resync();
             }
           }
         })
       );
     },
-    [dispatch, persist, whenReconciled]
+    [dispatch, persist, whenReconciled, resync]
   );
 
   const renameStage = useCallback(
