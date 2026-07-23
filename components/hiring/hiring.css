@@ -581,6 +581,7 @@
 .ht-root input[type='text'],
 .ht-root input[type='url'],
 .ht-root input[type='number'],
+.ht-root input[type='password'],
 .ht-root textarea {
   width: 100%;
   border: 1px solid var(--border-strong);
@@ -1049,6 +1050,14 @@
   align-items: flex-end;
   gap: var(--space-3);
   flex-wrap: wrap;
+}
+/* Vertically stacked settings form (e.g. the Security password fields), capped
+   so the inputs don't stretch the full panel width. */
+.ht-root .settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 360px;
 }
 .ht-root .email-list {
   list-style: none;
