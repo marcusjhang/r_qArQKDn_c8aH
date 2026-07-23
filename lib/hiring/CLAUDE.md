@@ -15,9 +15,16 @@ which side each module lives on.
   input with a zod schema from `schemas.ts` (`server-only`) before touching the
   DB, then calling `revalidatePath`. See the **server-actions** skill for the
   full optimistic-store → action → revalidate → rollback recipe.
-- **Client state** lives in `store.ts` + `reducer.ts` — optimistic updates with
-  temp ids, rolled back if the server action rejects. Client code imports from
-  the `index.ts` barrel (`@/lib/hiring`), never from `service.ts`/`schemas.ts`.
+- **Client state** is backed by **TanStack Query** (`QueryClientProvider` in the
+  root layout). Server truth lives in the query cache, seeded from RSC props via
+  `initialData`. `store.ts` (`useHiringStore`) holds the board cache and applies
+  optimistic updates by running the pure `reducer.ts` events straight into the
+  cache (`setQueryData`), with temp-id reconciliation for creates; a failed write
+  resyncs by invalidating the board query (refetch via the `fetchBoard` action in
+  `board-query.ts`). Query keys are centralized in `query-keys.ts`. Client code
+  imports from the `index.ts` barrel (`@/lib/hiring`), never from
+  `service.ts`/`schemas.ts`. The chat thread (`useChatThread`) and the
+  notification bell use `useQuery`/`useMutation` the same way.
 
 ## Where logic goes
 

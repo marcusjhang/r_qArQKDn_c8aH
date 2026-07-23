@@ -1,18 +1,31 @@
 'use client';
 
-// Client store for the board. State is seeded from the server (getBoardData)
-// and every mutation is applied optimistically by dispatching a pure event to
-// the hiring reducer, then persisted via a server action. On a failed write we
-// router.refresh() and dispatch `reset` to resync from the database.
+// Client store for the board, backed by TanStack Query.
 //
-// This hook is the thin imperative shell: it holds the temp-id counter, gates
+// Server truth lives in the query cache (key `hiringKeys.board`), seeded from
+// the server component's props via `initialData` so first paint is instant and
+// no fetch fires on mount. Every mutation is applied optimistically by running
+// the SAME pure event through the hiring reducer straight into the cache
+// (`setQueryData`), then persisted through a server action wrapped in a single
+// `useMutation`. On a failed write the mutation's `onError` resyncs — it
+// invalidates the board query, which refetches the authoritative rows and
+// replaces the optimistic cache (rolling the failed change back). The server
+// stays authoritative; the client is only ever optimistic between a write and
+// its acknowledgement.
+//
+// This hook is the thin imperative shell: it owns the temp-id counter, gates
 // each mutation with the shared pure helpers (so a doomed change never hits the
-// server), dispatches the optimistic event, and wires the server action + error
-// recovery. Every state transition itself lives in ./reducer, consuming the
-// same helpers as the server actions, so the optimistic projection can't drift.
+// server), writes the optimistic projection, and wires the mutation + resync.
+// Every state transition itself lives in ./reducer, consuming the same helpers
+// as the server actions, so the optimistic projection can't drift from the
+// server's.
 
-import { useCallback, useEffect, useReducer, useRef, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback, useRef } from 'react';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient
+} from '@tanstack/react-query';
 import {
   stageDeletable,
   validateStageName,
@@ -21,8 +34,10 @@ import {
   removeStage,
   MAX_FAVORITES
 } from './helpers';
-import { hiringReducer } from './reducer';
+import { hiringReducer, type HiringEvent } from './reducer';
 import * as api from './actions';
+import { fetchBoard } from './board-query';
+import { hiringKeys } from './query-keys';
 import type { HiringState, RatingValue, Status } from './types';
 
 /** Pure guard used by the board's column menu before calling deleteStage. */
@@ -77,22 +92,36 @@ export interface HiringActions {
   deleteStage: (jobId: number, index: number) => void;
 }
 
+/** The persistence unit: a server-action thunk plus an optional id reconciler. */
+interface PersistArgs {
+  run: () => Promise<unknown>;
+  onResult?: (result: unknown) => void;
+}
+
 export function useHiringStore(initial: HiringState): {
   state: HiringState;
   actions: HiringActions;
 } {
-  const [state, dispatch] = useReducer(hiringReducer, initial);
-  const router = useRouter();
-  const [, startTransition] = useTransition();
+  const queryClient = useQueryClient();
+
+  // The board cache, seeded from the server props. `staleTime: Infinity` +
+  // `refetchOnMount: false` keep the optimistic cache authoritative until we
+  // explicitly resync — a routine re-render (or a new `initial` prop) never
+  // clobbers an in-flight optimistic change; only `invalidateQueries` refetches.
+  const { data } = useQuery({
+    queryKey: hiringKeys.board,
+    queryFn: fetchBoard,
+    initialData: initial,
+    staleTime: Infinity,
+    refetchOnMount: false
+  });
+  const state = data ?? initial;
+
   // Negative ids for optimistic rows until the server hands back a real one.
   const tempId = useRef(-1);
-  // Always-current snapshot for handlers that need to read before writing.
-  const stateRef = useRef(state);
-  stateRef.current = state;
-  // Set just before a router.refresh() we requested, so the effect below only
-  // adopts server state on an explicit resync — never clobbering an in-flight
-  // optimistic change during the automatic post-action refresh.
-  const wantResync = useRef(false);
+  // First server snapshot, kept as the reducer's fallback base. Never reassigned
+  // so the callbacks below stay referentially stable across `initial` changes.
+  const initialRef = useRef(initial);
   // Server mutations targeting a row whose optimistic temp id hasn't reconciled
   // yet, queued by temp id. An id-targeting action fires immediately once the
   // row has a real (non-negative) id; while it's still a negative temp id the
@@ -102,21 +131,31 @@ export function useHiringStore(initial: HiringState): {
   // rejects — throwing, resyncing, and dropping the just-created row.
   const pending = useRef(new Map<number, Array<(realId: number) => void>>());
 
-  // Adopt fresh server props only when we explicitly asked to resync (error
-  // recovery). Optimistic local state is otherwise authoritative.
-  useEffect(() => {
-    if (wantResync.current) {
-      wantResync.current = false;
-      dispatch({ type: 'reset', state: initial });
-    }
-  }, [initial]);
+  // Always-current authoritative snapshot for handlers that read before writing.
+  const snapshot = useCallback(
+    (): HiringState =>
+      queryClient.getQueryData<HiringState>(hiringKeys.board) ??
+      initialRef.current,
+    [queryClient]
+  );
 
+  // Apply a pure optimistic event straight into the board cache.
+  const dispatch = useCallback(
+    (event: HiringEvent) => {
+      queryClient.setQueryData<HiringState>(hiringKeys.board, (prev) =>
+        hiringReducer(prev ?? initialRef.current, event)
+      );
+    },
+    [queryClient]
+  );
+
+  // Error recovery: drop anything queued against a temp id and refetch the
+  // authoritative board, which replaces the optimistic cache (rolling back the
+  // failed write). Replaces the old router.refresh() + wantResync effect.
   const resync = useCallback(() => {
-    wantResync.current = true;
-    // A fresh server snapshot supersedes anything queued against a temp id.
     pending.current.clear();
-    router.refresh();
-  }, [router]);
+    queryClient.invalidateQueries({ queryKey: hiringKeys.board });
+  }, [queryClient]);
 
   // Run `fn` with the row's real id: immediately when `id` is already a real
   // (non-negative) id, or deferred until the temp id reconciles otherwise.
@@ -135,25 +174,22 @@ export function useHiringStore(initial: HiringState): {
 
   // Drain the mutations queued against a temp id, replaying them with the real
   // id the server assigned. Called from createJob / addCandidate reconciliation.
-  const flushPending = useCallback((tempId: number, realId: number) => {
-    const queue = pending.current.get(tempId);
+  const flushPending = useCallback((temp: number, realId: number) => {
+    const queue = pending.current.get(temp);
     if (!queue) return;
-    pending.current.delete(tempId);
+    pending.current.delete(temp);
     for (const fn of queue) fn(realId);
   }, []);
 
-  const persist = useCallback(
-    (fn: () => Promise<unknown>) => {
-      startTransition(async () => {
-        try {
-          await fn();
-        } catch {
-          resync();
-        }
-      });
-    },
-    [resync]
-  );
+  // Every write goes through this one mutation: it runs the server action, hands
+  // a create's returned id to `onResult` for reconciliation, and resyncs on
+  // failure (which rolls the optimistic change back). `mutate` is referentially
+  // stable, so it's safe in the callback deps below.
+  const { mutate: persist } = useMutation({
+    mutationFn: ({ run }: PersistArgs) => run(),
+    onSuccess: (result, { onResult }) => onResult?.(result),
+    onError: () => resync()
+  });
 
   const createJob = useCallback(
     (title: string, onReady: (id: number) => void) => {
@@ -162,20 +198,19 @@ export function useHiringStore(initial: HiringState): {
       const temp = tempId.current--;
       dispatch({ type: 'createJob', tempId: temp, title: trimmed });
       onReady(temp); // switch to the optimistic job immediately
-      startTransition(async () => {
-        try {
-          const realId = await api.createJob(trimmed);
+      persist({
+        run: () => api.createJob(trimmed),
+        onResult: (realId) => {
           if (realId != null) {
-            dispatch({ type: 'reconcileJobId', tempId: temp, realId });
-            onReady(realId); // re-point the board at the persisted id
-            flushPending(temp, realId); // replay any edits made before reconcile
+            const id = realId as number;
+            dispatch({ type: 'reconcileJobId', tempId: temp, realId: id });
+            onReady(id); // re-point the board at the persisted id
+            flushPending(temp, id); // replay any edits made before reconcile
           }
-        } catch {
-          resync();
         }
       });
     },
-    [resync, flushPending]
+    [dispatch, persist, flushPending]
   );
 
   const setJobStarred = useCallback(
@@ -183,23 +218,25 @@ export function useHiringStore(initial: HiringState): {
       // Enforce the favorites cap (matches the server guard).
       if (
         starred &&
-        stateRef.current.jobs.filter((j) => j.starred && j.id !== jobId)
-          .length >= MAX_FAVORITES
+        snapshot().jobs.filter((j) => j.starred && j.id !== jobId).length >=
+          MAX_FAVORITES
       ) {
         return;
       }
       dispatch({ type: 'setJobStarred', jobId, starred });
-      whenReconciled(jobId, (id) => persist(() => api.setJobStarred(id, starred)));
+      whenReconciled(jobId, (id) =>
+        persist({ run: () => api.setJobStarred(id, starred) })
+      );
     },
-    [persist, whenReconciled]
+    [dispatch, persist, snapshot, whenReconciled]
   );
 
   const deleteJob = useCallback(
     (jobId: number) => {
       dispatch({ type: 'deleteJob', jobId });
-      whenReconciled(jobId, (id) => persist(() => api.deleteJob(id)));
+      whenReconciled(jobId, (id) => persist({ run: () => api.deleteJob(id) }));
     },
-    [persist, whenReconciled]
+    [dispatch, persist, whenReconciled]
   );
 
   const addCandidate = useCallback(
@@ -224,9 +261,9 @@ export function useHiringStore(initial: HiringState): {
         githubUrl,
         yearsExperience
       });
-      startTransition(async () => {
-        try {
-          const realId = await api.addCandidate(
+      persist({
+        run: () =>
+          api.addCandidate(
             jobId,
             name,
             source,
@@ -234,17 +271,17 @@ export function useHiringStore(initial: HiringState): {
             linkedinUrl,
             githubUrl,
             yearsExperience
-          );
+          ),
+        onResult: (realId) => {
           if (realId != null) {
-            dispatch({ type: 'reconcileCandidateId', tempId: temp, realId });
-            flushPending(temp, realId); // replay any edits made before reconcile
+            const id = realId as number;
+            dispatch({ type: 'reconcileCandidateId', tempId: temp, realId: id });
+            flushPending(temp, id); // replay any edits made before reconcile
           }
-        } catch {
-          resync();
         }
       });
     },
-    [resync, flushPending]
+    [dispatch, persist, flushPending]
   );
 
   const editCandidate = useCallback(
@@ -268,33 +305,36 @@ export function useHiringStore(initial: HiringState): {
         yearsExperience
       });
       whenReconciled(id, (realId) =>
-        persist(() =>
-          api.editCandidate(
-            realId,
-            name,
-            source,
-            owner,
-            linkedinUrl,
-            githubUrl,
-            yearsExperience
-          )
-        )
+        persist({
+          run: () =>
+            api.editCandidate(
+              realId,
+              name,
+              source,
+              owner,
+              linkedinUrl,
+              githubUrl,
+              yearsExperience
+            )
+        })
       );
     },
-    [persist, whenReconciled]
+    [dispatch, persist, whenReconciled]
   );
 
   const moveTo = useCallback(
     (id: number, stage: string) => {
       dispatch({ type: 'moveStage', id, stage });
-      whenReconciled(id, (realId) => persist(() => api.moveStage(realId, stage)));
+      whenReconciled(id, (realId) =>
+        persist({ run: () => api.moveStage(realId, stage) })
+      );
     },
-    [persist, whenReconciled]
+    [dispatch, persist, whenReconciled]
   );
 
   const advance = useCallback(
     (id: number, dir: 1 | -1) => {
-      const s = stateRef.current;
+      const s = snapshot();
       const c = s.candidates.find((x) => x.id === id);
       if (!c) return;
       const job = s.jobs.find((j) => j.id === c.jobId);
@@ -304,25 +344,27 @@ export function useHiringStore(initial: HiringState): {
       const stage = job.stages[nextIdx];
       if (stage !== c.stage) moveTo(id, stage);
     },
-    [moveTo]
+    [snapshot, moveTo]
   );
 
   const setStatus = useCallback(
     (id: number, status: Status) => {
       dispatch({ type: 'setStatus', id, status });
-      whenReconciled(id, (realId) => persist(() => api.setStatus(realId, status)));
+      whenReconciled(id, (realId) =>
+        persist({ run: () => api.setStatus(realId, status) })
+      );
     },
-    [persist, whenReconciled]
+    [dispatch, persist, whenReconciled]
   );
 
   const setCandidateStarred = useCallback(
     (id: number, starred: boolean) => {
       dispatch({ type: 'setCandidateStarred', id, starred });
       whenReconciled(id, (realId) =>
-        persist(() => api.setCandidateStarred(realId, starred))
+        persist({ run: () => api.setCandidateStarred(realId, starred) })
       );
     },
-    [persist, whenReconciled]
+    [dispatch, persist, whenReconciled]
   );
 
   const addFeedback = useCallback(
@@ -331,69 +373,73 @@ export function useHiringStore(initial: HiringState): {
       // the author from the session and never trusts a client-supplied one.
       const temp = tempId.current--;
       dispatch({ type: 'addFeedback', id, tempId: temp, ...entry });
-      whenReconciled(id, (realId) => {
-        startTransition(async () => {
-          try {
-            const fbId = await api.addFeedback(realId, entry.rating, entry.note);
+      whenReconciled(id, (realId) =>
+        persist({
+          run: () => api.addFeedback(realId, entry.rating, entry.note),
+          onResult: (fbId) => {
             // Adopt the server's id so the optimistic row leaves temp-id state.
             if (fbId != null) {
-              dispatch({ type: 'reconcileFeedbackId', tempId: temp, realId: fbId });
+              dispatch({
+                type: 'reconcileFeedbackId',
+                tempId: temp,
+                realId: fbId as number
+              });
             }
-          } catch {
-            resync();
           }
-        });
-      });
+        })
+      );
     },
-    [resync, whenReconciled]
+    [dispatch, persist, whenReconciled]
   );
 
   const renameStage = useCallback(
     (jobId: number, index: number, name: string) => {
       const trimmed = name.trim();
-      const job = stateRef.current.jobs.find((j) => j.id === jobId);
+      const job = snapshot().jobs.find((j) => j.id === jobId);
       if (!job) return;
       const old = job.stages[index];
       if (old === undefined || trimmed === old) return;
       if (!validateStageName(job.stages, name, index).ok) return;
       dispatch({ type: 'renameStage', jobId, index, name: trimmed });
       whenReconciled(jobId, (id) =>
-        persist(() => api.renameStage(id, index, trimmed))
+        persist({ run: () => api.renameStage(id, index, trimmed) })
       );
     },
-    [persist, whenReconciled]
+    [dispatch, persist, snapshot, whenReconciled]
   );
 
   const addStage = useCallback(
     (jobId: number, name: string) => {
-      const job = stateRef.current.jobs.find((j) => j.id === jobId);
+      const job = snapshot().jobs.find((j) => j.id === jobId);
       if (!job) return;
       // Gate on the shared rule so a rejected name never hits the server; the
       // reducer recomputes the same insertion from the same helper.
       if (!addStageToPipeline(job.stages, name).ok) return;
       const trimmed = name.trim();
       dispatch({ type: 'addStage', jobId, name: trimmed });
-      whenReconciled(jobId, (id) => persist(() => api.addStage(id, trimmed)));
+      whenReconciled(jobId, (id) =>
+        persist({ run: () => api.addStage(id, trimmed) })
+      );
     },
-    [persist, whenReconciled]
+    [dispatch, persist, snapshot, whenReconciled]
   );
 
   const reorderStage = useCallback(
     (jobId: number, index: number, dir: 1 | -1) => {
-      const job = stateRef.current.jobs.find((j) => j.id === jobId);
+      const job = snapshot().jobs.find((j) => j.id === jobId);
       if (!job) return;
       if (!reorderStages(job.stages, index, dir).ok) return;
       dispatch({ type: 'reorderStage', jobId, index, dir });
       whenReconciled(jobId, (id) =>
-        persist(() => api.reorderStage(id, index, dir))
+        persist({ run: () => api.reorderStage(id, index, dir) })
       );
     },
-    [persist, whenReconciled]
+    [dispatch, persist, snapshot, whenReconciled]
   );
 
   const deleteStage = useCallback(
     (jobId: number, index: number) => {
-      const s0 = stateRef.current;
+      const s0 = snapshot();
       const job = s0.jobs.find((j) => j.id === jobId);
       if (!job) return;
       const stage = job.stages[index];
@@ -402,9 +448,11 @@ export function useHiringStore(initial: HiringState): {
       );
       if (!removeStage(job.stages, index, hasCandidates).ok) return;
       dispatch({ type: 'deleteStage', jobId, index });
-      whenReconciled(jobId, (id) => persist(() => api.deleteStage(id, index)));
+      whenReconciled(jobId, (id) =>
+        persist({ run: () => api.deleteStage(id, index) })
+      );
     },
-    [persist, whenReconciled]
+    [dispatch, persist, snapshot, whenReconciled]
   );
 
   const actions: HiringActions = {

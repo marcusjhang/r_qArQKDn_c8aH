@@ -10,9 +10,9 @@
 //
 // Chat data (messages/mentions) lives outside the board's tag-scoped Data
 // Cache, so these actions mutate and return without a cache-wide
-// revalidatePath — the board cache stays warm and the client refreshes the
-// dynamic page itself (optimistic thread update; router.refresh in
-// NotificationBell).
+// revalidatePath — the board cache stays warm and the client reconciles its own
+// TanStack Query caches (optimistic thread update in useChatThread; the
+// NotificationBell invalidates its notifications query to re-read the inbox).
 
 import { auth } from '@/lib/auth';
 import {
