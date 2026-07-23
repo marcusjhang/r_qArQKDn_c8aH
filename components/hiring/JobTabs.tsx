@@ -42,7 +42,7 @@ export default function JobTabs({
         <button
           key={j.id}
           className="jobtab"
-          aria-selected={j.id === activeJob}
+          aria-current={j.id === activeJob ? 'true' : undefined}
           onClick={() => onSelect(j.id)}
         >
           {j.starred && (
