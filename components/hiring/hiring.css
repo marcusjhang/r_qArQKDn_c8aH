@@ -2238,6 +2238,11 @@
   color: var(--sno-fg);
   font-weight: 600;
 }
+.ht-root .import-ref-row {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  font-size: 12px;
+}
 .ht-root .import-ref {
   border-top: 1px solid var(--border);
   padding-top: 10px;

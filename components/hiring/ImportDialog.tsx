@@ -14,11 +14,9 @@ import { useMemo, useState } from 'react';
 import {
   buildTemplateCsv,
   csvFilename,
-  displayName,
   resolveImportRows,
   newJobTitles,
   newSourceNames,
-  STATUS,
   type HiringState,
   type ImportRow
 } from '@/lib/hiring';
@@ -89,35 +87,16 @@ export default function ImportDialog({
     );
   }
 
-  const bands = [...state.bands].sort((a, b) => b.minYears - a.minYears);
-
   return (
-    <Modal title="Import candidates from CSV" onClose={onClose}>
+    <Modal title="Import candidates" onClose={onClose}>
       <div className="import-body">
-        <p className="settings-sub">
-          Upload a CSV (or paste one below). Need the layout?{' '}
-          <button
-            type="button"
-            className="linklike"
-            onClick={() =>
-              downloadCsv(
-                csvFilename('hiring-template', new Date()),
-                buildTemplateCsv(state)
-              )
-            }
-          >
-            Download the template
-          </button>
-          .
-        </p>
-
         <div className="field">
           <span className="label">CSV file</span>
           <input type="file" accept=".csv,text/csv" onChange={onFile} />
         </div>
 
         <div className="field">
-          <span className="label">…or paste CSV</span>
+          <span className="label">Paste CSV</span>
           <textarea
             className="import-textarea"
             rows={5}
@@ -178,49 +157,20 @@ export default function ImportDialog({
           </div>
         )}
 
-        <details className="import-ref">
-          <summary>Allowed values</summary>
-          <dl>
-            <dt>Statuses</dt>
-            <dd>
-              {Object.values(STATUS).join(' · ')} (defaults to {STATUS.active})
-            </dd>
-            <dt>Sources</dt>
-            <dd>
-              {state.sources.length
-                ? state.sources.map((s) => s.name).join(' · ')
-                : 'none yet — new names are created on import'}
-            </dd>
-            <dt>Owners</dt>
-            <dd>
-              {state.users.length
-                ? state.users.map((u) => displayName(u)).join(' · ')
-                : 'none yet'}{' '}
-              (blank defaults to you)
-            </dd>
-            <dt>Seniority</dt>
-            <dd>
-              derived from Years experience —{' '}
-              {bands.length
-                ? bands.map((b) => `${b.label} (${b.minYears}+)`).join(' · ')
-                : 'no bands configured'}
-            </dd>
-            <dt>Jobs &amp; stages</dt>
-            <dd>
-              {state.jobs.length ? (
-                <ul>
-                  {state.jobs.map((j) => (
-                    <li key={j.id}>
-                      {j.title}: {j.stages.join(' → ')}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                'no jobs yet — a new Job title creates one with the default stages'
-              )}
-            </dd>
-          </dl>
-        </details>
+        <div className="import-ref-row">
+          <button
+            type="button"
+            className="linklike"
+            onClick={() =>
+              downloadCsv(
+                csvFilename('hiring-template', new Date()),
+                buildTemplateCsv(state)
+              )
+            }
+          >
+            Download template
+          </button>
+        </div>
 
         <div className="modal-actions">
           <button type="button" className="btn" onClick={onClose}>
