@@ -14,8 +14,13 @@
 // `validateEdit`, which return an error message (or null when valid).
 
 import { useState, useTransition } from 'react';
+import type { SettingsResult } from '@/lib/settings-types';
 
-export type Result = { ok: true } | { ok: false; error: string };
+// The hook's write handlers resolve to the shared settings result shape; kept
+// under the domain-neutral `Result` alias (and re-exported) so the generic
+// list panels — including the members Allowlist — read naturally. The canonical
+// declaration lives in lib/settings-types.ts.
+export type Result = SettingsResult;
 
 export interface EditableListApi<A, E> {
   /** Whether a write is in flight (disables buttons). */

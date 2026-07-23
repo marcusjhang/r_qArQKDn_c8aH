@@ -4,6 +4,7 @@
 // .ht-root), so it stays visually consistent with the drawer and cards.
 
 import { useEffect } from 'react';
+import { useFocusTrap } from './hooks/useFocusTrap';
 
 export default function Modal({
   title,
@@ -14,6 +15,11 @@ export default function Modal({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  // The modal is only mounted while open, so the trap is always active here; it
+  // moves focus in, cycles Tab within the dialog, and restores focus to the
+  // trigger on unmount.
+  const trapRef = useFocusTrap<HTMLDivElement>(true);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -24,8 +30,15 @@ export default function Modal({
 
   return (
     <>
-      <div className="scrim open" onClick={onClose} />
-      <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
+      <div className="scrim open" onClick={onClose} aria-hidden="true" />
+      <div
+        ref={trapRef}
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabIndex={-1}
+      >
         <div className="modal-head">
           <h2>{title}</h2>
           <button className="close" aria-label="Close" onClick={onClose}>

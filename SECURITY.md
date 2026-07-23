@@ -40,6 +40,14 @@ force-push — but rotation is the primary defense; assume the old value is publ
 from `SEED_PASSWORD`, falling back to the well-known default `password`. This is
 a demo convenience only.
 
+Because that password is shared and well-known, each seeded account is created
+with a `must_change_password` flag set (`lib/schema/auth.ts`, set true in
+`db/seed.ts`). On first login the `authorized` gate (`lib/auth.ts`) confines the
+account to `/change-password` — it cannot reach any other page — until it sets
+its own password, which clears the flag. Re-seeding resets the shared password
+and re-arms the flag. Self-registered accounts (`/api/register`) choose their
+own password and are never flagged.
+
 **Before any non-demo use:** set a strong `SEED_PASSWORD` (or change the seeded
 accounts' passwords after seeding). Do not deploy with the default in place.
 
@@ -50,6 +58,13 @@ accounts' passwords after seeding). Do not deploy with the default in place.
   matched request and only `/login` is public. The callback gates **page
   routes** — it returns `false` for an unauthenticated request and NextAuth
   redirects it to `/login`.
+- **Forced first-login password change.** The same callback adds a second gate:
+  a signed-in account whose `must_change_password` flag is set (the seeded
+  accounts — see "Default seed credentials") is redirected to `/change-password`
+  from every other page and can only leave once it sets a new password. The flag
+  travels on the JWT/session, so the `/change-password` server action clears it
+  in the DB and the client re-authenticates with the new password to replace the
+  stale token.
 - [`middleware.ts`](./middleware.ts) excludes only the NextAuth/register API
   routes, Next internals, and static assets from the gate. The `api/` exclusion
   is anchored so a page route that merely starts with `api` is not accidentally
@@ -104,3 +119,21 @@ and duplicate checks still fully gate account creation server-side
 Genuine input-validation failures (missing email/password, password shorter
 than the minimum length) still return a clear `400` — these describe the
 request, not account existence, so they leak nothing.
+
+## Rate limiting (auth endpoints)
+
+The two unauthenticated auth endpoints are throttled to blunt credential
+stuffing / brute-force and unlimited account creation:
+
+- **Login** — `POST /api/auth/callback/credentials` is limited per client IP
+  (see the wrapper in `app/api/auth/[...nextauth]/route.ts`).
+- **Register** — `POST /api/register` is limited per client IP and per targeted
+  email (`app/api/register/route.ts`).
+
+Over the limit returns **HTTP 429** with a `Retry-After` header. The limiter
+(`lib/rate-limit.ts`) is a sliding window kept **in-memory per server process**,
+so behind multiple instances / serverless cold starts the effective limit is
+per-instance, not global — a meaningful mitigation, not a hard guarantee. The
+production-grade upgrade is a shared store (Redis / Upstash); the client IP is
+read from `x-forwarded-for` / `x-real-ip` and fails safe to a shared bucket when
+absent.

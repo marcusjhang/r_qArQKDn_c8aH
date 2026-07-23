@@ -13,6 +13,7 @@ import { db, candidates, users } from '@/lib/db';
 import { sources, seniorityBands } from '@/lib/schema/hiring';
 import { MAX_YEARS_EXPERIENCE } from '@/lib/hiring/primitives';
 import { auth } from '@/lib/auth';
+import type { SettingsResult } from '@/lib/settings-types';
 
 const zId = z.number().int().positive();
 const zSourceName = z.string().trim().min(1).max(40);
@@ -22,8 +23,10 @@ const zMinYears = z.number().int().min(0).max(MAX_YEARS_EXPERIENCE);
 // column width. Trimmed before storing.
 const zName = z.string().trim().max(50);
 
-/** Success, or a caller-facing message the settings UI renders inline. */
-export type SettingsResult = { ok: true } | { ok: false; error: string };
+// Re-exported so existing consumers that import the result type from this
+// actions module keep working; the canonical declaration lives in
+// lib/settings-types.ts.
+export type { SettingsResult };
 
 /**
  * Auth guard for these actions: the signed-in user's id, or null when there is

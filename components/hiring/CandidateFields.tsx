@@ -7,6 +7,7 @@
 // it reads a `CandidateDraft` and reports edits via `onField`. The `disabled`
 // flag drives the detail form's read-only state; the add modal leaves it false.
 
+import { useId } from 'react';
 import {
   MAX_PROFILE_URL,
   MAX_YEARS_EXPERIENCE,
@@ -47,12 +48,18 @@ export default function CandidateFields({
   yearsPlaceholder: string;
 }) {
   const seniority = seniorityFor(bands, parseYearsInput(draft.years).value);
+  // Unique per instance so the ids don't collide when the add modal and the
+  // detail form render this field set at the same time.
+  const uid = useId();
 
   return (
     <>
       <div className="field">
-        <span className="label">Name</span>
+        <label className="label" htmlFor={`${uid}-name`}>
+          Name
+        </label>
         <input
+          id={`${uid}-name`}
           type="text"
           autoFocus={autoFocusName}
           maxLength={120}
@@ -64,8 +71,11 @@ export default function CandidateFields({
       </div>
       <div className="field-row">
         <div className="field">
-          <span className="label">Source</span>
+          <label className="label" htmlFor={`${uid}-source`}>
+            Source
+          </label>
           <select
+            id={`${uid}-source`}
             value={draft.source}
             disabled={disabled}
             onChange={(e) => onField('source', Number(e.target.value))}
@@ -78,8 +88,11 @@ export default function CandidateFields({
           </select>
         </div>
         <div className="field">
-          <span className="label">Owner</span>
+          <label className="label" htmlFor={`${uid}-owner`}>
+            Owner
+          </label>
           <select
+            id={`${uid}-owner`}
             value={draft.owner}
             disabled={disabled}
             onChange={(e) => onField('owner', Number(e.target.value))}
@@ -93,9 +106,12 @@ export default function CandidateFields({
         </div>
       </div>
       <div className="field">
-        <span className="label">Years of experience</span>
+        <label className="label" htmlFor={`${uid}-years`}>
+          Years of experience
+        </label>
         <div className="years-row">
           <input
+            id={`${uid}-years`}
             className="years-input"
             type="number"
             min={0}
@@ -110,8 +126,11 @@ export default function CandidateFields({
         </div>
       </div>
       <div className="field">
-        <span className="label">LinkedIn URL (optional)</span>
+        <label className="label" htmlFor={`${uid}-linkedin`}>
+          LinkedIn URL (optional)
+        </label>
         <input
+          id={`${uid}-linkedin`}
           type="url"
           maxLength={MAX_PROFILE_URL}
           value={draft.linkedin}
@@ -121,8 +140,11 @@ export default function CandidateFields({
         />
       </div>
       <div className="field">
-        <span className="label">GitHub URL (optional)</span>
+        <label className="label" htmlFor={`${uid}-github`}>
+          GitHub URL (optional)
+        </label>
         <input
+          id={`${uid}-github`}
           type="url"
           maxLength={MAX_PROFILE_URL}
           value={draft.github}

@@ -11,6 +11,7 @@
 
 import { useEffect, useRef } from 'react';
 import type { HiringActions, Candidate, HiringState } from '@/lib/hiring';
+import { useFocusTrap } from './hooks/useFocusTrap';
 import DetailHeader from './DetailHeader';
 import DetailForm from './DetailForm';
 import FeedbackList from './FeedbackList';
@@ -44,6 +45,11 @@ export default function DetailDrawer({
   const view = candidate ?? lastRef.current;
   const open = candidate != null;
 
+  // Trap focus inside the drawer while open and restore it to the trigger on
+  // close; `inert` (below) takes the closed drawer out of the tab order so its
+  // controls can't be reached behind the board.
+  const trapRef = useFocusTrap<HTMLElement>(open);
+
   // Close on Escape while open.
   useEffect(() => {
     if (!open) return;
@@ -56,10 +62,11 @@ export default function DetailDrawer({
 
   const job = view ? state.jobs.find((j) => j.id === view.jobId) : undefined;
 
-  // One feedback entry per interviewer (enforced by a DB unique constraint), so
-  // only offer users who haven't reviewed this candidate yet.
+  // One feedback entry per interviewer (enforced by a DB unique constraint).
+  // Feedback is always authored by the signed-in user (derived server-side), so
+  // they can review only when signed in and haven't reviewed this candidate yet.
   const reviewedIds = new Set((view?.feedback ?? []).map((f) => f.byUser));
-  const availableUsers = state.users.filter((u) => !reviewedIds.has(u.id));
+  const canReview = currentUserId != null && !reviewedIds.has(currentUserId);
 
   // Moving a candidate's stage returns you to the board so the move is visible.
   function moveAndClose(dir: 1 | -1) {
@@ -76,10 +83,12 @@ export default function DetailDrawer({
         aria-hidden={!open}
       />
       <aside
+        ref={trapRef}
         className={`drawer${open ? ' open' : ''}`}
-        aria-hidden={!open}
+        inert={!open}
         role="dialog"
         aria-modal="true"
+        tabIndex={-1}
       >
         <DetailHeader
           view={view}
@@ -103,9 +112,14 @@ export default function DetailDrawer({
             <FeedbackList view={view} users={state.users} />
             <AddFeedbackForm
               resetKey={openId}
-              users={availableUsers}
-              currentUserId={currentUserId}
-              onAdd={(entry) => view && actions.addFeedback(view.id, entry)}
+              canReview={canReview}
+              onAdd={(entry) =>
+                view &&
+                currentUserId != null &&
+                // byUser feeds the optimistic display row only; the server
+                // derives the real author from the session.
+                actions.addFeedback(view.id, { byUser: currentUserId, ...entry })
+              }
             />
           </div>
 

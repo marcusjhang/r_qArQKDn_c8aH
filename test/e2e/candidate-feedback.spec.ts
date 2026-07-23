@@ -2,14 +2,14 @@ import { test, expect } from '@playwright/test';
 import { loginToBoard, openCandidate } from './helpers';
 
 // Happy path: leave interview feedback on a candidate. The add-feedback form
-// (AddFeedbackForm) lives in the detail drawer: pick an interviewer, click a
-// rating in the 4-point picker (Strong No / No / Yes / Strong Yes), write a
-// note, and submit. Submitting appends the entry to the feedback list
-// (FeedbackList) optimistically and persists it (store.addFeedback).
+// (AddFeedbackForm) lives in the detail drawer: click a rating in the 4-point
+// picker (Strong No / No / Yes / Strong Yes), write a note, and submit.
+// Feedback is always authored by the signed-in user (derived server-side), so
+// there is no interviewer picker. Submitting appends the entry to the feedback
+// list (FeedbackList) optimistically and persists it (store.addFeedback).
 //
 // Uses seeded candidate "Tom Alvarez" (Founding Engineer) who has NO feedback
-// yet, so every seeded interviewer is still available in the picker. See
-// lib/hiring/seed.ts.
+// yet, so the signed-in user can still review. See lib/hiring/seed.ts.
 const CANDIDATE = 'Tom Alvarez';
 
 test.describe('add feedback to a candidate', () => {
@@ -24,9 +24,12 @@ test.describe('add feedback to a candidate', () => {
     const drawer = page.locator('aside.drawer.open');
     const form = drawer.locator('.add-fb');
 
-    // Choose an interviewer (the first available in the picklist).
-    const interviewer = form.locator('select');
-    await expect(interviewer).toBeVisible();
+    // If the signed-in user has already reviewed (e.g. a re-run against the same
+    // seed), the form collapses to an empty-state and there is nothing to add.
+    const emptyState = form.locator('.fb-empty');
+    if (await emptyState.count()) {
+      test.skip(true, 'The signed-in user has already reviewed this candidate.');
+    }
 
     // Pick a rating from the 4-point picker and confirm it becomes active.
     const strongYes = form.getByRole('button', { name: 'Strong Yes' });
@@ -47,11 +50,11 @@ test.describe('add feedback to a candidate', () => {
     const drawer = page.locator('aside.drawer.open');
     const form = drawer.locator('.add-fb');
 
-    // If everyone has already reviewed (e.g. a re-run against the same seed),
-    // the form collapses to an empty-state and there is nothing to add.
+    // If the signed-in user has already reviewed (e.g. a re-run against the same
+    // seed), the form collapses to an empty-state and there is nothing to add.
     const emptyState = form.locator('.fb-empty');
     if (await emptyState.count()) {
-      test.skip(true, 'All interviewers have already reviewed this candidate.');
+      test.skip(true, 'The signed-in user has already reviewed this candidate.');
     }
 
     const note = `Persisted note ${Date.now()}`;

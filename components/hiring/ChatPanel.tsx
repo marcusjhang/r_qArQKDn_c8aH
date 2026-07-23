@@ -138,6 +138,7 @@ export default function ChatPanel({
             <div className="chat-input-wrap">
               <textarea
                 ref={taRef}
+                aria-label="Message"
                 value={body}
                 onChange={onChange}
                 onKeyDown={onKeyDown}

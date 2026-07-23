@@ -8,7 +8,8 @@
 // EditableList.
 
 import EditableList from './EditableList';
-import { useEditableList, type Result } from './useEditableList';
+import { useEditableList } from './useEditableList';
+import type { SettingsResult } from '@/lib/settings-types';
 
 export default function SourcesPanel({
   sources,
@@ -17,9 +18,9 @@ export default function SourcesPanel({
   removeSource
 }: {
   sources: { id: number; name: string }[];
-  addSource: (name: string) => Promise<Result>;
-  renameSource: (id: number, name: string) => Promise<Result>;
-  removeSource: (id: number) => Promise<Result>;
+  addSource: (name: string) => Promise<SettingsResult>;
+  renameSource: (id: number, name: string) => Promise<SettingsResult>;
+  removeSource: (id: number) => Promise<SettingsResult>;
 }) {
   const list = useEditableList<{ name: string }, { name: string }>({
     emptyAdd: { name: '' },
@@ -46,8 +47,11 @@ export default function SourcesPanel({
       }
       addFields={
         <div className="field" style={{ flex: '1 1 220px' }}>
-          <span className="label">Add source</span>
+          <label className="label" htmlFor="sources-name">
+            Add source
+          </label>
           <input
+            id="sources-name"
             type="text"
             placeholder="e.g. AngelList"
             maxLength={40}
@@ -68,6 +72,7 @@ export default function SourcesPanel({
             <input
               className="source-edit"
               type="text"
+              aria-label={`Rename ${s.name}`}
               maxLength={40}
               autoFocus
               value={list.editDraft.name}

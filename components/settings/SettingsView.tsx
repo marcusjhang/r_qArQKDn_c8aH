@@ -13,9 +13,8 @@ import ThemeToggle from './ThemeToggle';
 import SourcesPanel from './SourcesPanel';
 import SeniorityBandsPanel from './SeniorityBandsPanel';
 import ProfilePanel from './ProfilePanel';
+import type { SettingsResult } from '@/lib/settings-types';
 import '@/components/hiring/hiring.css';
-
-type SettingsResult = { ok: true } | { ok: false; error: string };
 
 export default function SettingsView({
   sources,

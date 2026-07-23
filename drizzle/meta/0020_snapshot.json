@@ -1,5 +1,5 @@
 {
-  "id": "c70cb8a4-b5e7-4249-afbf-ae77805f28cb",
+  "id": "f3e15a7d-01f2-4435-8bc8-c5c3256e735a",
   "prevId": "d2981493-9213-443d-a2d5-e0853a7cc155",
   "version": "7",
   "dialect": "postgresql",
@@ -77,6 +77,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "must_change_password": {
+          "name": "must_change_password",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "created_at": {
           "name": "created_at",
@@ -404,12 +411,6 @@
         },
         "read_at": {
           "name": "read_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "dismissed_at": {
-          "name": "dismissed_at",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false

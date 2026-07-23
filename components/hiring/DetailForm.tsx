@@ -127,13 +127,16 @@ export default function DetailForm({
       </div>
 
       <div className="field">
-        <span className="label">Status</span>
+        <label className="label" htmlFor="detail-status">
+          Status
+        </label>
         <div className="status-control">
           <span
             className={`status-dot st-${view?.status ?? 'active'}`}
             aria-hidden
           />
           <select
+            id="detail-status"
             value={view?.status ?? 'active'}
             onChange={(e) =>
               view && actions.setStatus(view.id, e.target.value as Status)

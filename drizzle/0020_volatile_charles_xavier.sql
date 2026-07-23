@@ -1,1 +1,0 @@
-ALTER TABLE "mentions" ADD COLUMN "dismissed_at" timestamp;
