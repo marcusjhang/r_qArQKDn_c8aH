@@ -53,6 +53,15 @@ function resolveDb(): ReturnType<typeof createDb> {
  * the tables re-exported above) everywhere in the app; use `createDb` only in
  * tests. Access is proxied to a lazily-built Drizzle client — methods are bound
  * to the real client so `this` (and any private state) resolves correctly.
+ *
+ * Caveat: `bind` drops a function's own properties, so a *callable that also
+ * carries methods* — notably `db.$client` (the postgres.js `sql` tag, which
+ * exposes `.end`/`.begin`) — would come back through this proxy without those
+ * methods. Every query builder the app uses (`select`/`insert`/`transaction`/…)
+ * is a plain method, so this never bites in practice; but for raw client access
+ * (e.g. closing the pool with `$client.end()` in a script or shutdown hook) go
+ * through `createDb` and hold your own reference rather than reaching for
+ * `db.$client` off this singleton — which is exactly what the test harness does.
  */
 export const db = new Proxy({} as ReturnType<typeof createDb>, {
   get(_target, prop) {
