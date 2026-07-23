@@ -1,11 +1,15 @@
 import NextAuth from 'next-auth';
 import type { JWT } from 'next-auth/jwt';
 import Credentials from 'next-auth/providers/credentials';
+import { NextResponse } from 'next/server';
 import { compare } from 'bcryptjs';
 import { z } from 'zod';
 import { db, users } from '@/lib/db';
 import { normalizeEmail } from '@/lib/allowlist';
 import { eq } from 'drizzle-orm';
+
+/** Path of the forced first-login password-change page (see the gate below). */
+const CHANGE_PASSWORD_PATH = '/change-password';
 
 declare module 'next-auth' {
   interface Session {
@@ -13,17 +17,22 @@ declare module 'next-auth' {
       id?: string;
       name?: string | null;
       email?: string | null;
+      // True while the account still has a seeded/default password it must
+      // replace before using the app (see the `authorized` gate below).
+      mustChangePassword?: boolean;
     };
   }
 
   interface User {
     id?: string;
+    mustChangePassword?: boolean;
   }
 }
 
 declare module 'next-auth/jwt' {
   interface JWT {
     id?: string;
+    mustChangePassword?: boolean;
   }
 }
 
@@ -65,7 +74,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           // Session display name is derived from the stored name parts (the
           // `name` column was removed); falls back to null when neither is set.
           name: [user.firstName, user.lastName].filter(Boolean).join(' ') || null,
-          email: user.email
+          email: user.email,
+          mustChangePassword: user.mustChangePassword
         };
       }
     })
@@ -75,18 +85,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     // Runs in middleware for every matched route (see middleware.ts). Gates the
     // whole app behind login: only the sign-in page is public. Returning false
     // redirects to pages.signIn ('/login') with a callbackUrl back to the route.
+    //
+    // Second gate: an account that still carries the seeded default password
+    // (mustChangePassword) is confined to the /change-password page until it
+    // picks a new one — every other page route redirects there, and once the
+    // flag is cleared the page itself redirects back to the board.
     authorized({ auth, request }) {
-      if (request.nextUrl.pathname === '/login') return true;
-      return !!auth?.user;
+      const { pathname } = request.nextUrl;
+      if (pathname === '/login') return true;
+      if (!auth?.user) return false;
+
+      const mustChange = auth.user.mustChangePassword === true;
+      if (mustChange && pathname !== CHANGE_PASSWORD_PATH) {
+        return NextResponse.redirect(new URL(CHANGE_PASSWORD_PATH, request.nextUrl));
+      }
+      if (!mustChange && pathname === CHANGE_PASSWORD_PATH) {
+        return NextResponse.redirect(new URL('/', request.nextUrl));
+      }
+      return true;
     },
     jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.mustChangePassword = user.mustChangePassword;
       }
       return token;
     },
     session({ session, token }) {
       if (token.id) session.user.id = token.id;
+      session.user.mustChangePassword = token.mustChangePassword === true;
       return session;
     }
   }

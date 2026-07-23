@@ -14,8 +14,8 @@ import { isEmailAllowed, normalizeEmail } from '@/lib/allowlist';
 
 /** Minimum password length enforced at signup. */
 export const PASSWORD_MIN_LENGTH = 8;
-/** bcrypt cost factor for stored password hashes. */
-const PASSWORD_COST = 12;
+/** bcrypt cost factor for stored password hashes (shared with the change-password flow). */
+export const PASSWORD_COST = 12;
 
 export interface RegisterInput {
   firstName?: unknown;
