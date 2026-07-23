@@ -15,9 +15,12 @@ import { FormError } from '@/components/ui/form-error';
 import Modal from './Modal';
 
 export default function NewJobModal({
+  aiEnabled = false,
   onClose,
   onCreate
 }: {
+  /** Whether the AI trait recommender is configured; hides Suggest when false. */
+  aiEnabled?: boolean;
   onClose: () => void;
   onCreate: (title: string, description: string, traits: string[]) => void;
 }) {
@@ -101,7 +104,11 @@ export default function NewJobModal({
             className="jd-textarea"
             maxLength={MAX_JOB_DESCRIPTION}
             value={description}
-            placeholder="Paste the JD here — the AI uses it to suggest traits."
+            placeholder={
+              aiEnabled
+                ? 'Paste the job description. AI can suggest traits from it.'
+                : 'Paste the job description.'
+            }
             onChange={(e) => setDescription(e.target.value)}
           />
         </div>
@@ -109,14 +116,16 @@ export default function NewJobModal({
         <div className="field">
           <div className="suggest-head">
             <span className="label">Important traits</span>
-            <Button
-              type="button"
-              variant="app"
-              disabled={suggesting}
-              onClick={suggest}
-            >
-              {suggesting ? 'Thinking…' : '✨ Suggest from JD'}
-            </Button>
+            {aiEnabled && (
+              <Button
+                type="button"
+                variant="app"
+                disabled={suggesting}
+                onClick={suggest}
+              >
+                {suggesting ? 'Thinking…' : '✨ Suggest from JD'}
+              </Button>
+            )}
           </div>
           {traits.length > 0 ? (
             <div className="trait-chips">
@@ -136,8 +145,9 @@ export default function NewJobModal({
             </div>
           ) : (
             <p className="settings-sub">
-              Leave empty to start with the default traits, or let AI suggest a
-              few from the title and JD.
+              {aiEnabled
+                ? 'Leave empty to start with the default traits, or let AI suggest a few from the title and JD.'
+                : 'Leave empty to start with the default traits.'}
             </p>
           )}
           {suggestMsg && <div className="settings-sub">{suggestMsg}</div>}

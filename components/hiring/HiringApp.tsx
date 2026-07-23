@@ -39,11 +39,14 @@ import './hiring.css';
 export default function HiringApp({
   initial,
   userEmail,
-  notifications = []
+  notifications = [],
+  aiEnabled = false
 }: {
   initial: HiringState;
   userEmail?: string | null;
   notifications?: Notification[];
+  /** Whether the AI trait recommender is configured (server-derived). */
+  aiEnabled?: boolean;
 }) {
   const { state, actions } = useHiringStore(initial);
   const { activeJob, showRejected, overlay, actions: view } = useBoardView(
@@ -104,7 +107,7 @@ export default function HiringApp({
 
       <div className="toolbar">
         <div>
-          <h1 className="jobtitle">{job?.title ?? '—'}</h1>
+          <h1 className="jobtitle">{job?.title ?? 'No jobs yet'}</h1>
           <div className="jobmeta">{meta}</div>
         </div>
         <CandidateSearch
@@ -181,6 +184,7 @@ export default function HiringApp({
 
       {creatingJob && (
         <NewJobModal
+          aiEnabled={aiEnabled}
           onClose={view.close}
           onCreate={(title, description, traits) =>
             actions.createJob(title, description, traits, view.selectJob)
@@ -193,6 +197,7 @@ export default function HiringApp({
           jobTitle={job.title}
           traits={job.traits}
           description={job.description ?? ''}
+          aiEnabled={aiEnabled}
           onChange={(next) => actions.setJobTraits(job.id, next)}
           onReorder={(index, dir) => actions.reorderTrait(job.id, index, dir)}
           onDescriptionChange={(desc) =>

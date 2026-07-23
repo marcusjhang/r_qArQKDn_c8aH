@@ -3,10 +3,10 @@
 // Manage a job's description (JD) and the important traits it's scored on.
 // Traits are per-job (like stages): the hiring team adds the qualities to look
 // out for here, then scores each candidate against them in the feedback form.
-// The JD can be edited after creation, and AI can suggest a focused few from
-// the title + JD. Trait order is the ranking (rank #1 = most weight); up/down
-// re-rank. Changes persist immediately through the store (setJobTraits /
-// setJobDescription / reorderTrait per edit).
+// Trait order is the ranking (rank #1 counts most); up/down re-rank, the name is
+// click-to-rename inline, and ✕ removes. When the AI recommender is configured
+// it can suggest a focused few from the title + JD. Changes persist immediately
+// through the store (setJobTraits / setJobDescription / reorderTrait per edit).
 
 import { useRef, useState } from 'react';
 import {
@@ -18,11 +18,88 @@ import {
 import { recommendTraits } from '@/lib/hiring/actions';
 import { Button } from '@/components/ui/button';
 import Modal from './Modal';
+import InfoHint from './InfoHint';
+import { useInlineEdit } from './hooks/useInlineEdit';
+
+/** One ranked trait: rank, click-to-rename name, reorder, remove. */
+function TraitRow({
+  trait,
+  index,
+  total,
+  otherTraits,
+  onRename,
+  onReorder,
+  onRemove
+}: {
+  trait: string;
+  index: number;
+  total: number;
+  otherTraits: string[];
+  onRename: (index: number, name: string) => void;
+  onReorder: (index: number, dir: 1 | -1) => void;
+  onRemove: (index: number) => void;
+}) {
+  // Rename is validated against the *other* traits so a trait can keep its own
+  // name, and the cap check never fires (renaming does not grow the list).
+  const edit = useInlineEdit({
+    value: trait,
+    validate: (text) => validateTraitName(otherTraits, text).ok,
+    onCommit: (text) => onRename(index, text)
+  });
+  return (
+    <li className="trait-row">
+      <span className="trait-rank">#{index + 1}</span>
+      <div
+        className="trait-name"
+        ref={edit.ref}
+        role="textbox"
+        tabIndex={0}
+        contentEditable
+        suppressContentEditableWarning
+        spellCheck={false}
+        title="Click to rename this trait"
+        onBlur={edit.onBlur}
+        onKeyDown={edit.onKeyDown}
+      >
+        {trait}
+      </div>
+      <span className="trait-rank-btns">
+        <button
+          type="button"
+          className="rank-btn"
+          aria-label={`Move ${trait} up`}
+          disabled={index === 0}
+          onClick={() => onReorder(index, -1)}
+        >
+          ↑
+        </button>
+        <button
+          type="button"
+          className="rank-btn"
+          aria-label={`Move ${trait} down`}
+          disabled={index === total - 1}
+          onClick={() => onReorder(index, 1)}
+        >
+          ↓
+        </button>
+      </span>
+      <button
+        type="button"
+        className="trait-remove"
+        aria-label={`Remove ${trait}`}
+        onClick={() => onRemove(index)}
+      >
+        ✕
+      </button>
+    </li>
+  );
+}
 
 export default function JobTraitsModal({
   jobTitle,
   traits,
   description,
+  aiEnabled = false,
   onChange,
   onReorder,
   onDescriptionChange,
@@ -31,6 +108,8 @@ export default function JobTraitsModal({
   jobTitle: string;
   traits: string[];
   description: string;
+  /** Whether the AI trait recommender is configured; hides Suggest when false. */
+  aiEnabled?: boolean;
   onChange: (next: string[]) => void;
   onReorder: (index: number, dir: 1 | -1) => void;
   onDescriptionChange: (description: string) => void;
@@ -54,10 +133,6 @@ export default function JobTraitsModal({
     setName('');
     setError('');
     inputRef.current?.focus();
-  }
-
-  function removeTrait(index: number) {
-    onChange(traits.filter((_, i) => i !== index));
   }
 
   // Persist the JD on blur only when it actually changed.
@@ -100,7 +175,11 @@ export default function JobTraitsModal({
             className="jd-textarea"
             maxLength={MAX_JOB_DESCRIPTION}
             value={jd}
-            placeholder="Paste the JD here — the AI uses it to suggest traits."
+            placeholder={
+              aiEnabled
+                ? 'Paste the JD. AI can suggest traits from it.'
+                : 'Paste the job description.'
+            }
             onChange={(e) => setJd(e.target.value)}
             onBlur={commitJd}
           />
@@ -108,55 +187,46 @@ export default function JobTraitsModal({
 
         <div className="field">
           <div className="suggest-head">
-            <span className="label">
-              Important traits — higher rank counts for more
+            <span className="label label-hint">
+              Important traits
+              <InfoHint label="How ranking works" title="How ranking works">
+                <p>
+                  Drag rank with the arrows: rank #1 is the most important. A
+                  candidate&rsquo;s overall score weights each trait by its
+                  rank, so higher traits count for more.
+                </p>
+              </InfoHint>
             </span>
-            <Button
-              type="button"
-              variant="app"
-              disabled={suggesting}
-              onClick={suggest}
-            >
-              {suggesting ? 'Thinking…' : '✨ Suggest from JD'}
-            </Button>
+            {aiEnabled && (
+              <Button
+                type="button"
+                variant="app"
+                disabled={suggesting}
+                onClick={suggest}
+              >
+                {suggesting ? 'Thinking…' : '✨ Suggest from JD'}
+              </Button>
+            )}
           </div>
           {traits.length === 0 ? (
             <p className="settings-sub">No traits yet. Add the first below.</p>
           ) : (
-            <ol className="trait-rank-list">
+            <ol className="trait-list">
               {traits.map((t, i) => (
-                <li className="trait-rank-row" key={`${t}-${i}`}>
-                  <span className="trait-rank">#{i + 1}</span>
-                  <span className="trait-rank-name">{t}</span>
-                  <span className="trait-rank-controls">
-                    <button
-                      type="button"
-                      className="rank-btn"
-                      aria-label={`Move ${t} up`}
-                      disabled={i === 0}
-                      onClick={() => onReorder(i, -1)}
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      className="rank-btn"
-                      aria-label={`Move ${t} down`}
-                      disabled={i === traits.length - 1}
-                      onClick={() => onReorder(i, 1)}
-                    >
-                      ↓
-                    </button>
-                    <button
-                      type="button"
-                      className="chip-x"
-                      aria-label={`Remove ${t}`}
-                      onClick={() => removeTrait(i)}
-                    >
-                      ✕
-                    </button>
-                  </span>
-                </li>
+                <TraitRow
+                  key={`${t}-${i}`}
+                  trait={t}
+                  index={i}
+                  total={traits.length}
+                  otherTraits={traits.filter((_, j) => j !== i)}
+                  onRename={(idx, next) =>
+                    onChange(traits.map((x, j) => (j === idx ? next : x)))
+                  }
+                  onReorder={onReorder}
+                  onRemove={(idx) =>
+                    onChange(traits.filter((_, j) => j !== idx))
+                  }
+                />
               ))}
             </ol>
           )}

@@ -1,43 +1,32 @@
 'use client';
 
-// The candidate's scoring surface in the drawer: a collapsible "Scores" section
-// (rank-weighted overall + per-trait averages) and a collapsible "Feedback"
-// section (one entry per interviewer, each collapsing to name + stage + average
-// and expanding to the per-trait chips + note).
+// The candidate's scoring surface in the drawer: a quiet "Scores" summary (the
+// rank-weighted overall plus each trait's average) and a "Feedback" list — one
+// entry per interviewer, each collapsing to name + stage + average and
+// expanding to its per-trait scores and note. Scores read as plain numbers, not
+// coloured pills, so the drawer stays calm; the board card keeps the colour cue.
 
 import { useState } from 'react';
 import {
-  RATINGS,
   overallScore,
   traitAgg,
   entryTraitAvg,
-  roundedRating,
   userById,
   displayName,
   initials,
   type Candidate,
   type Feedback,
   type Job,
-  type RatingValue,
   type User
 } from '@/lib/hiring';
 import { Avatar } from '@/components/ui/avatar';
 
-/** A numeric score chip coloured by its rounded value, or a muted placeholder. */
-function ScoreChip({
-  value,
-  empty = 'Not scored'
-}: {
-  value: number | null;
-  empty?: string;
-}) {
-  const rounded = roundedRating(value);
-  if (value == null || rounded == null)
-    return <span className="rating-chip muted">{empty}</span>;
-  return (
-    <span className={`rating-chip ${RATINGS[rounded].cls}`}>
-      {value.toFixed(1)}
-    </span>
+/** Render a 1-4 average as a fixed-decimal number, or a muted placeholder. */
+function score(value: number | null, empty = 'Not scored') {
+  return value == null ? (
+    <span className="score-val none">{empty}</span>
+  ) : (
+    <span className="score-val">{value.toFixed(1)}</span>
   );
 }
 
@@ -54,6 +43,7 @@ function FeedbackEntryRow({
   const author = userById(users, entry.byUser);
   // Scored traits still tracked on the job, in job (rank) order.
   const scored = traits.filter((t) => entry.traitScores?.[t] != null);
+  const avg = entryTraitAvg(entry);
   return (
     <div className="fb-entry">
       <button
@@ -65,26 +55,23 @@ function FeedbackEntryRow({
         <Avatar>{initials(author)}</Avatar>
         <span className="fb-who">{displayName(author)}</span>
         {entry.stage && <span className="stage-badge">{entry.stage}</span>}
-        <span className="fb-avg">
-          <ScoreChip value={entryTraitAvg(entry)} empty="—" />
+        <span className="fb-right">
+          {avg != null && <span className="fb-avg">{avg.toFixed(1)}</span>}
+          <span className={`chev${open ? ' open' : ''}`}>▸</span>
         </span>
-        <span className={`chev${open ? ' open' : ''}`}>▸</span>
       </button>
       {open && (
         <div className="fb-detail">
           {scored.length > 0 ? (
             <div className="fb-traits">
-              {scored.map((t) => {
-                const v = entry.traitScores[t] as RatingValue;
-                return (
-                  <span className="trait-tag" key={t}>
-                    {t}
-                    <span className={`trait-tag-score ${RATINGS[v].cls}`}>
-                      {v}
-                    </span>
+              {scored.map((t) => (
+                <span className="trait-tag" key={t}>
+                  {t}
+                  <span className="trait-tag-score">
+                    {entry.traitScores[t]}
                   </span>
-                );
-              })}
+                </span>
+              ))}
             </div>
           ) : (
             <div className="fb-empty">No trait scores.</div>
@@ -106,7 +93,6 @@ export default function FeedbackList({
   users: User[];
 }) {
   const traits = job?.traits ?? [];
-  const [scoresOpen, setScoresOpen] = useState(true);
   const overall = view ? overallScore(traits, view) : null;
   const feedback = view?.feedback ?? [];
 
@@ -114,29 +100,22 @@ export default function FeedbackList({
     <>
       {traits.length > 0 && (
         <div className="scores">
-          <button
-            type="button"
-            className="section-toggle"
-            aria-expanded={scoresOpen}
-            onClick={() => setScoresOpen((o) => !o)}
-          >
-            <span className={`chev${scoresOpen ? ' open' : ''}`}>▸</span>
+          <div className="scores-head">
             <span className="section-title-text">Scores</span>
-            <span className="agg">
-              <ScoreChip value={overall} />
-            </span>
-          </button>
-          {scoresOpen && (
-            <div className="trait-score-grid">
-              {traits.map((t, i) => (
-                <div className="trait-score-row" key={t}>
-                  <span className="trait-rank">#{i + 1}</span>
-                  <span className="trait-score-name">{t}</span>
-                  <ScoreChip value={view ? traitAgg(view, t) : null} />
-                </div>
-              ))}
-            </div>
-          )}
+            {overall == null ? (
+              <span className="score-overall none">No scores yet</span>
+            ) : (
+              <span className="score-overall">{overall.toFixed(1)}</span>
+            )}
+          </div>
+          <div className="score-rows">
+            {traits.map((t) => (
+              <div className="score-row" key={t}>
+                <span className="score-trait">{t}</span>
+                {score(view ? traitAgg(view, t) : null)}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

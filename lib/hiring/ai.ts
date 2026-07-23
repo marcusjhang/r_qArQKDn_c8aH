@@ -14,8 +14,12 @@ import { MAX_TRAIT_NAME, MAX_TRAIT_SUGGESTIONS } from './helpers';
 
 const MODEL = process.env.TRAIT_AI_MODEL || 'claude-opus-4-8';
 
-/** Whether the AI recommender is configured (an API key is present). */
-function traitAiEnabled(): boolean {
+/**
+ * Whether the AI recommender is configured (an API key is present). Read
+ * server-side and passed to the client as a plain boolean so the UI can hide
+ * the "Suggest from JD" affordance entirely when there is no key to call.
+ */
+export function traitAiEnabled(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY);
 }
 
