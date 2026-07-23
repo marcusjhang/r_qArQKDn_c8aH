@@ -65,3 +65,24 @@ jobs:
 
       - name: Audit dead code
         run: bun run detect:dead-code
+
+  build:
+    name: Production build (next build)
+    runs-on: ubuntu-latest
+    # Enforcing: `next build` exercises the full production compile + static
+    # generation that typecheck/lint/knip don't — e.g. the `config.matcher`
+    # static-analysis check that once broke the build while every other job
+    # stayed green. `next build` sets NODE_ENV=production itself; the build needs
+    # no DATABASE_URL because the db client is constructed lazily and every data
+    # page is dynamic. A build failure fails this job and blocks the merge.
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
