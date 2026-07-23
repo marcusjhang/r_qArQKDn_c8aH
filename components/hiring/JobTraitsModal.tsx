@@ -1,26 +1,17 @@
 'use client';
 
-// Manage a job's description (JD) and the important traits it's scored on.
-// Traits are per-job (like stages): the hiring team adds the qualities to look
-// out for here, then scores each candidate against them in the feedback form.
-// Trait order is the ranking (rank #1 counts most); up/down re-rank, the name is
-// click-to-rename inline, and ✕ removes. When the AI recommender is configured
-// it can suggest a focused few from the title + JD. Changes persist immediately
-// through the store (setJobTraits / setJobDescription / reorderTrait per edit).
+// Manage a job's description (JD) and the important traits it's scored on. The
+// traits UI itself (label, ranking/formula hints, AI suggest, ranked list, add
+// row) is the shared TraitsEditor — identical to the one in the New Job modal;
+// this wrapper adds the editable JD and wires the editor to the store
+// (setJobTraits / setJobDescription / reorderTrait per edit).
 
-import { useRef, useState } from 'react';
-import {
-  validateTraitName,
-  mergeTraitSuggestions,
-  MAX_JOB_DESCRIPTION,
-  MAX_TRAIT_NAME
-} from '@/lib/hiring';
-import { Calculator } from 'lucide-react';
+import { useState } from 'react';
+import { mergeTraitSuggestions, MAX_JOB_DESCRIPTION } from '@/lib/hiring';
 import { recommendTraits } from '@/lib/hiring/actions';
 import { Button } from '@/components/ui/button';
 import Modal from './Modal';
-import InfoHint from './InfoHint';
-import TraitRow from './TraitRow';
+import TraitsEditor from './TraitsEditor';
 
 export default function JobTraitsModal({
   jobTitle,
@@ -42,25 +33,9 @@ export default function JobTraitsModal({
   onDescriptionChange: (description: string) => void;
   onClose: () => void;
 }) {
-  const [name, setName] = useState('');
-  const [error, setError] = useState('');
   const [jd, setJd] = useState(description);
   const [suggesting, setSuggesting] = useState(false);
   const [suggestMsg, setSuggestMsg] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  function addTrait(e: React.FormEvent) {
-    e.preventDefault();
-    const check = validateTraitName(traits, name);
-    if (!check.ok) {
-      setError(check.reason);
-      return;
-    }
-    onChange([...traits, name.trim()]);
-    setName('');
-    setError('');
-    inputRef.current?.focus();
-  }
 
   // Persist the JD on blur only when it actually changed.
   function commitJd() {
@@ -112,85 +87,15 @@ export default function JobTraitsModal({
           />
         </div>
 
-        <div className="field">
-          <div className="suggest-head">
-            <span className="label label-hint">
-              Traits
-              <InfoHint label="How ranking works" title="How ranking works">
-                <p>
-                  Drag rank with the arrows: rank #1 is the most important. A
-                  candidate&rsquo;s overall score weights each trait by its
-                  rank, so higher traits count for more.
-                </p>
-              </InfoHint>
-              <InfoHint
-                label="Show the scoring formula"
-                title="Formula"
-                trigger={<Calculator size={14} aria-hidden />}
-              >
-                <p>
-                  Each trait&rsquo;s score is the average of its 1 to 4 ratings
-                  across all feedback.
-                </p>
-                <p className="info-hint-formula">
-                  overall = sum(weight &times; trait average) / sum(weights)
-                </p>
-                <p>A trait at rank #k of N has weight N + 1 - k.</p>
-              </InfoHint>
-            </span>
-            {aiEnabled && (
-              <Button
-                type="button"
-                variant="app"
-                disabled={suggesting}
-                onClick={suggest}
-              >
-                {suggesting ? 'Thinking…' : '✨ Suggest from JD'}
-              </Button>
-            )}
-          </div>
-          {traits.length === 0 ? (
-            <p className="settings-sub">No traits yet. Add the first below.</p>
-          ) : (
-            <ol className="trait-list">
-              {traits.map((t, i) => (
-                <TraitRow
-                  key={`${t}-${i}`}
-                  trait={t}
-                  index={i}
-                  total={traits.length}
-                  otherTraits={traits.filter((_, j) => j !== i)}
-                  onRename={(idx, next) =>
-                    onChange(traits.map((x, j) => (j === idx ? next : x)))
-                  }
-                  onReorder={onReorder}
-                  onRemove={(idx) =>
-                    onChange(traits.filter((_, j) => j !== idx))
-                  }
-                />
-              ))}
-            </ol>
-          )}
-          {suggestMsg && <div className="settings-sub">{suggestMsg}</div>}
-        </div>
-
-        <form className="add-trait-row" onSubmit={addTrait}>
-          <input
-            ref={inputRef}
-            type="text"
-            maxLength={MAX_TRAIT_NAME}
-            value={name}
-            placeholder="Add a trait, e.g. Systems design"
-            onChange={(e) => {
-              setName(e.target.value);
-              setError('');
-            }}
-          />
-          <Button type="submit" variant="app">
-            Add
-          </Button>
-        </form>
-        {error && <div className="form-error">{error}</div>}
+        <TraitsEditor
+          traits={traits}
+          aiEnabled={aiEnabled}
+          suggesting={suggesting}
+          suggestMsg={suggestMsg}
+          onChange={onChange}
+          onReorder={onReorder}
+          onSuggest={suggest}
+        />
 
         <div className="modal-actions">
           <Button type="button" variant="appPrimary" onClick={onClose}>

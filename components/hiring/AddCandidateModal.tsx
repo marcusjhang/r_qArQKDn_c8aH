@@ -71,7 +71,7 @@ export default function AddCandidateModal({
           sources={sources}
           bands={bands}
           autoFocusName
-          yearsPlaceholder="Optional, e.g. 5"
+          yearsPlaceholder="Optional"
         />
         <FormError message={error} />
         <div className="modal-actions">
