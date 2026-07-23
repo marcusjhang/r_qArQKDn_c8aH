@@ -37,7 +37,7 @@ export function traitAgg(c: Candidate, trait: string): number | null {
  * #1 (index 0) is most important and carries the most weight: linear by rank —
  * first gets `total`, last gets 1.
  */
-export function traitWeight(index: number, total: number): number {
+function traitWeight(index: number, total: number): number {
   return total - index;
 }
 

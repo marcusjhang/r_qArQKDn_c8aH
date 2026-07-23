@@ -5,10 +5,8 @@
 // (never the client), so a caller cannot attribute feedback to a colleague.
 
 import { eq } from 'drizzle-orm';
-import { revalidateTag } from 'next/cache';
 import { requireUser } from '@/lib/auth';
 import { db, candidates, feedback } from '@/lib/db';
-import { BOARD_TAGS } from '../cache';
 import { zId, feedbackInsertSchema } from '../schemas';
 import { currentUserId, loadJobTraits } from './support';
 
@@ -66,7 +64,5 @@ export async function saveFeedback(
       set: { traitScores: scoped, note }
     })
     .returning({ id: feedback.id });
-  // Feedback is nested inside the candidates read, so invalidate that tag.
-  revalidateTag(BOARD_TAGS.candidates);
   return row?.id ?? null;
 }

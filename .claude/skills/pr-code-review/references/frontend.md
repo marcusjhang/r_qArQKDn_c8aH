@@ -40,6 +40,11 @@ new/changed component against these:
   parent must orchestrate and notify via callbacks. Minimize internal state to
   maximize reuse — and there must be a single source of truth (no duplicated
   state that can drift).
+- **One client-state system for server data.** Server data on the client goes
+  through TanStack Query (the single client cache). Flag a new hand-rolled
+  store/reducer for server data, or a second client cache running alongside the
+  Query cache — that duplication is the "two coexisting caches" App-Router
+  anti-pattern and can silently drift.
 - **Low coupling, high cohesion.** No cross-feature reach-ins, no deep imports
   into another module's internals, no circular dependencies. Business logic must
   not leak into shared UI primitives.
@@ -96,8 +101,10 @@ from './actions'`) — that's fine — but never import DB/Drizzle/postgres into
   calls a server action directly for a mutation that the store models, or that
   mutates DB-backed state without the optimistic-then-persist pattern in
   `lib/hiring/store.ts`.
-- Optimistic updates must have a **rollback path** — on a failed write the store
-  `router.refresh()`es to resync. Flag optimistic UI with no error recovery.
+- Optimistic updates must have a **rollback path** — the board store is backed by
+  TanStack Query, so on a failed write it `resync()`s by `invalidateQueries`-ing
+  the board cache, which refetches the authoritative rows (via `fetchBoard`) and
+  replaces the optimistic state. Flag optimistic UI with no error recovery.
 - Client-side guards (e.g. the favorites cap, stage-name validation) must
   **mirror the server guard**, not replace it. The server is authoritative; the
   client check is only for UX. Flag a client-only guard with no server
@@ -111,8 +118,9 @@ from './actions'`) — that's fine — but never import DB/Drizzle/postgres into
   they matter (referential stability passed to children, expensive compute).
 - Lists need stable `key`s (not array index when the list reorders).
 - No state updates during render; no effects that could have been derived state.
-- Prefer `useTransition` for async work that shouldn't block the UI (the store
-  already does this) over ad-hoc loading booleans.
+- Prefer a framework primitive for async work that shouldn't block the UI — the
+  board store persists writes through a TanStack Query `useMutation` (its
+  `isPending`/`onError` replace ad-hoc loading booleans and manual rollback).
 
 ## Styling (Tailwind + shadcn)
 

@@ -11,11 +11,20 @@ import type { ChatStore } from './chat-store';
 import type { ChatMessage } from './types';
 import { currentUserId, toChatMessage, zBody, zMentionIds } from './chat-shaping';
 
-/** The full discussion thread for one candidate, oldest first. */
+/**
+ * The full discussion thread for one candidate, oldest first. Returns an empty
+ * thread when the caller can't be resolved to a signed-in account — the thread
+ * is private team data, and this is a directly POST-able `'use server'` read
+ * (its `queryFn` id ships in the client bundle), so it must gate on the session
+ * exactly like the write path does, rather than trusting the page middleware.
+ */
 export async function loadThreadWith(
   store: ChatStore,
+  email: string | null | undefined,
   candidateIdRaw: number
 ): Promise<ChatMessage[]> {
+  const userId = await currentUserId(store, email);
+  if (userId == null) return [];
   const candidateId = zId.parse(candidateIdRaw);
   const rows = await store.threadFor(candidateId);
   return rows.map(toChatMessage);

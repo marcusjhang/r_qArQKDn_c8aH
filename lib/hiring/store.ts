@@ -228,8 +228,8 @@ export function useHiringStore(initial: HiringState): {
       persist({
         run: () => api.createJob(trimmed, description.trim(), cleanTraits),
         onResult: (realId) => {
-          if (realId != null) {
-            const id = realId as number;
+          if (typeof realId === 'number') {
+            const id = realId;
             dispatch({ type: 'reconcileJobId', tempId: temp, realId: id });
             onReady(id); // re-point the board at the persisted id
             flushPending(temp, id); // replay any edits made before reconcile
@@ -334,8 +334,8 @@ export function useHiringStore(initial: HiringState): {
             yearsExperience
           ),
         onResult: (realId) => {
-          if (realId != null) {
-            const id = realId as number;
+          if (typeof realId === 'number') {
+            const id = realId;
             dispatch({ type: 'reconcileCandidateId', tempId: temp, realId: id });
             flushPending(temp, id); // replay any edits made before reconcile
           }
@@ -443,11 +443,11 @@ export function useHiringStore(initial: HiringState): {
           onResult: (fbId) => {
             // Adopt the server's id so a newly-appended row leaves temp-id
             // state (a no-op when an existing entry was edited in place).
-            if (fbId != null) {
+            if (typeof fbId === 'number') {
               dispatch({
                 type: 'reconcileFeedbackId',
                 tempId: temp,
-                realId: fbId as number
+                realId: fbId
               });
             }
           }

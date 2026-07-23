@@ -1,14 +1,12 @@
 'use server';
 
 // Job write actions (create / star / delete). Part of the board's single write
-// path — see ./index for the boundary contract (zod-validate → mutate → tagged
-// revalidate → store rollback on throw) shared by every action module.
+// path — see ./index for the boundary contract (zod-validate → mutate → store
+// rollback on throw) shared by every action module.
 
 import { and, eq, sql } from 'drizzle-orm';
-import { revalidateTag } from 'next/cache';
 import { requireUser } from '@/lib/auth';
 import { db, jobs } from '@/lib/db';
-import { BOARD_TAGS } from '../cache';
 import { MAX_FAVORITES, reorderStages } from '../helpers';
 import { DEFAULT_STAGES, DEFAULT_TRAITS } from '../config';
 import {
@@ -55,7 +53,6 @@ export async function createJob(
       position: Number(maxPos) + 1
     })
     .returning({ id: jobs.id });
-  revalidateTag(BOARD_TAGS.jobs);
   return row?.id ?? null;
 }
 
@@ -68,7 +65,6 @@ export async function setJobDescription(
   const jobId = zId.parse(jobIdRaw);
   const description = zJobDescription.parse(descriptionRaw ?? '');
   await db.update(jobs).set({ description }).where(eq(jobs.id, jobId));
-  revalidateTag(BOARD_TAGS.jobs);
 }
 
 /**
@@ -81,7 +77,6 @@ export async function setJobTraits(jobIdRaw: number, traitsRaw: string[]) {
   const jobId = zId.parse(jobIdRaw);
   const traits = zTraitList.parse(traitsRaw).map((t) => t.trim());
   await db.update(jobs).set({ traits }).where(eq(jobs.id, jobId));
-  revalidateTag(BOARD_TAGS.jobs);
 }
 
 /**
@@ -106,7 +101,6 @@ export async function reorderTrait(
     .update(jobs)
     .set({ traits: result.stages })
     .where(eq(jobs.id, jobId));
-  revalidateTag(BOARD_TAGS.jobs);
 }
 
 /**
@@ -151,16 +145,12 @@ export async function setJobStarred(jobIdRaw: number, starred: boolean) {
   } else {
     await db.update(jobs).set({ starred: false }).where(eq(jobs.id, jobId));
   }
-  revalidateTag(BOARD_TAGS.jobs);
 }
 
 /** Delete a job; its candidates and feedback cascade via the FKs. */
 export async function deleteJob(jobIdRaw: number) {
   await requireUser();
   const jobId = zId.parse(jobIdRaw);
+  // Candidates (and their feedback) cascade-delete with the job via the FKs.
   await db.delete(jobs).where(eq(jobs.id, jobId));
-  // Candidates (and their feedback) cascade-delete with the job, so both the
-  // jobs and candidates reads are now stale.
-  revalidateTag(BOARD_TAGS.jobs);
-  revalidateTag(BOARD_TAGS.candidates);
 }

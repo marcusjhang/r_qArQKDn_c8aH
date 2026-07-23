@@ -57,7 +57,7 @@ export const zRating = z
     { message: 'Rating must be 1–4' }
   );
 
-export const zTraitName = z.string().trim().min(1).max(MAX_TRAIT_NAME);
+const zTraitName = z.string().trim().min(1).max(MAX_TRAIT_NAME);
 
 /**
  * A job's trait list: capped, and case-insensitively unique after trimming
@@ -76,7 +76,7 @@ export const zTraitList = z
  * are shape-validated here; the action further intersects them with the job's
  * current traits so stray/renamed keys never persist.
  */
-export const zTraitScores = z.record(zTraitName, zRating);
+const zTraitScores = z.record(zTraitName, zRating);
 
 /* Insert shapes derived from the tables via drizzle-zod, refined to app rules */
 export const candidateInsertSchema = createInsertSchema(candidates, {
