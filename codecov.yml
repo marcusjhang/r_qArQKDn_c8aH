@@ -18,13 +18,14 @@ coverage:
 
     # `patch` = coverage of ONLY the lines changed in the PR. This is the
     # signal that matters per-PR: it nudges every change to ship with tests.
-    # Also informational for now; flip `informational: false` and set a
-    # `target` (e.g. 80%) once the team wants it to gate merges.
+    # Gating: the check fails when the changed lines in a PR are less than
+    # `target` covered. `threshold: 0%` means no slack — patch coverage must be
+    # at least 80%, or Codecov posts a failing status that blocks the merge.
     patch:
       default:
         target: 80%
         threshold: 0%
-        informational: true
+        informational: false
 
 # Post a comment on each PR summarizing coverage and the per-file diff.
 comment:

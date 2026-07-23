@@ -1,6 +1,6 @@
 {
-  "id": "f3e15a7d-01f2-4435-8bc8-c5c3256e735a",
-  "prevId": "d2981493-9213-443d-a2d5-e0853a7cc155",
+  "id": "7b4a8222-f2c4-4445-b885-6e814bbc5b79",
+  "prevId": "f3e15a7d-01f2-4435-8bc8-c5c3256e735a",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -411,6 +411,12 @@
         },
         "read_at": {
           "name": "read_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dismissed_at": {
+          "name": "dismissed_at",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false

@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
+  dismissAllNotificationsWith,
+  dismissNotificationWith,
   getNotificationsWith,
   loadThreadWith,
   markAllNotificationsReadWith,
@@ -39,6 +41,7 @@ interface FakeMention {
   messageId: number;
   userId: number;
   readAt: Date | null;
+  dismissedAt: Date | null;
 }
 
 class FakeChatStore implements ChatStore {
@@ -127,7 +130,8 @@ class FakeChatStore implements ChatStore {
         id: this.nextMentionId++,
         messageId: id,
         userId,
-        readAt: null
+        readAt: null,
+        dismissedAt: null
       });
     }
     return id;
@@ -148,12 +152,27 @@ class FakeChatStore implements ChatStore {
     }
   }
 
+  async dismissMention(mentionId: number, userId: number): Promise<void> {
+    // Mirrors the SQL guard: only a mention that BOTH matches the id AND belongs
+    // to `userId` is touched. A mismatched userId is a no-op.
+    const m = this.mentions.find(
+      (x) => x.id === mentionId && x.userId === userId
+    );
+    if (m) m.dismissedAt = new Date();
+  }
+
+  async dismissAllMentions(userId: number): Promise<void> {
+    for (const m of this.mentions) {
+      if (m.userId === userId && m.dismissedAt == null) m.dismissedAt = new Date();
+    }
+  }
+
   async notificationsFor(
     userId: number,
     limit: number
   ): Promise<Notification[]> {
     return this.mentions
-      .filter((x) => x.userId === userId)
+      .filter((x) => x.userId === userId && x.dismissedAt == null)
       .map((x) => {
         const msg = this.messages.find((m) => m.id === x.messageId)!;
         const cand = this.candidates.find((c) => c.id === msg.candidateId)!;
@@ -356,5 +375,69 @@ describe('notification authorization guard', () => {
     await postMessageWith(store, alice.email, 10, 'to bob', [bob.id]);
     await markAllNotificationsReadWith(store, null);
     expect(store.mentions.every((m) => m.readAt == null)).toBe(true);
+  });
+
+  it('dismissNotification cannot clear a mention that belongs to another user', async () => {
+    const store = seed();
+    await postMessageWith(store, alice.email, 10, 'for bob', [bob.id]);
+    const bobMention = store.mentions.find((m) => m.userId === bob.id)!;
+
+    // Alice attempts to dismiss bob's mention using bob's mention id.
+    await dismissNotificationWith(store, alice.email, bobMention.id);
+
+    // Guard holds: bob's mention is still in his inbox.
+    expect(
+      store.mentions.find((m) => m.id === bobMention.id)!.dismissedAt
+    ).toBeNull();
+    expect(await getNotificationsWith(store, bob.id)).toHaveLength(1);
+
+    // And bob can clear his own mention — it drops out of his inbox.
+    await dismissNotificationWith(store, bob.email, bobMention.id);
+    expect(
+      store.mentions.find((m) => m.id === bobMention.id)!.dismissedAt
+    ).not.toBeNull();
+    expect(await getNotificationsWith(store, bob.id)).toHaveLength(0);
+  });
+
+  it('dismissNotification is a no-op when the caller is not signed in', async () => {
+    const store = seed();
+    await postMessageWith(store, alice.email, 10, 'for bob', [bob.id]);
+    const bobMention = store.mentions.find((m) => m.userId === bob.id)!;
+    await dismissNotificationWith(store, null, bobMention.id);
+    expect(
+      store.mentions.find((m) => m.id === bobMention.id)!.dismissedAt
+    ).toBeNull();
+  });
+
+  it('dismissAllNotifications only clears the caller’s own mentions', async () => {
+    const store = seed();
+    // Alice mentions bob; bob mentions alice — each inbox has one.
+    await postMessageWith(store, alice.email, 10, 'to bob', [bob.id]);
+    await postMessageWith(store, bob.email, 10, 'to alice', [alice.id]);
+
+    await dismissAllNotificationsWith(store, bob.email);
+
+    // Bob's inbox is empty; alice's is untouched.
+    expect(await getNotificationsWith(store, bob.id)).toHaveLength(0);
+    expect(await getNotificationsWith(store, alice.id)).toHaveLength(1);
+  });
+
+  it('dismissAllNotifications is a no-op when the caller is not signed in', async () => {
+    const store = seed();
+    await postMessageWith(store, alice.email, 10, 'to bob', [bob.id]);
+    await dismissAllNotificationsWith(store, null);
+    expect(store.mentions.every((m) => m.dismissedAt == null)).toBe(true);
+  });
+
+  it('a dismissed notification does not reappear after being marked read', async () => {
+    const store = seed();
+    await postMessageWith(store, alice.email, 10, 'for bob', [bob.id]);
+    const bobMention = store.mentions.find((m) => m.userId === bob.id)!;
+
+    await dismissNotificationWith(store, bob.email, bobMention.id);
+    await markNotificationReadWith(store, bob.email, bobMention.id);
+
+    // Dismissed stays out of the inbox regardless of read state.
+    expect(await getNotificationsWith(store, bob.id)).toHaveLength(0);
   });
 });

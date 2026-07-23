@@ -68,7 +68,17 @@ export interface ChatStore {
   markMentionRead(mentionId: number, userId: number): Promise<void>;
   /** Mark every unread mention owned by `userId` as read. */
   markAllMentionsRead(userId: number): Promise<void>;
-  /** The mentions targeting `userId`, newest first — the notification inbox. */
+  /**
+   * Dismiss (clear from the inbox) one mention — ONLY when it belongs to
+   * `userId`. Same per-user guard as `markMentionRead`; idempotent.
+   */
+  dismissMention(mentionId: number, userId: number): Promise<void>;
+  /** Dismiss every not-yet-dismissed mention owned by `userId`. */
+  dismissAllMentions(userId: number): Promise<void>;
+  /**
+   * The not-dismissed mentions targeting `userId`, newest first — the
+   * notification inbox.
+   */
   notificationsFor(userId: number, limit: number): Promise<Notification[]>;
 }
 
@@ -178,6 +188,24 @@ export const drizzleChatStore: ChatStore = {
       .where(and(eq(mentions.userId, userId), isNull(mentions.readAt)));
   },
 
+  async dismissMention(mentionId, userId) {
+    const { db, mentions } = await import('@/lib/db');
+    await db
+      .update(mentions)
+      .set({ dismissedAt: new Date() })
+      // The userId predicate IS the authorization guard: a caller can only
+      // clear a mention that targets their own account.
+      .where(and(eq(mentions.id, mentionId), eq(mentions.userId, userId)));
+  },
+
+  async dismissAllMentions(userId) {
+    const { db, mentions } = await import('@/lib/db');
+    await db
+      .update(mentions)
+      .set({ dismissedAt: new Date() })
+      .where(and(eq(mentions.userId, userId), isNull(mentions.dismissedAt)));
+  },
+
   async notificationsFor(userId, limit) {
     const { db, users, messages, mentions, candidates } =
       await import('@/lib/db');
@@ -200,8 +228,8 @@ export const drizzleChatStore: ChatStore = {
       .innerJoin(messages, eq(mentions.messageId, messages.id))
       .innerJoin(candidates, eq(messages.candidateId, candidates.id))
       .innerJoin(users, eq(messages.authorId, users.id))
-      // Scoped to the caller: only mentions that target `userId`.
-      .where(eq(mentions.userId, userId))
+      // Scoped to the caller: only their own mentions that haven't been cleared.
+      .where(and(eq(mentions.userId, userId), isNull(mentions.dismissedAt)))
       .orderBy(desc(messages.createdAt))
       .limit(limit);
 

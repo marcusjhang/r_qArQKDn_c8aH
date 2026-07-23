@@ -2,13 +2,16 @@
 
 // Mention notification inbox in the top bar: a bell with an unread badge and a
 // dropdown of the mentions targeting the current account. Opening a
-// notification jumps to that applicant's chat and marks it read; there's also a
-// "mark all read". Initial data is server-rendered; reads/clears go through the
-// chat-actions and the page revalidates.
+// notification jumps to that applicant's chat and marks it read; each row can
+// be cleared with its ✕, and the header offers "Mark all read" and "Clear all".
+// Initial data is server-rendered; reads/clears go through the chat-actions and
+// the page revalidates.
 
 import { useRouter } from 'next/navigation';
-import { Bell } from 'lucide-react';
+import { Bell, X } from 'lucide-react';
 import {
+  dismissAllNotifications,
+  dismissNotification,
   markAllNotificationsRead,
   markNotificationRead
 } from '@/lib/hiring/chat-actions';
@@ -38,8 +41,20 @@ export default function NotificationBell({
     }
   }
 
-  function clearAll() {
+  function markAllRead() {
     markAllNotificationsRead()
+      .then(() => router.refresh())
+      .catch(() => {});
+  }
+
+  function dismissOne(n: Notification) {
+    dismissNotification(n.id)
+      .then(() => router.refresh())
+      .catch(() => {});
+  }
+
+  function clearAll() {
+    dismissAllNotifications()
       .then(() => router.refresh())
       .catch(() => {});
   }
@@ -59,10 +74,17 @@ export default function NotificationBell({
         <div className="notif-menu" {...menu.menuProps}>
           <div className="notif-head">
             <span>Notifications</span>
-            {unread > 0 && (
-              <button className="notif-clear" onClick={clearAll}>
-                Mark all read
-              </button>
+            {notifications.length > 0 && (
+              <span className="notif-actions">
+                {unread > 0 && (
+                  <button className="notif-clear" onClick={markAllRead}>
+                    Mark all read
+                  </button>
+                )}
+                <button className="notif-clear" onClick={clearAll}>
+                  Clear all
+                </button>
+              </span>
             )}
           </div>
           {notifications.length === 0 ? (
@@ -70,22 +92,33 @@ export default function NotificationBell({
           ) : (
             <div className="notif-list">
               {notifications.map((n) => (
-                <button
+                <div
                   key={n.id}
                   className={`notif-item${n.read ? '' : ' unread'}`}
-                  onClick={() => openNotification(n)}
                 >
-                  <div className="notif-item-top">
-                    <span className="notif-who">{n.authorName}</span>
-                    <span className="notif-time">
-                      {formatMessageTime(n.createdAt)}
-                    </span>
-                  </div>
-                  <div className="notif-ctx">
-                    tagged you on <b>{n.candidateName}</b>
-                  </div>
-                  <div className="notif-body">{n.body}</div>
-                </button>
+                  <button
+                    className="notif-open"
+                    onClick={() => openNotification(n)}
+                  >
+                    <div className="notif-item-top">
+                      <span className="notif-who">{n.authorName}</span>
+                      <span className="notif-time">
+                        {formatMessageTime(n.createdAt)}
+                      </span>
+                    </div>
+                    <div className="notif-ctx">
+                      tagged you on <b>{n.candidateName}</b>
+                    </div>
+                    <div className="notif-body">{n.body}</div>
+                  </button>
+                  <button
+                    className="notif-dismiss"
+                    aria-label="Clear notification"
+                    onClick={() => dismissOne(n)}
+                  >
+                    <X size={13} aria-hidden />
+                  </button>
+                </div>
               ))}
             </div>
           )}

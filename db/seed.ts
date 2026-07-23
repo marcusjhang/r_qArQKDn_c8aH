@@ -48,6 +48,9 @@ async function main() {
   const db = drizzle(client);
 
   // Seed login accounts (idempotent: create, or reset password if present).
+  // Every account is created/reset to the shared default password, so each one
+  // must change it on first login — mustChangePassword is set true here and
+  // cleared by the /change-password flow (see lib/auth.ts + SECURITY.md).
   const passwordHash = await hash(SEED_PASSWORD, 12);
   for (const acc of SEED_ACCOUNTS) {
     const [existing] = await db
@@ -56,12 +59,15 @@ async function main() {
       .where(eq(users.email, acc.email))
       .limit(1);
     if (existing) {
+      // Re-seeding resets the account back to the default password, so require
+      // a change again even if the user had already picked their own.
       await db
         .update(users)
         .set({
           passwordHash,
           firstName: acc.firstName,
-          lastName: acc.lastName
+          lastName: acc.lastName,
+          mustChangePassword: true
         })
         .where(eq(users.email, acc.email));
       console.log(`Updated login account ${acc.email}.`);
@@ -70,7 +76,8 @@ async function main() {
         firstName: acc.firstName,
         lastName: acc.lastName,
         email: acc.email,
-        passwordHash
+        passwordHash,
+        mustChangePassword: true
       });
       console.log(`Seeded login account ${acc.email}.`);
     }

@@ -121,7 +121,7 @@ export async function markNotificationReadWith(
   await store.markMentionRead(mentionId, userId);
 }
 
-/** Mark every unread mention for the caller as read (clear the inbox). */
+/** Mark every unread mention for the caller as read. */
 export async function markAllNotificationsReadWith(
   store: ChatStore,
   email: string | null | undefined
@@ -129,6 +129,30 @@ export async function markAllNotificationsReadWith(
   const userId = await currentUserId(store, email);
   if (userId == null) return;
   await store.markAllMentionsRead(userId);
+}
+
+/** Clear (dismiss) one of the caller's mention notifications from the inbox. */
+export async function dismissNotificationWith(
+  store: ChatStore,
+  email: string | null | undefined,
+  mentionIdRaw: number
+): Promise<void> {
+  const userId = await currentUserId(store, email);
+  if (userId == null) return;
+  const mentionId = zId.parse(mentionIdRaw);
+  // The store scopes the update to (mentionId, userId): a caller can only clear
+  // a mention that targets their own account, never someone else's.
+  await store.dismissMention(mentionId, userId);
+}
+
+/** Clear (dismiss) every one of the caller's mention notifications. */
+export async function dismissAllNotificationsWith(
+  store: ChatStore,
+  email: string | null | undefined
+): Promise<void> {
+  const userId = await currentUserId(store, email);
+  if (userId == null) return;
+  await store.dismissAllMentions(userId);
 }
 
 /**
