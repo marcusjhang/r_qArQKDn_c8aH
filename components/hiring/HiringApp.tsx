@@ -4,22 +4,26 @@
 // (job title, terminal-state toggle, quick-add), the board, and the detail
 // slide-over. Board-first: the board is the home screen and the drawer opens
 // over it so pipeline context stays on screen.
+//
+// Domain state (jobs/candidates/feedback) lives in the TanStack-backed
+// useHiringStore; the transient view state (active job, terminal-cards toggle,
+// and which single overlay is open) lives in useBoardView, which wraps the pure
+// overlay state machine (lib/hiring/overlay.ts). The per-overlay render props
+// below are derived from that one union rather than kept in sync by hand.
 
-import { useCallback, useEffect, useReducer, useState } from 'react';
 import {
   findUserIdByEmail,
   formatJobMeta,
   jobById,
   jobStats,
   liveCount,
-  overlayReducer,
   overdueForOwner,
   useHiringStore,
-  NO_OVERLAY,
   type HiringState,
   type Notification
 } from '@/lib/hiring';
 import { Button } from '@/components/ui/button';
+import { useBoardView } from './hooks/useBoardView';
 import Board from './Board';
 import DetailDrawer from './DetailDrawer';
 import AddCandidateModal from './AddCandidateModal';
@@ -42,28 +46,18 @@ export default function HiringApp({
   notifications?: Notification[];
 }) {
   const { state, actions } = useHiringStore(initial);
+  const { activeJob, showRejected, overlay, actions: view } = useBoardView(
+    state.jobs
+  );
   // Shared clock for time-in-stage / overdue UI (null until mounted — see hook).
   const now = useNow();
-  const [activeJob, setActiveJob] = useState<number>(state.jobs[0]?.id ?? 0);
-  const [showRejected, setShowRejected] = useState(false);
-  // A single overlay state machine replaces the old cluster of open/adding/
-  // creating flags: at most one overlay is open at a time, so the drawer and
-  // the two modals are variants of one discriminated union (see ./overlay).
-  // Each open/close is one dispatch, and the per-overlay render props below are
-  // derived from the union rather than kept in sync across separate setStates.
-  const [overlay, dispatchOverlay] = useReducer(overlayReducer, NO_OVERLAY);
+
+  // The per-overlay render props, derived from the single overlay union.
   const openId = overlay.kind === 'detail' ? overlay.candidateId : null;
   const focusMessageId =
     overlay.kind === 'detail' ? overlay.focusMessageId : null;
   const addingCandidate = overlay.kind === 'addCandidate';
   const creatingJob = overlay.kind === 'newJob';
-
-  // Keep a valid active job — e.g. after deleting the active job, fall back.
-  useEffect(() => {
-    if (state.jobs.length && !state.jobs.some((j) => j.id === activeJob)) {
-      setActiveJob(state.jobs[0].id);
-    }
-  }, [state.jobs, activeJob]);
 
   const job = jobById(state.jobs, activeJob) ?? state.jobs[0];
 
@@ -74,26 +68,6 @@ export default function HiringApp({
   // Thin adapter so JobTabs keeps its (jobId) => number prop contract.
   const jobLiveCount = (jobId: number) => liveCount(state.candidates, jobId);
 
-  function selectJob(jobId: number) {
-    setActiveJob(jobId);
-    dispatchOverlay({ type: 'close' });
-  }
-
-  // Open a candidate from the board — no specific message to focus.
-  const openFromBoard = useCallback((candidateId: number) => {
-    dispatchOverlay({ type: 'openCandidate', candidateId });
-  }, []);
-
-  // Open a candidate from a stalled-candidate alert: switch to its job (which
-  // may not be the active one) and open the drawer — no chat message to focus.
-  const openFromAlert = useCallback(
-    (candidateId: number, jobId: number) => {
-      if (state.jobs.some((j) => j.id === jobId)) setActiveJob(jobId);
-      dispatchOverlay({ type: 'openCandidate', candidateId });
-    },
-    [state.jobs]
-  );
-
   // The signed-in owner's overdue candidates, surfaced in the notification bell.
   // Derived from the live clock (null until mounted) so it tracks the same
   // overdue state as the card/drawer warnings and clears when a candidate moves.
@@ -101,31 +75,6 @@ export default function HiringApp({
     now == null || currentUserId == null
       ? []
       : overdueForOwner(state.candidates, state.stageSlas, currentUserId, now);
-
-  // Jump to an applicant's chat from a notification: switch to their job (so
-  // the board context is right), open their detail drawer, and remember which
-  // message to scroll to once the thread loads.
-  const openCandidate = useCallback(
-    (candidateId: number, jobId: number, messageId: number) => {
-      if (state.jobs.some((j) => j.id === jobId)) setActiveJob(jobId);
-      dispatchOverlay({
-        type: 'openCandidate',
-        candidateId,
-        focusMessageId: messageId
-      });
-    },
-    [state.jobs]
-  );
-
-  // Jump to a candidate picked from the global search: switch to their job (so
-  // the board behind the drawer is the right one) and open their detail drawer.
-  const openCandidateInJob = useCallback(
-    (candidateId: number, jobId: number) => {
-      if (state.jobs.some((j) => j.id === jobId)) setActiveJob(jobId);
-      dispatchOverlay({ type: 'openCandidate', candidateId });
-    },
-    [state.jobs]
-  );
 
   const meta = formatJobMeta(
     job
@@ -144,22 +93,19 @@ export default function HiringApp({
           <NotificationBell
             notifications={notifications}
             stageAlerts={stageAlerts}
-            onOpen={openCandidate}
-            onOpenAlert={openFromAlert}
+            onOpen={view.openFromNotification}
+            onOpenAlert={view.openInJob}
           />
         }
       >
-        <Button
-          variant="appPrimary"
-          onClick={() => dispatchOverlay({ type: 'openNewJob' })}
-        >
+        <Button variant="appPrimary" onClick={view.openNewJob}>
           ＋ New job
         </Button>
         <JobTabs
           jobs={state.jobs}
           activeJob={activeJob}
           liveCount={jobLiveCount}
-          onSelect={selectJob}
+          onSelect={view.selectJob}
           onToggleStar={actions.setJobStarred}
           onDelete={actions.deleteJob}
         />
@@ -176,20 +122,20 @@ export default function HiringApp({
           users={state.users}
           sources={state.sources}
           bands={state.bands}
-          onSelect={openCandidateInJob}
+          onSelect={view.openInJob}
         />
         <div className="spacer" />
         <label className="toggle">
           <input
             type="checkbox"
             checked={showRejected}
-            onChange={(e) => setShowRejected(e.target.checked)}
+            onChange={(e) => view.setShowRejected(e.target.checked)}
           />{' '}
           Show rejected
         </label>
         <Button
           variant="appPrimary"
-          onClick={() => dispatchOverlay({ type: 'openAddCandidate' })}
+          onClick={view.openAddCandidate}
           disabled={!job}
         >
           ＋ Add candidate
@@ -202,7 +148,7 @@ export default function HiringApp({
         activeJob={activeJob}
         showRejected={showRejected}
         now={now}
-        onOpen={openFromBoard}
+        onOpen={view.openFromBoard}
       />
 
       <DetailDrawer
@@ -211,7 +157,7 @@ export default function HiringApp({
         openId={openId}
         currentUserId={currentUserId}
         now={now}
-        onClose={() => dispatchOverlay({ type: 'close' })}
+        onClose={view.close}
         focusMessageId={focusMessageId}
       />
 
@@ -221,7 +167,7 @@ export default function HiringApp({
           users={state.users}
           sources={state.sources}
           bands={state.bands}
-          onClose={() => dispatchOverlay({ type: 'close' })}
+          onClose={view.close}
           onAdd={(name, source, owner, linkedinUrl, githubUrl, yearsExperience) =>
             actions.addCandidate(
               job.id,
@@ -238,10 +184,8 @@ export default function HiringApp({
 
       {creatingJob && (
         <NewJobModal
-          onClose={() => dispatchOverlay({ type: 'close' })}
-          onCreate={(title) =>
-            actions.createJob(title, (id) => setActiveJob(id))
-          }
+          onClose={view.close}
+          onCreate={(title) => actions.createJob(title, view.selectJob)}
         />
       )}
     </div>
