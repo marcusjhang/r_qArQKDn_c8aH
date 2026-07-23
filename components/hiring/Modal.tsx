@@ -4,6 +4,7 @@
 // .ht-root), so it stays visually consistent with the drawer and cards.
 
 import { useEffect } from 'react';
+import { CloseButton } from '@/components/ui/close-button';
 import { useFocusTrap } from './hooks/useFocusTrap';
 
 export default function Modal({
@@ -41,9 +42,7 @@ export default function Modal({
       >
         <div className="modal-head">
           <h2>{title}</h2>
-          <button className="close" aria-label="Close" onClick={onClose}>
-            ✕
-          </button>
+          <CloseButton onClick={onClose} />
         </div>
         <div className="modal-body">{children}</div>
       </div>

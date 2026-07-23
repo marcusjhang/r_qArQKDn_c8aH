@@ -1,15 +1,15 @@
 import 'server-only';
 
 // The per-candidate chat thread read/write, expressed against the injectable
-// `ChatStore` seam (see ./chat-store) rather than the `db` singleton — so it is
+// `ChatStore` seam (see ./store) rather than the `db` singleton — so it is
 // unit-testable in a plain Node environment with an in-memory fake, and
 // importing it never constructs the postgres client. The thin `'use server'`
-// adapters in ./chat-actions call these with the Drizzle-backed store.
+// adapters in ./actions call these with the Drizzle-backed store.
 
-import { zId } from './schemas';
-import type { ChatStore } from './chat-store';
-import type { ChatMessage } from './types';
-import { currentUserId, toChatMessage, zBody, zMentionIds } from './chat-shaping';
+import { zId } from '../schemas';
+import type { ChatStore } from './store';
+import type { ChatMessage } from '../types';
+import { currentUserId, toChatMessage, zBody, zMentionIds } from './shaping';
 
 /**
  * The full discussion thread for one candidate, oldest first. Returns an empty

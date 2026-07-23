@@ -1,17 +1,17 @@
 import 'server-only';
 
 // The mention notification inbox read/writes, expressed against the injectable
-// `ChatStore` seam (see ./chat-store) rather than the `db` singleton — so they
+// `ChatStore` seam (see ./store) rather than the `db` singleton — so they
 // are unit-testable with an in-memory fake and importing them never constructs
 // the postgres client. Every mutation resolves the caller's numeric id and the
 // store scopes the write to it, so a caller can only ever clear a mention that
-// targets their own account. The `'use server'` adapters in ./chat-actions and
-// the server read in ./chat-queries call these with the Drizzle-backed store.
+// targets their own account. The `'use server'` adapters in ./actions and
+// the server read in ./queries call these with the Drizzle-backed store.
 
-import { zId } from './schemas';
-import type { ChatStore } from './chat-store';
-import type { Notification } from './types';
-import { currentUserId } from './chat-shaping';
+import { zId } from '../schemas';
+import type { ChatStore } from './store';
+import type { Notification } from '../types';
+import { currentUserId } from './shaping';
 
 /** Mark one of the caller's mention notifications as read. */
 export async function markNotificationReadWith(

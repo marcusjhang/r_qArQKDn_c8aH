@@ -13,6 +13,7 @@ import {
   type Candidate,
   type User
 } from '@/lib/hiring';
+import { Avatar } from '@/components/ui/avatar';
 
 export default function FeedbackList({
   view,
@@ -51,7 +52,7 @@ export default function FeedbackList({
               return (
                 <div className="fb-entry" key={i}>
                   <div className="fb-top">
-                    <span className="avatar">{initials(fo)}</span>
+                    <Avatar>{initials(fo)}</Avatar>
                     <span className="fb-who">{displayName(fo)}</span>
                     <span
                       className={`rating-chip ${r.cls}`}
