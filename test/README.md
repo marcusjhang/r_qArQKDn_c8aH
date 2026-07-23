@@ -20,8 +20,18 @@ Config: `vitest.config.ts` (Node environment, `@/` path aliases mirrored from
 
 ## End-to-end tests — Playwright (`test/e2e/`)
 
-Browser-level smoke tests (currently the auth gate). These need a running app
-(and therefore a database) plus a one-time browser install:
+Browser-level tests covering the core happy paths:
+
+- `auth.spec.ts` — the auth gate (unauthenticated redirect + the public login page).
+- `candidate-move.spec.ts` — moving a candidate between pipeline stages.
+- `candidate-feedback.spec.ts` — leaving interview feedback (rating + note).
+- `candidate-chat.spec.ts` — the per-applicant discussion thread + @-mentions.
+- `settings.spec.ts` — a settings edit (add a source; add/rename a stage).
+
+The happy-path specs sign in first via the shared `login` / `loginToBoard`
+helpers in `test/e2e/helpers.ts`, using the seeded accounts from `db/seed.ts`
+(override with `E2E_EMAIL` / `E2E_PASSWORD`). These need a running app
+(and therefore a seeded database) plus a one-time browser install:
 
 ```bash
 bunx playwright install    # once, to fetch browser binaries
