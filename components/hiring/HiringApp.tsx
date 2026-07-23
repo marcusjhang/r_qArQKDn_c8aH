@@ -74,7 +74,12 @@ export default function HiringApp({
   const stageAlerts =
     now == null || currentUserId == null
       ? []
-      : overdueForOwner(state.candidates, state.stageSlas, currentUserId, now);
+      : overdueForOwner(
+          state.candidates,
+          state.stageWarnDays,
+          currentUserId,
+          now
+        );
 
   const meta = formatJobMeta(
     job

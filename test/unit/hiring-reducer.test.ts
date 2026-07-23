@@ -42,7 +42,7 @@ function makeState(over: Partial<HiringState> = {}): HiringState {
     users: [],
     sources: [],
     bands: [],
-    stageSlas: [],
+    stageWarnDays: 5,
     ...over
   };
 }

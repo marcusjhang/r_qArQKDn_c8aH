@@ -1,34 +1,30 @@
 'use client';
 
 // Drawer footer: shows the candidate's current stage, how long they've been in
-// it (with an overdue warning when the stage's configured limit is exceeded),
-// and the Advance / Move back controls. Stage position drives which buttons
-// exist (no dead-end buttons), and moving returns to the board so the change is
-// visible.
+// it (turning red past the universal warn threshold), and the Advance / Move
+// back controls. Stage position drives which buttons exist (no dead-end
+// buttons), and moving returns to the board so the change is visible.
 
 import {
   stageNavigation,
   isTerminal,
   stageOverdue,
-  stageSlaFor,
   stageAgeLabel,
-  daysInStage,
   type Candidate,
-  type Job,
-  type StageSla
+  type Job
 } from '@/lib/hiring';
 import { Button } from '@/components/ui/button';
 
 export default function DetailFooter({
   view,
   job,
-  stageSlas,
+  stageWarnDays,
   now,
   onMove
 }: {
   view: Candidate | null;
   job: Job | undefined;
-  stageSlas: StageSla[];
+  stageWarnDays: number;
   /** Shared clock; null until mounted, so no time UI renders on the server. */
   now: number | null;
   onMove: (dir: 1 | -1) => void;
@@ -37,12 +33,11 @@ export default function DetailFooter({
 
   // Time-in-stage line, shown for a candidate still moving through the pipeline
   // once the clock has mounted. Terminal candidates aren't stalled, so skip it.
+  // Turns red (.overdue) once past the universal warn threshold.
   const showAge = !!view && now != null && !isTerminal(view);
-  const overdue = !!view && now != null && stageOverdue(view, stageSlas, now);
+  const overdue = !!view && now != null && stageOverdue(view, stageWarnDays, now);
   const ageLabel =
     view && now != null ? stageAgeLabel(view.stageEnteredAt, now) : '';
-  const daysIn = view && now != null ? daysInStage(view.stageEnteredAt, now) : 0;
-  const limit = view ? stageSlaFor(stageSlas, view.stage) : null;
 
   return (
     <div className="drawer-foot">
@@ -51,11 +46,6 @@ export default function DetailFooter({
         {showAge && (
           <span className={`stage-age${overdue ? ' overdue' : ''}`}>
             In this stage {ageLabel}
-            {overdue && limit != null
-              ? `, past the ${limit}-day limit (${daysIn} day${
-                  daysIn === 1 ? '' : 's'
-                })`
-              : ''}
           </span>
         )}
       </div>

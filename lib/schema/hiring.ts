@@ -19,7 +19,8 @@ import { relations, sql } from 'drizzle-orm';
 import {
   STATUSES,
   MAX_YEARS_EXPERIENCE,
-  MAX_SLA_DAYS,
+  DEFAULT_STAGE_WARN_DAYS,
+  MAX_STAGE_WARN_DAYS,
   type RatingValue
 } from '../hiring/primitives';
 import { users } from './auth';
@@ -58,32 +59,28 @@ export const seniorityBands = pgTable('seniority_bands', {
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
-// Stage time-limits (SLAs) — the configurable "warn after N days in a stage"
-// mapping, managed from /settings and seeded in db/seed.ts. Keyed by stage
-// NAME (case-insensitively unique) rather than a per-job FK: pipelines share a
-// common stage vocabulary (Applied, Screen, Interview…), so one limit applies
-// wherever that stage appears. Warnings are opt-in — a stage only warns once a
-// row exists for it. DB-driven like sources/seniority_bands.
-export const stageSlas = pgTable(
-  'stage_slas',
+// Pipeline settings — a single row holding the one universal "warn after N days
+// in a stage" threshold, managed from /settings and seeded in db/seed.ts. The
+// board flags a candidate as overdue once they have sat in their CURRENT stage
+// for at least `stageWarnDays` whole days, applied uniformly to every stage (no
+// per-stage config). Singleton: the seed ensures exactly one row and the update
+// action edits it in place.
+export const pipelineSettings = pgTable(
+  'pipeline_settings',
   {
     id: serial('id').primaryKey(),
-    stage: text('stage').notNull(),
-    // Whole days a candidate may sit in the stage before the board warns.
-    maxDays: integer('max_days').notNull(),
+    // Whole days a candidate may sit in ANY stage before the board warns.
+    stageWarnDays: integer('stage_warn_days')
+      .notNull()
+      .default(DEFAULT_STAGE_WARN_DAYS),
     createdAt: timestamp('created_at').defaultNow().notNull()
   },
   (t) => ({
-    // Case-insensitive uniqueness so "Interview" and "interview" are the same
-    // stage limit — mirrors the sources table's lower(name) unique index.
-    stageLowerUnique: uniqueIndex('stage_slas_stage_lower_unique').on(
-      sql`lower(${t.stage})`
-    ),
-    // A limit is at least a day and at most MAX_SLA_DAYS — backed at the DB
-    // level so a bad write can't slip past the zod validator.
-    maxDaysRange: check(
-      'stage_slas_max_days_range',
-      sql`${t.maxDays} between 1 and ${sql.raw(String(MAX_SLA_DAYS))}`
+    // At least a day, at most MAX_STAGE_WARN_DAYS — DB-level teeth so a bad
+    // write can't slip past the zod validator.
+    warnRange: check(
+      'pipeline_settings_warn_range',
+      sql`${t.stageWarnDays} between 1 and ${sql.raw(String(MAX_STAGE_WARN_DAYS))}`
     )
   })
 );
@@ -222,7 +219,7 @@ export type SelectCandidate = typeof candidates.$inferSelect;
 export type SelectFeedback = typeof feedback.$inferSelect;
 export type SelectSource = typeof sources.$inferSelect;
 export type SelectSeniorityBand = typeof seniorityBands.$inferSelect;
-export type SelectStageSla = typeof stageSlas.$inferSelect;
+export type SelectPipelineSettings = typeof pipelineSettings.$inferSelect;
 export type SelectMessage = typeof messages.$inferSelect;
 export type SelectMention = typeof mentions.$inferSelect;
 

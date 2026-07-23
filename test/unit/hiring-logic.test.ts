@@ -12,13 +12,12 @@ import {
   isTerminalStage,
   daysInStage,
   stageAgeLabel,
-  stageSlaFor,
   stageOverdue,
   overdueForOwner,
   MS_PER_DAY,
   type Placement
 } from '@/lib/hiring/helpers';
-import type { Candidate, StageSla, Status } from '@/lib/hiring/types';
+import type { Candidate, Status } from '@/lib/hiring/types';
 
 // Minimal candidate factory — only the fields the logic reads matter.
 function candidate(over: Partial<Candidate> = {}): Candidate {
@@ -335,73 +334,42 @@ describe('stageAgeLabel', () => {
   });
 });
 
-describe('stageSlaFor', () => {
-  const slas: StageSla[] = [
-    { id: 1, stage: 'Applied', maxDays: 14 },
-    { id: 2, stage: 'Interview', maxDays: 7 }
-  ];
-
-  it('finds the configured limit for a stage', () => {
-    expect(stageSlaFor(slas, 'Interview')).toBe(7);
-  });
-
-  it('matches case-insensitively (mirrors the DB lower(stage) index)', () => {
-    expect(stageSlaFor(slas, 'interview')).toBe(7);
-  });
-
-  it('returns null for a stage with no configured limit', () => {
-    expect(stageSlaFor(slas, 'Offer')).toBeNull();
-  });
-});
-
 describe('stageOverdue', () => {
   const now = 100 * MS_PER_DAY;
-  const slas: StageSla[] = [{ id: 1, stage: 'Interview', maxDays: 7 }];
+  const warnDays = 7;
 
-  it('is true once the day-limit is reached (warn after N days)', () => {
-    const c = candidate({
-      stage: 'Interview',
-      stageEnteredAt: new Date((100 - 7) * MS_PER_DAY)
-    });
-    expect(stageOverdue(c, slas, now)).toBe(true);
+  it('is true once the warn threshold is reached (warn after N days)', () => {
+    const c = candidate({ stageEnteredAt: new Date((100 - 7) * MS_PER_DAY) });
+    expect(stageOverdue(c, warnDays, now)).toBe(true);
   });
 
-  it('is false while still within the limit', () => {
-    const c = candidate({
-      stage: 'Interview',
-      stageEnteredAt: new Date((100 - 6) * MS_PER_DAY)
-    });
-    expect(stageOverdue(c, slas, now)).toBe(false);
+  it('is false while still within the threshold', () => {
+    const c = candidate({ stageEnteredAt: new Date((100 - 6) * MS_PER_DAY) });
+    expect(stageOverdue(c, warnDays, now)).toBe(false);
   });
 
-  it('is false when the stage has no configured limit (opt-in per stage)', () => {
+  it('applies the one threshold to every stage', () => {
     const c = candidate({
       stage: 'Offer',
-      stageEnteredAt: new Date((100 - 30) * MS_PER_DAY)
+      stageEnteredAt: new Date((100 - 8) * MS_PER_DAY)
     });
-    expect(stageOverdue(c, slas, now)).toBe(false);
+    expect(stageOverdue(c, warnDays, now)).toBe(true);
   });
 
   it('never warns for terminal candidates (hired / rejected)', () => {
-    const base = {
-      stage: 'Interview',
-      stageEnteredAt: new Date((100 - 30) * MS_PER_DAY)
-    };
-    expect(stageOverdue(candidate({ ...base, status: 'hired' }), slas, now)).toBe(
-      false
-    );
+    const base = { stageEnteredAt: new Date((100 - 30) * MS_PER_DAY) };
     expect(
-      stageOverdue(candidate({ ...base, status: 'rejected' }), slas, now)
+      stageOverdue(candidate({ ...base, status: 'hired' }), warnDays, now)
+    ).toBe(false);
+    expect(
+      stageOverdue(candidate({ ...base, status: 'rejected' }), warnDays, now)
     ).toBe(false);
   });
 });
 
 describe('overdueForOwner', () => {
   const now = 100 * MS_PER_DAY;
-  const slas: StageSla[] = [
-    { id: 1, stage: 'Applied', maxDays: 14 },
-    { id: 2, stage: 'Interview', maxDays: 7 }
-  ];
+  const warnDays = 7;
   const old = (days: number) => new Date((100 - days) * MS_PER_DAY);
 
   it('returns only the given owner’s overdue candidates', () => {
@@ -410,14 +378,13 @@ describe('overdueForOwner', () => {
       candidate({ id: 2, owner: 9, stage: 'Applied', stageEnteredAt: old(20) }), // overdue, someone else
       candidate({ id: 3, owner: 7, stage: 'Applied', stageEnteredAt: old(3) }) // mine, not overdue
     ];
-    const alerts = overdueForOwner(cands, slas, 7, now);
+    const alerts = overdueForOwner(cands, warnDays, 7, now);
     expect(alerts.map((a) => a.candidateId)).toEqual([1]);
-    expect(alerts[0]).toMatchObject({ stage: 'Applied', days: 20, limit: 14 });
+    expect(alerts[0]).toMatchObject({ stage: 'Applied', days: 20 });
   });
 
-  it('excludes stages with no configured limit and terminal candidates', () => {
+  it('excludes terminal candidates', () => {
     const cands = [
-      candidate({ id: 1, owner: 7, stage: 'Offer', stageEnteredAt: old(30) }), // no SLA for Offer
       candidate({
         id: 2,
         owner: 7,
@@ -433,16 +400,16 @@ describe('overdueForOwner', () => {
         status: 'rejected'
       })
     ];
-    expect(overdueForOwner(cands, slas, 7, now)).toEqual([]);
+    expect(overdueForOwner(cands, warnDays, 7, now)).toEqual([]);
   });
 
-  it('sorts worst-overrun first', () => {
+  it('sorts longest-in-stage first', () => {
     const cands = [
-      candidate({ id: 1, owner: 7, stage: 'Interview', stageEnteredAt: old(9) }), // 2 over
-      candidate({ id: 2, owner: 7, stage: 'Applied', stageEnteredAt: old(30) }) // 16 over
+      candidate({ id: 1, owner: 7, stage: 'Interview', stageEnteredAt: old(9) }),
+      candidate({ id: 2, owner: 7, stage: 'Applied', stageEnteredAt: old(30) })
     ];
-    expect(overdueForOwner(cands, slas, 7, now).map((a) => a.candidateId)).toEqual(
-      [2, 1]
-    );
+    expect(
+      overdueForOwner(cands, warnDays, 7, now).map((a) => a.candidateId)
+    ).toEqual([2, 1]);
   });
 });

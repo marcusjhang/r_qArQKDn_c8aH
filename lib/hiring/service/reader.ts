@@ -14,13 +14,13 @@ import 'server-only';
 // when it explicitly invalidates on a failed optimistic write. There is no
 // hand-rolled server Data Cache or tag-invalidation to keep in sync.
 
+import { DEFAULT_STAGE_WARN_DAYS } from '../primitives';
 import type {
   BoardReader,
   Candidate,
   Job,
   SeniorityBand,
   Source,
-  StageSla,
   User
 } from './dtos';
 
@@ -84,11 +84,15 @@ export const drizzleReader: BoardReader = {
     });
   },
   // The stage time-limits, ordered by stage name for a stable, predictable list.
-  async loadStageSlas(): Promise<StageSla[]> {
+  // The one universal stage-warn-days threshold. Reads the single
+  // pipeline_settings row; falls back to the default if the row is somehow
+  // missing (the seed always ensures one).
+  async loadStageWarnDays(): Promise<number> {
     const { db } = await import('@/lib/db');
-    return db.query.stageSlas.findMany({
-      columns: { id: true, stage: true, maxDays: true },
-      orderBy: (s, { asc }) => [asc(s.stage)]
+    const row = await db.query.pipelineSettings.findFirst({
+      columns: { stageWarnDays: true },
+      orderBy: (s, { asc }) => [asc(s.id)]
     });
+    return row?.stageWarnDays ?? DEFAULT_STAGE_WARN_DAYS;
   }
 };

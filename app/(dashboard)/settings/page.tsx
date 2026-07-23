@@ -1,8 +1,11 @@
 import { auth } from '@/lib/auth';
 import { getSources } from '@/lib/sources';
 import { getSeniorityBands } from '@/lib/seniority';
-import { getStageSlas } from '@/lib/stage-slas';
-import { MAX_YEARS_EXPERIENCE, MAX_SLA_DAYS } from '@/lib/hiring/primitives';
+import { getStageWarnDays } from '@/lib/pipeline-settings';
+import {
+  MAX_YEARS_EXPERIENCE,
+  MAX_STAGE_WARN_DAYS
+} from '@/lib/hiring/primitives';
 import { getProfile } from '@/lib/profile';
 import { getApiTokens } from '@/lib/tokens';
 import SettingsView from '@/components/settings/SettingsView';
@@ -14,9 +17,7 @@ import {
   addBand,
   updateBand,
   removeBand,
-  addStageSla,
-  updateStageSla,
-  removeStageSla,
+  updateStageWarnDays,
   createApiToken,
   revokeApiToken
 } from './actions';
@@ -24,11 +25,11 @@ import {
 export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage() {
-  const [sources, bands, stageSlas, profile, tokens, session] =
+  const [sources, bands, stageWarnDays, profile, tokens, session] =
     await Promise.all([
       getSources(),
       getSeniorityBands(),
-      getStageSlas(),
+      getStageWarnDays(),
       getProfile(),
       getApiTokens(),
       auth()
@@ -37,9 +38,9 @@ export default async function SettingsPage() {
     <SettingsView
       sources={sources}
       bands={bands}
-      stageSlas={stageSlas}
+      stageWarnDays={stageWarnDays}
       maxYears={MAX_YEARS_EXPERIENCE}
-      maxSlaDays={MAX_SLA_DAYS}
+      maxStageWarnDays={MAX_STAGE_WARN_DAYS}
       profile={profile}
       tokens={tokens}
       userEmail={session?.user?.email ?? null}
@@ -50,9 +51,7 @@ export default async function SettingsPage() {
       addBand={addBand}
       updateBand={updateBand}
       removeBand={removeBand}
-      addStageSla={addStageSla}
-      updateStageSla={updateStageSla}
-      removeStageSla={removeStageSla}
+      updateStageWarnDays={updateStageWarnDays}
       createToken={createApiToken}
       revokeToken={revokeApiToken}
     />

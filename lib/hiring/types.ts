@@ -10,7 +10,6 @@ export type {
   User,
   Source,
   SeniorityBand,
-  StageSla,
   Feedback,
   Candidate,
   Job,

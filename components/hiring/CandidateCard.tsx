@@ -12,15 +12,12 @@ import {
   seniorityFor,
   isTerminal,
   stageOverdue,
-  stageSlaFor,
   stageAgeLabel,
-  daysInStage,
   STATUS,
   type Candidate,
   type User,
   type Source,
-  type SeniorityBand,
-  type StageSla
+  type SeniorityBand
 } from '@/lib/hiring';
 import { Avatar } from '@/components/ui/avatar';
 import RatingChip from './RatingChip';
@@ -31,7 +28,7 @@ export default function CandidateCard({
   users,
   sources,
   bands,
-  stageSlas,
+  stageWarnDays,
   now,
   dragProps,
   onOpen,
@@ -41,7 +38,7 @@ export default function CandidateCard({
   users: User[];
   sources: Source[];
   bands: SeniorityBand[];
-  stageSlas: StageSla[];
+  stageWarnDays: number;
   /** Shared clock; null until mounted, so no time UI renders on the server. */
   now: number | null;
   dragProps: {
@@ -54,14 +51,12 @@ export default function CandidateCard({
   const owner = userById(users, candidate.owner);
   const seniority = seniorityFor(bands, candidate.yearsExperience);
   // Time-in-stage: shown for candidates still moving through the pipeline once
-  // the clock has mounted. Escalates to a warning when the stage's configured
-  // limit is exceeded (see stageOverdue). Terminal candidates (hired/rejected)
-  // aren't "in" a stage in the stalled sense, so they show nothing.
+  // the clock has mounted. Escalates to a warning past the universal warn
+  // threshold (see stageOverdue). Terminal candidates (hired/rejected) aren't
+  // "in" a stage in the stalled sense, so they show nothing.
   const showAge = now != null && !isTerminal(candidate);
-  const overdue = now != null && stageOverdue(candidate, stageSlas, now);
+  const overdue = now != null && stageOverdue(candidate, stageWarnDays, now);
   const ageLabel = now != null ? stageAgeLabel(candidate.stageEnteredAt, now) : '';
-  const daysIn = now != null ? daysInStage(candidate.stageEnteredAt, now) : 0;
-  const limit = stageSlaFor(stageSlas, candidate.stage);
   return (
     <div
       className={`card${candidate.starred ? ' starred' : ''}`}
@@ -114,11 +109,7 @@ export default function CandidateCard({
           {showAge && (
             <span
               className={`time-tag${overdue ? ' overdue' : ''}`}
-              title={
-                overdue && limit != null
-                  ? `In ${candidate.stage} ${daysIn} day${daysIn === 1 ? '' : 's'}, past the ${limit}-day limit`
-                  : `In ${candidate.stage} for ${ageLabel}`
-              }
+              title={`In ${candidate.stage} for ${ageLabel}`}
             >
               {ageLabel}
             </span>

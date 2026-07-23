@@ -43,7 +43,7 @@ function state(over: Partial<HiringState> = {}): HiringState {
     ],
     sources: [{ id: 1, name: 'Referral' }],
     bands: [{ id: 1, label: 'Senior', minYears: 5 }],
-    stageSlas: [],
+    stageWarnDays: 5,
     ...over
   };
 }

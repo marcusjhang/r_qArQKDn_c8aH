@@ -113,7 +113,7 @@ export default function StageColumn({
               users={state.users}
               sources={state.sources}
               bands={state.bands}
-              stageSlas={state.stageSlas}
+              stageWarnDays={state.stageWarnDays}
               now={now}
               dragProps={dnd.cardProps(c.id)}
               onOpen={onOpen}

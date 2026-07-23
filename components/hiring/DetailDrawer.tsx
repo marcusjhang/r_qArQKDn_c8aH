@@ -139,7 +139,7 @@ export default function DetailDrawer({
         <DetailFooter
           view={view}
           job={job}
-          stageSlas={state.stageSlas}
+          stageWarnDays={state.stageWarnDays}
           now={now}
           onMove={moveAndClose}
         />

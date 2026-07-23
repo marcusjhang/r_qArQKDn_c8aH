@@ -13,7 +13,7 @@ import { ACCOUNT_LINKS } from '@/components/hiring/UserMenu';
 import ThemeToggle from './ThemeToggle';
 import SourcesPanel from './SourcesPanel';
 import SeniorityBandsPanel from './SeniorityBandsPanel';
-import StageTimeLimitsPanel from './StageTimeLimitsPanel';
+import StageWarnPanel from './StageWarnPanel';
 import ProfilePanel from './ProfilePanel';
 import ApiTokensPanel from './ApiTokensPanel';
 import type { SettingsResult, CreateTokenResult } from '@/lib/settings-types';
@@ -23,9 +23,9 @@ import '@/components/hiring/hiring.css';
 export default function SettingsView({
   sources,
   bands,
-  stageSlas,
+  stageWarnDays,
   maxYears,
-  maxSlaDays,
+  maxStageWarnDays,
   profile,
   tokens,
   userEmail,
@@ -36,17 +36,15 @@ export default function SettingsView({
   addBand,
   updateBand,
   removeBand,
-  addStageSla,
-  updateStageSla,
-  removeStageSla,
+  updateStageWarnDays,
   createToken,
   revokeToken
 }: {
   sources: { id: number; name: string }[];
   bands: { id: number; label: string; minYears: number }[];
-  stageSlas: { id: number; stage: string; maxDays: number }[];
+  stageWarnDays: number;
   maxYears: number;
-  maxSlaDays: number;
+  maxStageWarnDays: number;
   profile: { firstName: string; lastName: string };
   tokens: ApiTokenSummary[];
   userEmail?: string | null;
@@ -64,13 +62,7 @@ export default function SettingsView({
     minYears: number
   ) => Promise<SettingsResult>;
   removeBand: (id: number) => Promise<SettingsResult>;
-  addStageSla: (stage: string, maxDays: number) => Promise<SettingsResult>;
-  updateStageSla: (
-    id: number,
-    stage: string,
-    maxDays: number
-  ) => Promise<SettingsResult>;
-  removeStageSla: (id: number) => Promise<SettingsResult>;
+  updateStageWarnDays: (days: number) => Promise<SettingsResult>;
   createToken: (
     name: string,
     expiresInDays: number
@@ -126,12 +118,10 @@ export default function SettingsView({
             removeBand={removeBand}
           />
 
-          <StageTimeLimitsPanel
-            stageSlas={stageSlas}
-            maxDays={maxSlaDays}
-            addStageSla={addStageSla}
-            updateStageSla={updateStageSla}
-            removeStageSla={removeStageSla}
+          <StageWarnPanel
+            stageWarnDays={stageWarnDays}
+            maxDays={maxStageWarnDays}
+            updateStageWarnDays={updateStageWarnDays}
           />
 
           <ApiTokensPanel

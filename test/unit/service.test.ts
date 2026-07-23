@@ -5,8 +5,7 @@ import type {
   Job,
   User,
   Source,
-  SeniorityBand,
-  StageSla
+  SeniorityBand
 } from '@/lib/hiring/types';
 
 // Because getBoard reads through an injected BoardReader (rather than the db
@@ -29,7 +28,7 @@ describe('getBoard', () => {
     { id: 1, label: 'Senior', minYears: 5 },
     { id: 2, label: 'Junior', minYears: 0 }
   ];
-  const stageSlas: StageSla[] = [{ id: 1, stage: 'Applied', maxDays: 14 }];
+  const stageWarnDays = 5;
   const candidates: Candidate[] = [
     {
       id: 10,
@@ -54,7 +53,7 @@ describe('getBoard', () => {
     loadUsers: async () => users,
     loadSources: async () => sources,
     loadBands: async () => bands,
-    loadStageSlas: async () => stageSlas
+    loadStageWarnDays: async () => stageWarnDays
   };
 
   it('composes the reader results into a HiringState payload', async () => {
@@ -65,11 +64,11 @@ describe('getBoard', () => {
       users,
       sources,
       bands,
-      stageSlas
+      stageWarnDays
     });
   });
 
-  it('reads jobs, candidates, users, sources, bands and stage SLAs concurrently from the reader', async () => {
+  it('reads jobs, candidates, users, sources, bands and the stage-warn threshold concurrently from the reader', async () => {
     const calls: string[] = [];
     const reader: BoardReader = {
       loadJobs: async () => {
@@ -92,9 +91,9 @@ describe('getBoard', () => {
         calls.push('bands');
         return bands;
       },
-      loadStageSlas: async () => {
-        calls.push('stageSlas');
-        return stageSlas;
+      loadStageWarnDays: async () => {
+        calls.push('stageWarnDays');
+        return stageWarnDays;
       }
     };
     await getBoard(reader);
@@ -103,7 +102,7 @@ describe('getBoard', () => {
       'candidates',
       'jobs',
       'sources',
-      'stageSlas',
+      'stageWarnDays',
       'users'
     ]);
   });
@@ -116,7 +115,7 @@ describe('getBoard', () => {
       users,
       sources,
       bands,
-      stageSlas
+      stageWarnDays
     });
   });
 });

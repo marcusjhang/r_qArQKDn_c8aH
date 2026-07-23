@@ -15,19 +15,6 @@ import type { RatingValue, Status } from './types';
 /** Default seniority bands seeded into the (editable) seniority_bands table. */
 export const SEED_SENIORITY_BANDS = SENIORITY_BANDS;
 
-/**
- * Default stage time-limits seeded into the (editable) stage_slas table: warn
- * once a candidate has sat in the stage for this many days. Keyed by the
- * default-pipeline stage names; Hired is terminal so it has no limit. Editable
- * from /settings after boot — these are only the starting values.
- */
-export const SEED_STAGE_SLAS: { stage: string; maxDays: number }[] = [
-  { stage: 'Applied', maxDays: 14 },
-  { stage: 'Screen', maxDays: 10 },
-  { stage: 'Interview', maxDays: 7 },
-  { stage: 'Offer', maxDays: 7 }
-];
-
 // The seeded users, referenced by email so the demo assignments read clearly
 // and stay in lockstep with the accounts created in db/seed.ts.
 const SEED_USER_EMAILS = {
@@ -75,8 +62,8 @@ export interface SeedCandidate {
   starred?: boolean;
   // Optional: how many days ago the candidate entered its current stage. The
   // seeder backdates stage_entered_at by this much so the demo shows a mix of
-  // fresh and stalled applicants (some past their stage limit — see
-  // SEED_STAGE_SLAS). Omitted = entered "now" (the column default).
+  // fresh and stalled applicants (some past the universal warn threshold).
+  // Omitted = entered "now" (the column default).
   daysInStage?: number;
   feedback: SeedFeedback[];
 }

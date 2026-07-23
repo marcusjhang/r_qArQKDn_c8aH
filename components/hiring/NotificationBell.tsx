@@ -6,7 +6,8 @@
 // invalidation after a read/clear; opening one jumps to that applicant's chat
 // and marks it read, and each row can be cleared with its ✕. Stalled-candidate
 // alerts are derived on the client for candidates the signed-in user owns that
-// have overstayed their stage limit; opening one jumps to the candidate. They
+// have sat in a stage past the warn threshold; opening one jumps to the
+// candidate. They
 // have no read/clear state — they clear when the candidate advances.
 
 import { Bell, X } from 'lucide-react';
@@ -144,7 +145,7 @@ export default function NotificationBell({
                     </div>
                     <div className="notif-ctx">
                       <b>{a.candidateName}</b> has been in {a.stage} for {a.days}{' '}
-                      day{a.days === 1 ? '' : 's'}, past the {a.limit}-day limit
+                      day{a.days === 1 ? '' : 's'}
                     </div>
                   </button>
                 </div>

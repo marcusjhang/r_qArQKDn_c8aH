@@ -9,7 +9,7 @@ import {
   allowedEmails,
   sources,
   seniorityBands,
-  stageSlas
+  pipelineSettings
 } from '../lib/schema';
 import { count, eq } from 'drizzle-orm';
 import { hash } from 'bcryptjs';
@@ -17,8 +17,7 @@ import {
   SEED_JOBS,
   SEED_CANDIDATES,
   SEED_SOURCES,
-  SEED_SENIORITY_BANDS,
-  SEED_STAGE_SLAS
+  SEED_SENIORITY_BANDS
 } from '../lib/hiring/seed';
 
 const SEED_ALLOWED_EMAILS = [
@@ -110,16 +109,16 @@ async function main() {
   }
   console.log(`Ensured ${SEED_SENIORITY_BANDS.length} seniority bands.`);
 
-  // Seed the stage time-limits (idempotent via the unique lower(stage) index).
-  // The board reads this table for the "warn after N days" mapping, so ensure
-  // the defaults exist even when the pipeline seed below is skipped.
-  for (const sla of SEED_STAGE_SLAS) {
-    await db
-      .insert(stageSlas)
-      .values({ stage: sla.stage, maxDays: sla.maxDays })
-      .onConflictDoNothing();
+  // Ensure the single pipeline_settings row exists (the universal stage-warn
+  // threshold). Idempotent: insert the default-bearing row only when the table
+  // is empty; the column default supplies the starting value.
+  const [{ value: settingsCount }] = await db
+    .select({ value: count() })
+    .from(pipelineSettings);
+  if (settingsCount === 0) {
+    await db.insert(pipelineSettings).values({});
   }
-  console.log(`Ensured ${SEED_STAGE_SLAS.length} stage time-limits.`);
+  console.log('Ensured pipeline settings (stage-warn threshold).');
 
   // Seed the hiring pipeline (jobs → candidates → feedback), idempotently.
   const [{ value: jobCount }] = await db

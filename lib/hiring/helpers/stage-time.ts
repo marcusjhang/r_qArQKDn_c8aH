@@ -1,14 +1,15 @@
 // Time-in-stage: how long a candidate has sat in its current stage, whether
-// that has exceeded the stage's configurable limit (SLA), and the per-owner
-// "your candidate is stalling" alerts derived from it. Every function takes an
-// explicit `now` (ms since epoch) rather than reading the clock itself, so the
-// rules stay pure and unit-testable — the caller supplies the clock (the board
-// uses the useNow hook, which is null-until-mounted to avoid hydration drift).
+// that has exceeded the one universal "warn after N days" threshold, and the
+// per-owner "your candidate is stalling" alerts derived from it. Every function
+// takes an explicit `now` (ms since epoch) rather than reading the clock itself,
+// so the rules stay pure and unit-testable — the caller supplies the clock (the
+// board uses the useNow hook, which is null-until-mounted to avoid hydration
+// drift).
 
 import { isTerminal } from './candidate-status';
-import type { Candidate, StageSla } from '../types';
+import type { Candidate } from '../types';
 
-/** Whole milliseconds in a day — the unit the stage limits are expressed in. */
+/** Whole milliseconds in a day — the unit the warn threshold is expressed in. */
 export const MS_PER_DAY = 86_400_000;
 
 /**
@@ -34,32 +35,20 @@ export function daysInStage(
 }
 
 /**
- * The configured day-limit for a stage (case-insensitive by name), or null when
- * no limit is set for it. Case-insensitive to match the DB's lower(stage)
- * unique index, so "Interview" and "interview" resolve to the same limit.
- */
-export function stageSlaFor(slas: StageSla[], stage: string): number | null {
-  const match = slas.find((s) => s.stage.toLowerCase() === stage.toLowerCase());
-  return match ? match.maxDays : null;
-}
-
-/**
- * Whether a candidate has overstayed its current stage's limit — the single
- * rule the warning UI keys off. True only when ALL hold:
+ * Whether a candidate has overstayed the universal stage-warn threshold — the
+ * single rule the warning UI keys off. One threshold applies to every stage.
+ * True only when BOTH hold:
  *   - the candidate is still moving through the pipeline (not terminal — a
  *     hired/rejected candidate parked in a column is done, not stalled);
- *   - the stage has a configured limit (warnings are opt-in per stage);
- *   - the whole days in stage have reached that limit ("warn after N days").
+ *   - the whole days in stage have reached `warnDays` ("warn after N days").
  */
 export function stageOverdue(
   candidate: Candidate,
-  slas: StageSla[],
+  warnDays: number,
   now: number
 ): boolean {
   if (isTerminal(candidate)) return false;
-  const limit = stageSlaFor(slas, candidate.stage);
-  if (limit == null) return false;
-  return daysInStage(candidate.stageEnteredAt, now) >= limit;
+  return daysInStage(candidate.stageEnteredAt, now) >= warnDays;
 }
 
 /**
@@ -85,8 +74,8 @@ export function stageAgeLabel(
  * One overdue-candidate alert for its owner — the shape the notification bell
  * renders. Derived on the client (not stored): it exists only while the
  * candidate is overdue and vanishes the moment the owner advances it (which
- * resets the stage clock). `days` / `limit` are carried so the row can state
- * the overrun without recomputing.
+ * resets the stage clock). `days` is carried so the row can state how long the
+ * candidate has been sitting without recomputing.
  */
 export interface StageAlert {
   candidateId: number;
@@ -94,37 +83,32 @@ export interface StageAlert {
   jobId: number;
   stage: string;
   days: number;
-  limit: number;
 }
 
 /**
  * The overdue candidates OWNED by `ownerId` — the owner's "your candidate is
- * stalling" alerts. Reuses `stageOverdue` (so terminal candidates and stages
- * with no configured limit are already excluded), then sorts worst-overrun
- * first so the most-stalled candidate surfaces at the top of the inbox. Pure:
- * the caller supplies `now` (the board's useNow clock).
+ * stalling" alerts. Reuses `stageOverdue` (so terminal candidates are already
+ * excluded), then sorts longest-in-stage first so the most-stalled candidate
+ * surfaces at the top of the inbox. Pure: the caller supplies `now` (the board's
+ * useNow clock).
  */
 export function overdueForOwner(
   candidates: Candidate[],
-  slas: StageSla[],
+  warnDays: number,
   ownerId: number,
   now: number
 ): StageAlert[] {
   const alerts: StageAlert[] = [];
   for (const c of candidates) {
     if (c.owner !== ownerId) continue;
-    if (!stageOverdue(c, slas, now)) continue;
-    const limit = stageSlaFor(slas, c.stage);
-    // stageOverdue already guarantees a limit exists; this narrows it for TS.
-    if (limit == null) continue;
+    if (!stageOverdue(c, warnDays, now)) continue;
     alerts.push({
       candidateId: c.id,
       candidateName: c.name,
       jobId: c.jobId,
       stage: c.stage,
-      days: daysInStage(c.stageEnteredAt, now),
-      limit
+      days: daysInStage(c.stageEnteredAt, now)
     });
   }
-  return alerts.sort((a, b) => b.days - b.limit - (a.days - a.limit));
+  return alerts.sort((a, b) => b.days - a.days);
 }
