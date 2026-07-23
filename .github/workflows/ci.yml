@@ -65,3 +65,90 @@ jobs:
 
       - name: Audit dead code
         run: bun run detect:dead-code
+
+  integration:
+    name: Integration tests (Postgres)
+    runs-on: ubuntu-latest
+    # Enforcing: the DB-backed integration suite (test/integration/**) runs
+    # against a throwaway Postgres service so it can no longer silently skip in
+    # CI (see test/README.md → "Integration tests"). A failure blocks the merge.
+    # TEST_DATABASE_URL points at the disposable service DB, which unlocks the
+    # destructive `resetTables` path (it refuses to run without a dedicated test
+    # database), so both isolation strategies are exercised.
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hiring_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/hiring_test
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/hiring_test
+      AUTH_SECRET: ci-not-a-secret-throwaway-value-for-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Migrate the test database
+        run: bun run db:migrate
+
+      - name: Integration tests
+        run: bun run test:integration
+
+  e2e:
+    name: End-to-end tests (Playwright)
+    runs-on: ubuntu-latest
+    # Enforcing: the Playwright happy-path suite (test/e2e/**) boots a production
+    # build against a throwaway Postgres service and runs the browser flows, so
+    # regressions in the signed-in app can no longer slip past CI unnoticed. A
+    # failure blocks the merge. The managed web server (playwright.config.ts) is
+    # pointed at the seeded service DB via TEST_DATABASE_URL and trusts the
+    # localhost host via AUTH_TRUST_HOST (set in webServer.env).
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hiring_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/hiring_test
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/hiring_test
+      AUTH_SECRET: ci-not-a-secret-throwaway-value-for-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright browser
+        run: bunx playwright install --with-deps chromium
+
+      - name: Migrate & seed the test database
+        run: bun run db:setup
+
+      - name: End-to-end tests
+        run: bun run test:e2e

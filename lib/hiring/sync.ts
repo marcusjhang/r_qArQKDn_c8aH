@@ -22,6 +22,8 @@ import { useMutation } from '@tanstack/react-query';
 interface PersistArgs {
   run: () => Promise<unknown>;
   onResult?: (result: unknown) => void;
+  /** Per-call failure hook, run before the shared resync (see the mutation). */
+  onError?: () => void;
 }
 
 export interface OptimisticSync {
@@ -103,7 +105,12 @@ export function useOptimisticSync(invalidate: () => void): OptimisticSync {
   const { mutate: persist } = useMutation({
     mutationFn: ({ run }: PersistArgs) => run(),
     onSuccess: (result, { onResult }) => onResult?.(result),
-    onError: () => resync()
+    onError: (_error, { onError }) => {
+      // Let the caller react (e.g. clear a dialog's busy state) before the
+      // board resyncs, which rolls the failed optimistic change back.
+      onError?.();
+      resync();
+    }
   });
 
   return { nextTempId, persist, whenReconciled, flushPending, resync };

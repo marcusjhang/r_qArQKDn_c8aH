@@ -1,24 +1,33 @@
 'use server';
 
-// Manage the signed-in profile, candidate sources, and seniority bands from
-// /settings. The middleware only gates *page* routes; a Server Action can be
-// POSTed to the public /login route by action id and skip that gate, so each
-// action confirms the session itself via signedInUserId(). (The signup
-// allowlist is managed from /members — see app/(dashboard)/members/actions.ts.)
+// Manage the signed-in profile, candidate sources, seniority bands, and stage
+// time-limits from /settings. The middleware only gates *page* routes; a Server
+// Action can be POSTed to the public /login route by action id and skip that
+// gate, so each action confirms the session itself via signedInUserId(). (The
+// signup allowlist is managed from /members — see app/(dashboard)/members/actions.ts.)
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { and, eq, ne, sql } from 'drizzle-orm';
-import { db, candidates, users } from '@/lib/db';
-import { sources, seniorityBands } from '@/lib/schema/hiring';
-import { MAX_YEARS_EXPERIENCE } from '@/lib/hiring/primitives';
+import { headers } from 'next/headers';
+import { and, asc, eq, ne, sql } from 'drizzle-orm';
+import { db, candidates, users, apiTokens } from '@/lib/db';
+import { sources, seniorityBands, pipelineSettings } from '@/lib/schema/hiring';
+import {
+  MAX_YEARS_EXPERIENCE,
+  MAX_STAGE_WARN_DAYS
+} from '@/lib/hiring/primitives';
 import { auth } from '@/lib/auth';
-import type { SettingsResult } from '@/lib/settings-types';
+import type { SettingsResult, CreateTokenResult } from '@/lib/settings-types';
+import { mintToken } from '@/lib/mcp/auth';
+import { updatePassword as updatePasswordService } from '@/lib/password';
 
 const zId = z.number().int().positive();
 const zSourceName = z.string().trim().min(1).max(40);
 const zBandLabel = z.string().trim().min(1).max(40);
 const zMinYears = z.number().int().min(0).max(MAX_YEARS_EXPERIENCE);
+// The one universal stage-warn threshold: at least a day, at most
+// MAX_STAGE_WARN_DAYS.
+const zWarnDays = z.number().int().min(1).max(MAX_STAGE_WARN_DAYS);
 // First/last are optional (some people go by one name); each capped to the
 // column width. Trimmed before storing.
 const zName = z.string().trim().max(50);
@@ -37,6 +46,24 @@ export type { SettingsResult };
 async function signedInUserId(): Promise<number | null> {
   const session = await auth();
   return Number(session?.user?.id) || null;
+}
+
+/**
+ * A Postgres unique-violation (SQLSTATE 23505). The rename/update actions below
+ * pre-check for a name clash with a SELECT, but that read-then-write has a TOCTOU
+ * window: two concurrent renames to the same name both pass the SELECT, then the
+ * second UPDATE trips the case-insensitive unique index. Catching that lets the
+ * action return the same graceful "already exists" result instead of throwing an
+ * unhandled 500 — the DB stays the source of truth, the pre-check just improves
+ * the common-case message.
+ */
+function isUniqueViolation(e: unknown): boolean {
+  return (
+    typeof e === 'object' &&
+    e !== null &&
+    'code' in e &&
+    (e as { code?: unknown }).code === '23505'
+  );
 }
 
 /* ---------- Current account profile ---------- */
@@ -74,6 +101,30 @@ export async function updateProfile(
 
   revalidatePath('/settings');
   return { ok: true };
+}
+
+/**
+ * Change the signed-in account's password (Security panel). A voluntary change,
+ * so unlike the forced first-login flow it verifies the current password — the
+ * rules live in the lib/password.ts domain service and this stays a thin adapter
+ * that confirms the session first (the middleware never gates Server Actions).
+ * The stored password isn't part of the session token, so no re-auth is needed;
+ * the user stays signed in.
+ */
+export async function updatePassword(
+  currentPassword: string,
+  newPassword: string,
+  confirmPassword: string
+): Promise<SettingsResult> {
+  const id = await signedInUserId();
+  if (!id) return { ok: false, error: 'Not signed in.' };
+
+  return updatePasswordService({
+    userId: id,
+    currentPassword,
+    newPassword,
+    confirmPassword
+  });
 }
 
 /* ---------- Candidate sources ---------- */
@@ -126,7 +177,14 @@ export async function renameSource(
   if (clash) {
     return { ok: false, error: 'That source already exists.' };
   }
-  await db.update(sources).set({ name }).where(eq(sources.id, id));
+  try {
+    await db.update(sources).set({ name }).where(eq(sources.id, id));
+  } catch (e) {
+    if (isUniqueViolation(e)) {
+      return { ok: false, error: 'That source already exists.' };
+    }
+    throw e;
+  }
   revalidatePath('/settings');
   return { ok: true };
 }
@@ -225,10 +283,17 @@ export async function updateBand(
   if (clash) {
     return { ok: false, error: 'A band with that threshold already exists.' };
   }
-  await db
-    .update(seniorityBands)
-    .set({ label, minYears })
-    .where(eq(seniorityBands.id, id));
+  try {
+    await db
+      .update(seniorityBands)
+      .set({ label, minYears })
+      .where(eq(seniorityBands.id, id));
+  } catch (e) {
+    if (isUniqueViolation(e)) {
+      return { ok: false, error: 'A band with that threshold already exists.' };
+    }
+    throw e;
+  }
   revalidatePath('/settings');
   return { ok: true };
 }
@@ -243,6 +308,122 @@ export async function removeBand(idRaw: number): Promise<SettingsResult> {
     return { ok: false, error: 'Invalid band.' };
   }
   await db.delete(seniorityBands).where(eq(seniorityBands.id, id));
+  revalidatePath('/settings');
+  return { ok: true };
+}
+
+/* ---------- Stage warn threshold (pipeline settings) ---------- */
+
+/**
+ * Set the one universal "warn after N days in a stage" threshold — the board
+ * flags a candidate as overdue once they have sat in their current stage for at
+ * least this many whole days, applied to every stage. Updates the single
+ * pipeline_settings row in place (inserting it if the table is somehow empty).
+ * The board picks up the change on its next (uncached) server render.
+ */
+export async function updateStageWarnDays(
+  daysRaw: number
+): Promise<SettingsResult> {
+  if (!(await signedInUserId())) return { ok: false, error: 'Not signed in.' };
+  let days: number;
+  try {
+    days = zWarnDays.parse(daysRaw);
+  } catch {
+    return {
+      ok: false,
+      error: `Enter a number of days from 1 to ${MAX_STAGE_WARN_DAYS}.`
+    };
+  }
+  const [existing] = await db
+    .select({ id: pipelineSettings.id })
+    .from(pipelineSettings)
+    .orderBy(asc(pipelineSettings.id))
+    .limit(1);
+  if (existing) {
+    await db
+      .update(pipelineSettings)
+      .set({ stageWarnDays: days })
+      .where(eq(pipelineSettings.id, existing.id));
+  } else {
+    await db.insert(pipelineSettings).values({ stageWarnDays: days });
+  }
+  revalidatePath('/settings');
+  return { ok: true };
+}
+
+/* ---------- API tokens (MCP access) ---------- */
+
+const zTokenName = z.string().trim().min(1).max(40);
+// Optional expiry: 0 = never, else a fixed number of days from now.
+const zExpiryDays = z.union([
+  z.literal(0),
+  z.literal(30),
+  z.literal(60),
+  z.literal(90)
+]);
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Build the exact Claude Code connection command for this deployment + token. */
+async function mcpAddCommand(token: string): Promise<string> {
+  const h = await headers();
+  const host =
+    h.get('x-forwarded-host') ?? h.get('host') ?? 'your-app.example.com';
+  const proto = h.get('x-forwarded-proto') ?? 'https';
+  const url = `${proto}://${host}/api/mcp`;
+  return `claude mcp add --transport http hiring ${url} --header "Authorization: Bearer ${token}"`;
+}
+
+/**
+ * Mint a new API token for the signed-in user. Stores only the SHA-256 hash and
+ * a display prefix; returns the plaintext secret once (Decision 1).
+ */
+export async function createApiToken(
+  nameRaw: string,
+  expiresInDaysRaw: number
+): Promise<CreateTokenResult> {
+  let name: string;
+  let expiresInDays: 0 | 30 | 60 | 90;
+  try {
+    name = zTokenName.parse(nameRaw);
+    expiresInDays = zExpiryDays.parse(expiresInDaysRaw);
+  } catch {
+    return { ok: false, error: 'Enter a token name (1–40 characters).' };
+  }
+
+  const userId = await signedInUserId();
+  if (!userId) return { ok: false, error: 'Not signed in.' };
+
+  const { token, tokenHash, prefix } = mintToken();
+  const expiresAt =
+    expiresInDays > 0 ? new Date(Date.now() + expiresInDays * DAY_MS) : null;
+
+  await db
+    .insert(apiTokens)
+    .values({ userId, name, tokenHash, prefix, expiresAt });
+
+  revalidatePath('/settings');
+  return { ok: true, token, prefix, command: await mcpAddCommand(token) };
+}
+
+/**
+ * Revoke (delete) one of the signed-in user's tokens. Scoped to the owner, so a
+ * user can only revoke their own tokens. Deleting the row is instant revocation.
+ */
+export async function revokeApiToken(idRaw: number): Promise<SettingsResult> {
+  let id: number;
+  try {
+    id = zId.parse(idRaw);
+  } catch {
+    return { ok: false, error: 'Invalid token.' };
+  }
+
+  const userId = await signedInUserId();
+  if (!userId) return { ok: false, error: 'Not signed in.' };
+
+  await db
+    .delete(apiTokens)
+    .where(and(eq(apiTokens.id, id), eq(apiTokens.userId, userId)));
+
   revalidatePath('/settings');
   return { ok: true };
 }

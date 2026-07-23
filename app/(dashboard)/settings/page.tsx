@@ -1,42 +1,63 @@
 import { auth } from '@/lib/auth';
 import { getSources } from '@/lib/sources';
 import { getSeniorityBands } from '@/lib/seniority';
-import { MAX_YEARS_EXPERIENCE } from '@/lib/hiring/primitives';
+import { getStageWarnDays } from '@/lib/pipeline-settings';
+import {
+  MAX_YEARS_EXPERIENCE,
+  MAX_STAGE_WARN_DAYS
+} from '@/lib/hiring/primitives';
 import { getProfile } from '@/lib/profile';
+import { getApiTokens } from '@/lib/tokens';
+import { PASSWORD_MIN_LENGTH } from '@/lib/registration';
 import SettingsView from '@/components/settings/SettingsView';
 import {
   updateProfile,
+  updatePassword,
   addSource,
   renameSource,
   removeSource,
   addBand,
   updateBand,
-  removeBand
+  removeBand,
+  updateStageWarnDays,
+  createApiToken,
+  revokeApiToken
 } from './actions';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage() {
-  const [sources, bands, profile, session] = await Promise.all([
-    getSources(),
-    getSeniorityBands(),
-    getProfile(),
-    auth()
-  ]);
+  const [sources, bands, stageWarnDays, profile, tokens, session] =
+    await Promise.all([
+      getSources(),
+      getSeniorityBands(),
+      getStageWarnDays(),
+      getProfile(),
+      getApiTokens(),
+      auth()
+    ]);
   return (
     <SettingsView
       sources={sources}
       bands={bands}
+      stageWarnDays={stageWarnDays}
       maxYears={MAX_YEARS_EXPERIENCE}
+      maxStageWarnDays={MAX_STAGE_WARN_DAYS}
       profile={profile}
+      tokens={tokens}
       userEmail={session?.user?.email ?? null}
+      passwordMinLength={PASSWORD_MIN_LENGTH}
       updateProfile={updateProfile}
+      updatePassword={updatePassword}
       addSource={addSource}
       renameSource={renameSource}
       removeSource={removeSource}
       addBand={addBand}
       updateBand={updateBand}
       removeBand={removeBand}
+      updateStageWarnDays={updateStageWarnDays}
+      createToken={createApiToken}
+      revokeToken={revokeApiToken}
     />
   );
 }

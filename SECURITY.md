@@ -73,7 +73,17 @@ accounts' passwords after seeding). Do not deploy with the default in place.
   travels on the JWT/session, so the `/change-password` server action clears it
   in the DB and the client re-authenticates with the new password to replace the
   stale token.
-- [`middleware.ts`](./middleware.ts) excludes only the NextAuth/register API
+- **Voluntary password change (`/settings` → Security).** A signed-in account can
+  change its own password from settings. Unlike the forced first-login flow, this
+  is voluntary, so the `updatePassword` service (`lib/password.ts`) verifies the
+  **current** password with bcrypt before writing — a stolen session token or an
+  unattended logged-in session cannot silently take the account over by setting a
+  new password. A wrong current password and the (defensive) missing-account case
+  return the same generic "current password is incorrect" message. The `updatePassword`
+  settings action confirms the session itself (`signedInUserId()`), like every
+  other action. The password is not part of the session token, so no re-auth is
+  needed; existing JWT sessions remain valid until they expire.
+- [`middleware.ts`](./middleware.ts) excludes only the NextAuth/register/MCP API
   routes, Next internals, and static assets from the gate. The `api/` exclusion
   is anchored so a page route that merely starts with `api` is not accidentally
   left public.
@@ -163,3 +173,33 @@ in-memory — and can be forced with `RATE_LIMIT_STORE=postgres|memory` (see
 unreachable), the limiter **fails open** (allows the request and logs a warning)
 so a store outage can never lock every user out of signing in; rate limiting is
 a best-effort mitigation, so availability wins over strict enforcement.
+
+## MCP access tokens (`/api/mcp`)
+
+The app exposes a deployed, Streamable-HTTP MCP endpoint at
+[`app/api/mcp/route.ts`](./app/api/mcp/route.ts) so logged-in users can drive
+their board from Claude Code. It is **public in the routing sense** (excluded
+from the login-cookie gate, alongside `/api/register`) but **guarded by a
+per-user bearer token** — it authenticates itself, so the login gate would
+otherwise wrongly redirect the MCP client to `/login`.
+
+- **Tokens are hashed at rest.** Only a SHA-256 digest (`token_hash`) and a
+  short display prefix (e.g. `hpt_live_a1b2`) are stored in the `api_tokens`
+  table — never the plaintext secret. A DB leak therefore never exposes a live
+  token. Verification hashes the incoming bearer and matches the digest
+  (`lib/mcp/auth.ts`).
+- **Shown once.** The full secret is returned exactly once at creation (in
+  `/settings` → API tokens) and is never retrievable again. Lost token → revoke
+  and mint a new one.
+- **Optional expiry.** A token may carry an `expires_at`; an expired token is
+  rejected with 401 before any tool runs. Expiry is optional (null = never).
+- **Revocation is instant.** Revoking deletes the row, so the next request with
+  that token fails the hash lookup and gets 401. A user can only revoke their
+  own tokens.
+- **Acts as the owner.** Every MCP tool call resolves the token to its owning
+  user and acts as that user — a token cannot impersonate anyone else. Writes go
+  through the same actor-scoped core (`lib/hiring/core.ts`) as the web UI.
+- **Scope.** Tokens grant board read + candidate/feedback writes (no structural
+  job/stage mutations). Treat a token like a password.
+- No new environment variables are required; the endpoint needs the existing
+  `DATABASE_URL` and must be reachable over HTTPS for Claude Code.

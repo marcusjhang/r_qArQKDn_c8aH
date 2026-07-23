@@ -11,6 +11,7 @@
 /playwright-report
 /blob-report
 /.playwright
+/test/e2e/.auth
 .vitest
 
 # next.js

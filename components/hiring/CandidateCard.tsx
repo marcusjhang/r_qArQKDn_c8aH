@@ -10,6 +10,9 @@ import {
   initials,
   sourceName,
   seniorityFor,
+  isTerminal,
+  stageOverdue,
+  stageAgeLabel,
   STATUS,
   type Candidate,
   type User,
@@ -26,6 +29,8 @@ export default function CandidateCard({
   users,
   sources,
   bands,
+  stageWarnDays,
+  now,
   dragProps,
   onOpen,
   onToggleStar
@@ -36,6 +41,9 @@ export default function CandidateCard({
   users: User[];
   sources: Source[];
   bands: SeniorityBand[];
+  stageWarnDays: number;
+  /** Shared clock; null until mounted, so no time UI renders on the server. */
+  now: number | null;
   dragProps: {
     draggable: true;
     onDragStart: (e: React.DragEvent<HTMLElement>) => void;
@@ -45,6 +53,13 @@ export default function CandidateCard({
 }) {
   const owner = userById(users, candidate.owner);
   const seniority = seniorityFor(bands, candidate.yearsExperience);
+  // Time-in-stage: shown for candidates still moving through the pipeline once
+  // the clock has mounted. Escalates to a warning past the universal warn
+  // threshold (see stageOverdue). Terminal candidates (hired/rejected) aren't
+  // "in" a stage in the stalled sense, so they show nothing.
+  const showAge = now != null && !isTerminal(candidate);
+  const overdue = now != null && stageOverdue(candidate, stageWarnDays, now);
+  const ageLabel = now != null ? stageAgeLabel(candidate.stageEnteredAt, now) : '';
   return (
     <div
       className={`card${candidate.starred ? ' starred' : ''}`}
@@ -94,6 +109,14 @@ export default function CandidateCard({
           >
             {STATUS[candidate.status]}
           </span>
+          {showAge && (
+            <span
+              className={`time-tag${overdue ? ' overdue' : ''}`}
+              title={`In ${candidate.stage} for ${ageLabel}`}
+            >
+              {ageLabel}
+            </span>
+          )}
         </span>
         <span className="card-tags">
           {seniority && (

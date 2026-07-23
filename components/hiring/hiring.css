@@ -473,6 +473,23 @@
   padding: 2px 7px;
   white-space: nowrap;
 }
+/* Time-in-stage tag on a card. Subtle by default; escalates to a red warning
+   when the candidate has overstayed the stage's configured limit (see
+   stageOverdue). Sits beside the rating + status pills in card-bottom-left. */
+.ht-root .time-tag {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  flex: 0 0 auto;
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+.ht-root .time-tag.overdue {
+  background: var(--sno-bg);
+  color: var(--sno-fg);
+}
 
 /* Add stage ghost column */
 .ht-root .add-stage {
@@ -609,6 +626,7 @@
 .ht-root input[type='text'],
 .ht-root input[type='url'],
 .ht-root input[type='number'],
+.ht-root input[type='password'],
 .ht-root textarea {
   width: 100%;
   border: 1px solid var(--border-strong);
@@ -875,6 +893,18 @@
 .ht-root .drawer-foot .stage-now b {
   color: var(--text);
 }
+/* Time-in-stage line under the stage name in the drawer footer; turns red and
+   bold when the candidate has overstayed the stage's configured limit. */
+.ht-root .drawer-foot .stage-age {
+  display: block;
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.ht-root .drawer-foot .stage-age.overdue {
+  color: var(--sno-fg);
+  font-weight: 600;
+}
 
 @container plan-preview (min-width: 560px) {
   .ht-root .drawer {
@@ -1078,6 +1108,21 @@
   gap: var(--space-3);
   flex-wrap: wrap;
 }
+/* Inline "Saved" confirmation next to a settings save button. */
+.ht-root .settings-saved {
+  align-self: center;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ok-fg, var(--text-muted));
+}
+/* Vertically stacked settings form (e.g. the Security password fields), capped
+   so the inputs don't stretch the full panel width. */
+.ht-root .settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 360px;
+}
 .ht-root .email-list {
   list-style: none;
   margin: 0;
@@ -1243,6 +1288,92 @@
   color: var(--text-muted);
   font-style: italic;
   padding-top: 2px;
+}
+
+/* ---------- API tokens panel (MCP access) ---------- */
+.ht-root .token-expiry-select {
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: inherit;
+}
+/* Reveal-once box: the minted secret is shown exactly once. */
+.ht-root .token-reveal {
+  border: 1px solid var(--syes-fg);
+  background: var(--syes-bg);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ht-root .token-reveal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--syes-fg);
+}
+.ht-root .token-cmd {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  background: var(--surface);
+  border: 1px solid var(--syes-fg);
+  border-radius: var(--radius-sm);
+  padding: 9px;
+  color: var(--text);
+  word-break: break-all;
+}
+.ht-root .token-reveal-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+/* Token list row identity + metadata. */
+.ht-root .token-ident {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+.ht-root .token-name {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ht-root .token-prefix {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.ht-root .token-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+.ht-root .token-badge {
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: var(--radius-pill);
+  padding: 1px 8px;
+  color: var(--no-fg);
+  background: var(--no-bg);
+}
+.ht-root .token-badge.expired {
+  color: var(--rej-fg);
+  background: var(--rej-bg);
 }
 
 /* ---------- Dark theme (toggled via <html class="dark"> from Settings) ---------- */
@@ -1412,6 +1543,7 @@
   gap: 2px;
 }
 .ht-root .jobmenu-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1487,9 +1619,22 @@
   color: var(--rej-fg);
   font-weight: 600;
 }
+/* Delete confirmation floats over the row as a popup so the menu row never
+   reflows when it opens (the ✕ trigger stays put underneath). */
 .ht-root .jobmenu-confirm {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  z-index: 30;
   display: inline-flex;
-  gap: 4px;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
 }
 .ht-root .jobmenu-cancel {
   border: none;
@@ -1824,6 +1969,20 @@
   background: var(--surface);
   color: var(--text);
 }
+/* Stalled-candidate (owner) alert — a red accent so it reads as a warning,
+   distinct from the primary-weak tint of an unread mention. Uses the same
+   --sno-* tokens as the card's .time-tag.overdue for consistency. */
+.ht-root .notif-item.alert,
+.ht-root .notif-item.alert.unread {
+  background: var(--sno-bg);
+  border-left: 3px solid var(--sno-fg);
+}
+.ht-root .notif-item.alert:hover {
+  filter: brightness(0.98);
+}
+.ht-root .notif-item.alert .notif-who {
+  color: var(--sno-fg);
+}
 .ht-root .notif-item-top {
   display: flex;
   align-items: baseline;
@@ -2056,8 +2215,6 @@
   background-image: none;
   padding-right: 10px;
 }
-
-
 
 /* ============================================================= *
  * Per-job traits, weighted scoring & collapsible detail sections
@@ -2473,3 +2630,159 @@
   flex: 0 0 auto;
 }
 
+/* ---------- CSV menu (board toolbar) ---------- */
+.ht-root .export-menu {
+  position: relative;
+  display: inline-flex;
+}
+.ht-root .export-pop {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  min-width: 240px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 4px;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+}
+.ht-root .export-item {
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 5px;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+}
+.ht-root .export-item:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+.ht-root .export-item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.ht-root .export-item-title {
+  font-size: 13px;
+  font-weight: 500;
+}
+.ht-root .export-item-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ---------- CSV import dialog ---------- */
+.ht-root .import-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.ht-root .linklike {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--primary);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.ht-root .import-textarea {
+  width: 100%;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+.ht-root .import-summary {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--hired-bg);
+  color: var(--hired-fg);
+  font-size: 13px;
+}
+.ht-root .import-error {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--rej-bg);
+  color: var(--rej-fg);
+  font-size: 13px;
+}
+.ht-root .import-preview {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+.ht-root .import-preview-head {
+  color: var(--text);
+}
+.ht-root .import-preview-errcount {
+  color: var(--sno-fg);
+}
+.ht-root .import-filename,
+.ht-root .import-creates {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.ht-root .import-errors {
+  margin: 0;
+  padding-left: 16px;
+  max-height: 160px;
+  overflow-y: auto;
+  color: var(--text);
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ht-root .import-err-line {
+  color: var(--sno-fg);
+  font-weight: 600;
+}
+.ht-root .import-ref-row {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  font-size: 12px;
+}
+.ht-root .import-ref {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.ht-root .import-ref summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--text);
+}
+.ht-root .import-ref dl {
+  margin: 8px 0 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+}
+.ht-root .import-ref dt {
+  font-weight: 600;
+  color: var(--text);
+}
+.ht-root .import-ref dd {
+  margin: 0;
+}
+.ht-root .import-ref dd ul {
+  margin: 0;
+  padding-left: 14px;
+}

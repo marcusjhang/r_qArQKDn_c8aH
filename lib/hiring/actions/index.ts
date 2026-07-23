@@ -32,7 +32,8 @@ export {
   editCandidate,
   setCandidateStarred,
   moveStage,
-  setStatus
+  setStatus,
+  importCandidates
 } from './candidates';
 export { saveFeedback } from './feedback';
 export { addStage, renameStage, reorderStage, deleteStage } from './stages';

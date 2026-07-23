@@ -30,12 +30,14 @@ describe('getBoard', () => {
     { id: 1, label: 'Senior', minYears: 5 },
     { id: 2, label: 'Junior', minYears: 0 }
   ];
+  const stageWarnDays = 5;
   const candidates: Candidate[] = [
     {
       id: 10,
       jobId: 1,
       name: 'Ada',
       stage: 'Applied',
+      stageEnteredAt: new Date(0),
       owner: 1,
       source: 5,
       yearsExperience: null,
@@ -52,15 +54,23 @@ describe('getBoard', () => {
     loadCandidates: async () => candidates,
     loadUsers: async () => users,
     loadSources: async () => sources,
-    loadBands: async () => bands
+    loadBands: async () => bands,
+    loadStageWarnDays: async () => stageWarnDays
   };
 
   it('composes the reader results into a HiringState payload', async () => {
     const state = await getBoard(fakeReader);
-    expect(state).toEqual({ jobs, candidates, users, sources, bands });
+    expect(state).toEqual({
+      jobs,
+      candidates,
+      users,
+      sources,
+      bands,
+      stageWarnDays
+    });
   });
 
-  it('reads jobs, candidates, users, sources and bands concurrently from the reader', async () => {
+  it('reads jobs, candidates, users, sources, bands and the stage-warn threshold concurrently from the reader', async () => {
     const calls: string[] = [];
     const reader: BoardReader = {
       loadJobs: async () => {
@@ -82,6 +92,10 @@ describe('getBoard', () => {
       loadBands: async () => {
         calls.push('bands');
         return bands;
+      },
+      loadStageWarnDays: async () => {
+        calls.push('stageWarnDays');
+        return stageWarnDays;
       }
     };
     await getBoard(reader);
@@ -90,12 +104,20 @@ describe('getBoard', () => {
       'candidates',
       'jobs',
       'sources',
+      'stageWarnDays',
       'users'
     ]);
   });
 
   it('is exposed on the hiringService facade', async () => {
     const state = await hiringService.getBoard(fakeReader);
-    expect(state).toEqual({ jobs, candidates, users, sources, bands });
+    expect(state).toEqual({
+      jobs,
+      candidates,
+      users,
+      sources,
+      bands,
+      stageWarnDays
+    });
   });
 });

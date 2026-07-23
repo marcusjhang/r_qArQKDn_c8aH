@@ -25,6 +25,8 @@ export interface BoardViewActions {
   setShowRejected: (value: boolean) => void;
   openNewJob: () => void;
   openAddCandidate: () => void;
+  /** Open the CSV import dialog. */
+  openImport: () => void;
   /** Open a candidate's detail from the board — no message to focus. */
   openFromBoard: (candidateId: number) => void;
   /** Open a candidate's detail from a notification: switch to their job (when
@@ -66,6 +68,7 @@ export function useBoardView(jobs: Job[]): {
       setShowRejected,
       openNewJob: () => dispatch({ type: 'openNewJob' }),
       openAddCandidate: () => dispatch({ type: 'openAddCandidate' }),
+      openImport: () => dispatch({ type: 'openImport' }),
       openFromBoard: (candidateId) =>
         dispatch({ type: 'openCandidate', candidateId }),
       openFromNotification: (candidateId, jobId, messageId) => {

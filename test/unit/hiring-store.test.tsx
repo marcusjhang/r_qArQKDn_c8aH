@@ -97,6 +97,7 @@ function candidate(over: Partial<Candidate> = {}): Candidate {
     jobId: 1,
     name: 'Ada',
     stage: 'Applied',
+    stageEnteredAt: new Date(0),
     owner: 1,
     source: 1,
     yearsExperience: null,
@@ -125,6 +126,7 @@ function makeState(over: Partial<HiringState> = {}): HiringState {
     users: [],
     sources: [],
     bands: [],
+    stageWarnDays: 5,
     ...over
   };
 }

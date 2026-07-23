@@ -18,6 +18,7 @@ import {
   jobById,
   jobStats,
   liveCount,
+  overdueForOwner,
   useHiringStore,
   type HiringState,
   type Notification
@@ -34,6 +35,9 @@ import TopBar from './TopBar';
 import { ACCOUNT_LINKS } from './UserMenu';
 import NotificationBell from './NotificationBell';
 import CandidateSearch from './CandidateSearch';
+import { useNow } from './hooks/useNow';
+import CsvMenu from './CsvMenu';
+import ImportDialog from './ImportDialog';
 import './hiring.css';
 
 export default function HiringApp({
@@ -55,6 +59,8 @@ export default function HiringApp({
   // The per-job Traits/JD editor is a small self-contained modal, kept as local
   // state rather than folded into the board overlay machine.
   const [editingTraits, setEditingTraits] = useState(false);
+  // Shared clock for time-in-stage / overdue UI (null until mounted — see hook).
+  const now = useNow();
 
   // The per-overlay render props, derived from the single overlay union.
   const openId = overlay.kind === 'detail' ? overlay.candidateId : null;
@@ -62,6 +68,7 @@ export default function HiringApp({
     overlay.kind === 'detail' ? overlay.focusMessageId : null;
   const addingCandidate = overlay.kind === 'addCandidate';
   const creatingJob = overlay.kind === 'newJob';
+  const importing = overlay.kind === 'import';
 
   const job = jobById(state.jobs, activeJob) ?? state.jobs[0];
 
@@ -71,6 +78,19 @@ export default function HiringApp({
 
   // Thin adapter so JobTabs keeps its (jobId) => number prop contract.
   const jobLiveCount = (jobId: number) => liveCount(state.candidates, jobId);
+
+  // The signed-in owner's overdue candidates, surfaced in the notification bell.
+  // Derived from the live clock (null until mounted) so it tracks the same
+  // overdue state as the card/drawer warnings and clears when a candidate moves.
+  const stageAlerts =
+    now == null || currentUserId == null
+      ? []
+      : overdueForOwner(
+          state.candidates,
+          state.stageWarnDays,
+          currentUserId,
+          now
+        );
 
   const meta = formatJobMeta(
     job
@@ -88,7 +108,9 @@ export default function HiringApp({
         topRight={
           <NotificationBell
             notifications={notifications}
+            stageAlerts={stageAlerts}
             onOpen={view.openFromNotification}
+            onOpenAlert={view.openInJob}
           />
         }
       >
@@ -119,6 +141,7 @@ export default function HiringApp({
           onSelect={view.openInJob}
         />
         <div className="spacer" />
+        <CsvMenu state={state} onImport={view.openImport} />
         <label className="toggle">
           <input
             type="checkbox"
@@ -149,6 +172,7 @@ export default function HiringApp({
         actions={actions}
         activeJob={activeJob}
         showRejected={showRejected}
+        now={now}
         onOpen={view.openFromBoard}
       />
 
@@ -157,6 +181,7 @@ export default function HiringApp({
         actions={actions}
         openId={openId}
         currentUserId={currentUserId}
+        now={now}
         onClose={view.close}
         focusMessageId={focusMessageId}
       />
@@ -204,6 +229,15 @@ export default function HiringApp({
             actions.setJobDescription(job.id, desc)
           }
           onClose={() => setEditingTraits(false)}
+        />
+      )}
+
+      {importing && (
+        <ImportDialog
+          state={state}
+          currentUserId={currentUserId}
+          onImport={actions.importCandidates}
+          onClose={view.close}
         />
       )}
     </div>

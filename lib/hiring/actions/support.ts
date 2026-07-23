@@ -9,6 +9,7 @@ import 'server-only';
 import { eq } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
 import { db, jobs, users } from '@/lib/db';
+import type { Status } from '../types';
 
 /**
  * Resolve the signed-in caller's numeric id from their session email against
@@ -28,16 +29,6 @@ export async function currentUserId(): Promise<number | null> {
     .where(eq(users.email, email))
     .limit(1);
   return u?.id ?? null;
-}
-
-/** Read a job's current stages array outside a transaction, or null if absent. */
-export async function loadJobStages(jobId: number): Promise<string[] | null> {
-  const [j] = await db
-    .select({ stages: jobs.stages })
-    .from(jobs)
-    .where(eq(jobs.id, jobId))
-    .limit(1);
-  return j?.stages ?? null;
 }
 
 /** Read a job's current traits array outside a transaction, or null if absent. */
@@ -74,4 +65,21 @@ export async function lockJobStages(
     .for('update')
     .limit(1);
   return j?.stages ?? null;
+}
+
+/**
+ * Merge the stage clock into a (stage, status) placement: reset
+ * `stage_entered_at` to now ONLY when the placement moves the candidate to a
+ * different stage. Centralizes the "restart the timer on a real move" rule
+ * shared by moveStage and setStatus so the two can't drift, and so a no-op move
+ * (re-dropping a card in its own column) never resets the overdue timer. The
+ * optimistic client mirror of this rule lives in the reducer.
+ */
+export function withStageClock(
+  placement: { stage: string; status: Status },
+  prevStage: string
+): { stage: string; status: Status; stageEnteredAt?: Date } {
+  return placement.stage === prevStage
+    ? placement
+    : { ...placement, stageEnteredAt: new Date() };
 }

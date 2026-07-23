@@ -58,6 +58,7 @@ test.describe('move a candidate between stages', () => {
     // that before reloading so the write is guaranteed committed.
     const footer = page.locator('.drawer-foot .stage-now');
     const before = (await footer.textContent())?.trim();
+
     await page.getByRole('button', { name: /Advance stage/ }).click();
     await expect(page.locator('aside.drawer.open')).toHaveCount(0);
     await page.waitForLoadState('networkidle');

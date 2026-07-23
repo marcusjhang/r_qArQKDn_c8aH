@@ -1,10 +1,11 @@
 'use client';
 
-// Settings: manage appearance, your profile, candidate sources, and seniority
-// bands. Styled with the board's design system (.ht-root) so it matches the rest
-// of the app. Server actions are passed in from the page (the @/app path isn't
-// aliased). The signup allowlist lives on /members (it governs who can become a
-// member), reachable from the account dropdown.
+// Settings: manage appearance, your profile, candidate sources, seniority
+// bands, stage time-limits, and MCP API tokens. Styled with the board's design system
+// (.ht-root) so it matches the rest of the app. Server actions are passed in
+// from the page (the @/app path isn't aliased). The signup allowlist lives on
+// /members (it governs who can become a member), reachable from the account
+// dropdown.
 
 import Link from 'next/link';
 import TopBar from '@/components/hiring/TopBar';
@@ -12,32 +13,53 @@ import { ACCOUNT_LINKS } from '@/components/hiring/UserMenu';
 import ThemeToggle from './ThemeToggle';
 import SourcesPanel from './SourcesPanel';
 import SeniorityBandsPanel from './SeniorityBandsPanel';
+import StageWarnPanel from './StageWarnPanel';
 import ProfilePanel from './ProfilePanel';
-import type { SettingsResult } from '@/lib/settings-types';
+import SecurityPanel from './SecurityPanel';
+import ApiTokensPanel from './ApiTokensPanel';
+import type { SettingsResult, CreateTokenResult } from '@/lib/settings-types';
+import type { ApiTokenSummary } from '@/lib/tokens';
 import '@/components/hiring/hiring.css';
 
 export default function SettingsView({
   sources,
   bands,
+  stageWarnDays,
   maxYears,
+  maxStageWarnDays,
   profile,
+  tokens,
   userEmail,
+  passwordMinLength,
   updateProfile,
+  updatePassword,
   addSource,
   renameSource,
   removeSource,
   addBand,
   updateBand,
-  removeBand
+  removeBand,
+  updateStageWarnDays,
+  createToken,
+  revokeToken
 }: {
   sources: { id: number; name: string }[];
   bands: { id: number; label: string; minYears: number }[];
+  stageWarnDays: number;
   maxYears: number;
+  maxStageWarnDays: number;
   profile: { firstName: string; lastName: string };
+  tokens: ApiTokenSummary[];
   userEmail?: string | null;
+  passwordMinLength: number;
   updateProfile: (
     firstName: string,
     lastName: string
+  ) => Promise<SettingsResult>;
+  updatePassword: (
+    currentPassword: string,
+    newPassword: string,
+    confirmPassword: string
   ) => Promise<SettingsResult>;
   addSource: (name: string) => Promise<SettingsResult>;
   renameSource: (id: number, name: string) => Promise<SettingsResult>;
@@ -49,6 +71,12 @@ export default function SettingsView({
     minYears: number
   ) => Promise<SettingsResult>;
   removeBand: (id: number) => Promise<SettingsResult>;
+  updateStageWarnDays: (days: number) => Promise<SettingsResult>;
+  createToken: (
+    name: string,
+    expiresInDays: number
+  ) => Promise<CreateTokenResult>;
+  revokeToken: (id: number) => Promise<SettingsResult>;
 }) {
   return (
     <div className="ht-root ht-settings">
@@ -84,6 +112,11 @@ export default function SettingsView({
             updateProfile={updateProfile}
           />
 
+          <SecurityPanel
+            minLength={passwordMinLength}
+            updatePassword={updatePassword}
+          />
+
           <SourcesPanel
             sources={sources}
             addSource={addSource}
@@ -97,6 +130,18 @@ export default function SettingsView({
             addBand={addBand}
             updateBand={updateBand}
             removeBand={removeBand}
+          />
+
+          <StageWarnPanel
+            stageWarnDays={stageWarnDays}
+            maxDays={maxStageWarnDays}
+            updateStageWarnDays={updateStageWarnDays}
+          />
+
+          <ApiTokensPanel
+            tokens={tokens}
+            createToken={createToken}
+            revokeToken={revokeToken}
           />
         </div>
       </div>

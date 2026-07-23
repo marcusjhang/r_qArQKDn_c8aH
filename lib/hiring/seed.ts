@@ -64,6 +64,11 @@ export interface SeedCandidate {
   yearsExperience: number | null;
   status: Status;
   starred?: boolean;
+  // Optional: how many days ago the candidate entered its current stage. The
+  // seeder backdates stage_entered_at by this much so the demo shows a mix of
+  // fresh and stalled applicants (some past the universal warn threshold).
+  // Omitted = entered "now" (the column default).
+  daysInStage?: number;
   feedback: SeedFeedback[];
 }
 
@@ -111,6 +116,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     yearsExperience: 6,
     status: 'active',
     starred: true,
+    daysInStage: 3,
     feedback: [
       {
         by: benChan,
@@ -132,6 +138,8 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     source: 'Referral',
     yearsExperience: 3,
     status: 'active',
+    // 20 days in Applied — past the 14-day limit, so the board flags him.
+    daysInStage: 20,
     feedback: []
   },
   {
@@ -143,6 +151,8 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     yearsExperience: 9,
     status: 'active',
     starred: true,
+    // 12 days in Interview — past the 7-day limit.
+    daysInStage: 12,
     feedback: [
       { by: benOng, note: 'Sharp, great product instincts.' },
       { by: benChan, note: 'Strong, minor gaps in distributed systems.' }
@@ -156,6 +166,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     source: 'Inbound',
     yearsExperience: 1,
     status: 'active',
+    daysInStage: 5,
     feedback: []
   },
   {
@@ -166,6 +177,8 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     source: 'Referral',
     yearsExperience: 12,
     status: 'active',
+    // 9 days sitting on the Offer — past the 7-day limit; nudge to close.
+    daysInStage: 9,
     feedback: [
       {
         by: benOng,

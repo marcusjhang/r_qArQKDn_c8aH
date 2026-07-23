@@ -57,11 +57,17 @@ test.describe('add feedback to a candidate', () => {
       .getByRole('button', { name: '3', exact: true })
       .click();
     await form.locator('textarea').fill(note);
+    // Persistence is optimistic; wait for the write (a POST to the route) so the
+    // reload below reads back committed state rather than cancelling it.
+    const persisted = page.waitForResponse(
+      (r) => r.request().method() === 'POST'
+    );
     await form.getByRole('button', { name: /feedback/i }).click();
 
     const entry = drawer.locator('.fb-entry').first();
     await entry.locator('.fb-head').click();
     await expect(entry.locator('.fb-detail')).toContainText(note);
+    await persisted;
 
     await page.reload();
     await openCandidate(page, CANDIDATE);

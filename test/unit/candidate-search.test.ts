@@ -16,6 +16,7 @@ function candidate(over: Partial<Candidate> = {}): Candidate {
     jobId: 1,
     name: 'Ada Lovelace',
     stage: 'Applied',
+    stageEnteredAt: new Date(0),
     owner: 1,
     source: 1,
     yearsExperience: null,

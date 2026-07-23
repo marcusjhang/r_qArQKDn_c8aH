@@ -42,15 +42,17 @@ export type {
 export async function getBoard(
   reader: BoardReader = drizzleReader
 ): Promise<HiringState> {
-  const [jobs, candidates, users, sources, bands] = await Promise.all([
-    reader.loadJobs(),
-    reader.loadCandidates(),
-    reader.loadUsers(),
-    reader.loadSources(),
-    reader.loadBands()
-  ]);
+  const [jobs, candidates, users, sources, bands, stageWarnDays] =
+    await Promise.all([
+      reader.loadJobs(),
+      reader.loadCandidates(),
+      reader.loadUsers(),
+      reader.loadSources(),
+      reader.loadBands(),
+      reader.loadStageWarnDays()
+    ]);
 
-  return { jobs, candidates, users, sources, bands };
+  return { jobs, candidates, users, sources, bands, stageWarnDays };
 }
 
 /** The hiring facade the app consumes. Group reads here as they are added. */

@@ -8,7 +8,8 @@ import {
   feedback,
   allowedEmails,
   sources,
-  seniorityBands
+  seniorityBands,
+  pipelineSettings
 } from '../lib/schema';
 import { count, eq } from 'drizzle-orm';
 import { hash } from 'bcryptjs';
@@ -108,6 +109,17 @@ async function main() {
   }
   console.log(`Ensured ${SEED_SENIORITY_BANDS.length} seniority bands.`);
 
+  // Ensure the single pipeline_settings row exists (the universal stage-warn
+  // threshold). Idempotent: insert the default-bearing row only when the table
+  // is empty; the column default supplies the starting value.
+  const [{ value: settingsCount }] = await db
+    .select({ value: count() })
+    .from(pipelineSettings);
+  if (settingsCount === 0) {
+    await db.insert(pipelineSettings).values({});
+  }
+  console.log('Ensured pipeline settings (stage-warn threshold).');
+
   // Seed the hiring pipeline (jobs → candidates → feedback), idempotently.
   const [{ value: jobCount }] = await db
     .select({ value: count() })
@@ -163,12 +175,19 @@ async function main() {
     for (const c of SEED_CANDIDATES) {
       const jobId = slugToId.get(c.job);
       if (jobId === undefined) continue;
+      // Backdate the stage clock so the demo shows a realistic mix of fresh and
+      // stalled applicants. Omitted daysInStage → let the column default (now).
+      const stageEnteredAt =
+        c.daysInStage != null
+          ? new Date(Date.now() - c.daysInStage * 86_400_000)
+          : undefined;
       const [row] = await db
         .insert(candidates)
         .values({
           jobId,
           name: c.name,
           stage: c.stage,
+          ...(stageEnteredAt ? { stageEnteredAt } : {}),
           owner: resolveUser(c.owner),
           source: resolveSource(c.source),
           yearsExperience: c.yearsExperience,

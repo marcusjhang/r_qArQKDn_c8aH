@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": ["test/stubs/*.ts"],
+  "entry": ["test/stubs/*.ts", "test/e2e/*.setup.ts"],
   "project": ["**/*.{ts,tsx}"],
   "ignore": ["drizzle/**"],
   "ignoreDependencies": ["prettier", "eslint-config-next"],

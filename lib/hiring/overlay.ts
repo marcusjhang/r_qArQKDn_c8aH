@@ -25,7 +25,9 @@ export type Overlay =
   // The add-candidate modal (for the active job).
   | { kind: 'addCandidate' }
   // The new-job modal.
-  | { kind: 'newJob' };
+  | { kind: 'newJob' }
+  // The CSV import dialog.
+  | { kind: 'import' };
 
 /** The transitions the shell can request on the overlay. */
 export type OverlayEvent =
@@ -36,6 +38,7 @@ export type OverlayEvent =
     }
   | { type: 'openAddCandidate' }
   | { type: 'openNewJob' }
+  | { type: 'openImport' }
   | { type: 'close' };
 
 /** The closed state — no overlay open. */
@@ -54,6 +57,8 @@ export function overlayReducer(state: Overlay, event: OverlayEvent): Overlay {
       return { kind: 'addCandidate' };
     case 'openNewJob':
       return { kind: 'newJob' };
+    case 'openImport':
+      return { kind: 'import' };
     case 'close':
       return NO_OVERLAY;
     default:
