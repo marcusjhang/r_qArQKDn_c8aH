@@ -10,6 +10,7 @@
 // restores state).
 
 import EditableList from '@/components/settings/EditableList';
+import { Button } from '@/components/ui/button';
 import {
   useEditableList,
   type Result
@@ -81,14 +82,14 @@ export default function AllowlistPanel({
       renderRow={(e) => (
         <>
           <span className="email-addr">{e.email}</span>
-          <button
-            className="btn"
+          <Button
+            variant="app"
             onClick={() => list.remove(e.id)}
             disabled={list.pending}
             aria-label={`Remove ${e.email}`}
           >
             Remove
-          </button>
+          </Button>
         </>
       )}
     />

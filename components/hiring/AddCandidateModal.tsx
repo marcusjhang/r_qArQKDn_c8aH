@@ -14,6 +14,7 @@ import {
   type Source,
   type SeniorityBand
 } from '@/lib/hiring';
+import { Button } from '@/components/ui/button';
 import Modal from './Modal';
 import CandidateFields from './CandidateFields';
 import { useCandidateDraft } from './hooks/useCandidateDraft';
@@ -73,12 +74,12 @@ export default function AddCandidateModal({
         />
         {error && <div className="form-error">{error}</div>}
         <div className="modal-actions">
-          <button type="button" className="btn" onClick={onClose}>
+          <Button type="button" variant="app" onClick={onClose}>
             Cancel
-          </button>
-          <button type="submit" className="btn primary">
+          </Button>
+          <Button type="submit" variant="appPrimary">
             Add candidate
-          </button>
+          </Button>
         </div>
       </form>
     </Modal>
