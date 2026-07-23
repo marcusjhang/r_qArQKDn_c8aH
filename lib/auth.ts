@@ -1,49 +1,20 @@
 import NextAuth from 'next-auth';
-// Empty type-only import: anchors `next-auth/jwt` in this module's import graph
-// so the `declare module 'next-auth/jwt'` augmentation below resolves (TS only
-// augments an imported module). No named binding, so no unused-vars warning.
-import type {} from 'next-auth/jwt';
 import Credentials from 'next-auth/providers/credentials';
-import { NextResponse } from 'next/server';
 import { compare } from 'bcryptjs';
+import { eq } from 'drizzle-orm';
 import { db, users } from '@/lib/db';
 import { normalizeEmail } from '@/lib/allowlist';
-import { eq } from 'drizzle-orm';
-import {
-  credentialsSchema,
-  evaluateAccess,
-  resolveUserId
-} from '@/lib/auth-policy';
+import { credentialsSchema, resolveUserId } from '@/lib/auth-policy';
+import { authConfig } from '@/lib/auth.config';
 
-declare module 'next-auth' {
-  interface Session {
-    user: {
-      id?: string;
-      name?: string | null;
-      email?: string | null;
-      // True while the account still has a seeded/default password it must
-      // replace before using the app (see the `authorized` gate below).
-      mustChangePassword?: boolean;
-    };
-  }
-
-  interface User {
-    id?: string;
-    mustChangePassword?: boolean;
-  }
-}
-
-declare module 'next-auth/jwt' {
-  interface JWT {
-    id?: string;
-    mustChangePassword?: boolean;
-  }
-}
-
+// The full, Node-runtime auth config: the edge-safe `authConfig` (pages, session
+// strategy, and the authorized/jwt/session callbacks) plus the DB-backed
+// credentials provider. This module imports `lib/db.ts` (postgres) and bcryptjs,
+// so it must never reach the Edge middleware bundle — `middleware.ts` builds the
+// gate from `authConfig` alone. Everything server-side (the API route,
+// server-component/action `auth()`, `requireUser`) imports from here.
 export const { handlers, auth } = NextAuth({
-  pages: {
-    signIn: '/login'
-  },
+  ...authConfig,
   providers: [
     Credentials({
       credentials: {
@@ -76,57 +47,20 @@ export const { handlers, auth } = NextAuth({
         };
       }
     })
-  ],
-  session: { strategy: 'jwt' },
-  callbacks: {
-    // Runs in middleware for every matched route (see middleware.ts). Thin
-    // adapter over the framework-free `evaluateAccess` policy (lib/auth-policy):
-    // it gates the whole app behind login (only the sign-in page is public) and
-    // confines a seeded default-password account (mustChangePassword) to
-    // /change-password until it picks a new one. Here we only translate the
-    // decision into what NextAuth expects — the decision itself is unit-tested.
-    authorized({ auth, request }) {
-      const decision = evaluateAccess({
-        pathname: request.nextUrl.pathname,
-        isLoggedIn: !!auth?.user,
-        mustChangePassword: auth?.user?.mustChangePassword === true
-      });
-      switch (decision.type) {
-        case 'public':
-        case 'allow':
-          return true;
-        case 'unauthenticated':
-          // NextAuth redirects to pages.signIn ('/login') with a callbackUrl.
-          return false;
-        case 'redirect':
-          return NextResponse.redirect(new URL(decision.to, request.nextUrl));
-      }
-    },
-    jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.mustChangePassword = user.mustChangePassword;
-      }
-      return token;
-    },
-    session({ session, token }) {
-      if (token.id) session.user.id = token.id;
-      session.user.mustChangePassword = token.mustChangePassword === true;
-      return session;
-    }
-  }
+  ]
 });
 
 /**
  * Auth guard for Server Actions. Returns the signed-in user's numeric id, or
  * throws `Unauthorized` when there is no session.
  *
- * The `authorized` callback above only gates *page* routes: Server Actions
- * dispatch by action id (via the `Next-Action` header), and that request can be
- * POSTed to the public `/login` route, which the page gate lets through. So the
- * middleware never protects an action — every action must confirm the session
- * itself. Throwing (rather than silently no-op'ing) aborts before any DB write
- * and, for the optimistic board actions, triggers the client store's rollback.
+ * The `authorized` callback (lib/auth.config.ts) only gates *page* routes:
+ * Server Actions dispatch by action id (via the `Next-Action` header), and that
+ * request can be POSTed to the public `/login` route, which the page gate lets
+ * through. So the middleware never protects an action — every action must
+ * confirm the session itself. Throwing (rather than silently no-op'ing) aborts
+ * before any DB write and, for the optimistic board actions, triggers the client
+ * store's rollback.
  *
  * Uses the numeric id set on the session (see the `session` callback) as the
  * "signed in" signal, matching how `lib/profile.ts` and the settings actions

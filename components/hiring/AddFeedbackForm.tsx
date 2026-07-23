@@ -10,6 +10,7 @@
 
 import { RATINGS, type RatingValue } from '@/lib/hiring';
 import { Button } from '@/components/ui/button';
+import { FormError } from '@/components/ui/form-error';
 import { useFeedbackDraft, type FeedbackEntry } from './useFeedbackDraft';
 
 const RATING_ORDER: RatingValue[] = [1, 2, 3, 4];
@@ -64,7 +65,7 @@ export default function AddFeedbackForm({
           placeholder="What stood out? Concerns?"
         />
       </div>
-      {fb.error && <div className="form-error">{fb.error}</div>}
+      <FormError message={fb.error} />
       <Button variant="appPrimary" onClick={() => fb.submit()}>
         Add feedback
       </Button>

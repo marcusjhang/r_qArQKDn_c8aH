@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { MessageSquare, PartyPopper, Star } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { formatMessageTime } from '@/lib/hiring';
+import { Avatar } from '@/components/ui/avatar';
 import type { Member, MemberActivityKind } from '@/lib/members-types';
 
 // A small icon per action kind, so the timeline scans at a glance.
@@ -60,9 +61,7 @@ function MemberCard({ member }: { member: Member }) {
         <span className="member-caret" aria-hidden>
           {open ? '▾' : '▸'}
         </span>
-        <span className="avatar" aria-hidden>
-          {member.initials}
-        </span>
+        <Avatar aria-hidden>{member.initials}</Avatar>
         <div className="member-id">
           <span className="member-name">{member.name}</span>
           <span className="member-email">{member.email}</span>

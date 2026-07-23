@@ -6,8 +6,15 @@ under `lib/` are the auth/user domain and shared plumbing.
 
 ## Modules
 
-- `auth.ts` — the Auth.js (next-auth v5 beta) config: credentials provider and
-  the `authorized` callback that gates the app. Exported as the middleware.
+- `auth.config.ts` — the **edge-safe** half of the Auth.js (next-auth v5 beta)
+  config: `pages`, the `jwt` session strategy, and the `authorized`/`jwt`/
+  `session` callbacks (the `authorized` gate). Imports nothing Node-only, so
+  `middleware.ts` builds the gate from it without pulling `db.ts` (postgres) into
+  the Edge bundle.
+- `auth.ts` — the **full, Node-runtime** config: spreads `auth.config.ts` and
+  adds the DB-backed credentials provider. Exports `handlers`/`auth` and the
+  `requireUser` Server-Action guard. Imports `db.ts`, so it must stay out of the
+  Edge middleware bundle.
 - `allowlist.ts` (`server-only`) — the signup allowlist; only listed emails may
   register. Managed from `/settings`.
 - `registration.ts` (`server-only`) — the account-creation domain service
