@@ -16,6 +16,7 @@ import {
   MAX_YEARS_EXPERIENCE,
   type RatingValue
 } from './primitives';
+import { MAX_TRAITS, MAX_TRAIT_NAME, MAX_JOB_DESCRIPTION } from './helpers';
 
 /* Scalar validators */
 export const zId = z.number().int().positive();
@@ -25,6 +26,7 @@ export const zStatus = z.enum(STATUSES);
 export const zName = z.string().trim().min(1).max(120);
 export const zStageName = z.string().trim().min(1).max(48);
 export const zJobTitle = z.string().trim().min(1).max(80);
+export const zJobDescription = z.string().max(MAX_JOB_DESCRIPTION);
 export const zNote = z.string().max(2000);
 // Optional profile link: blank/whitespace collapses to null; anything else must
 // be a valid http(s) URL (≤ 500 chars). The client mirror is normalizeProfileUrl
@@ -55,6 +57,27 @@ export const zRating = z
     { message: 'Rating must be 1–4' }
   );
 
+export const zTraitName = z.string().trim().min(1).max(MAX_TRAIT_NAME);
+
+/**
+ * A job's trait list: capped, and case-insensitively unique after trimming
+ * (mirrors the stage-name rules). Order is preserved (order = rank = weight).
+ */
+export const zTraitList = z
+  .array(zTraitName)
+  .max(MAX_TRAITS)
+  .refine(
+    (names) => new Set(names.map((n) => n.toLowerCase())).size === names.length,
+    { message: 'Traits must be unique.' }
+  );
+
+/**
+ * Per-trait scores on a feedback entry: a map of trait name → 1–4 score. Keys
+ * are shape-validated here; the action further intersects them with the job's
+ * current traits so stray/renamed keys never persist.
+ */
+export const zTraitScores = z.record(zTraitName, zRating);
+
 /* Insert shapes derived from the tables via drizzle-zod, refined to app rules */
 export const candidateInsertSchema = createInsertSchema(candidates, {
   name: zName,
@@ -81,6 +104,6 @@ export const candidateEditSchema = candidateInsertSchema;
 export const feedbackInsertSchema = createInsertSchema(feedback, {
   // byUser is a user id; the FK to users.id is the existence guard.
   byUser: zId,
-  rating: zRating,
+  traitScores: zTraitScores,
   note: zNote
-}).pick({ byUser: true, rating: true, note: true });
+}).pick({ byUser: true, traitScores: true, note: true });

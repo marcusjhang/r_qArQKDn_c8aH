@@ -24,7 +24,14 @@ export const drizzleReader: BoardReader = {
     async (): Promise<Job[]> => {
       const { db } = await import('@/lib/db');
       return db.query.jobs.findMany({
-        columns: { id: true, title: true, stages: true, starred: true },
+        columns: {
+          id: true,
+          title: true,
+          stages: true,
+          traits: true,
+          description: true,
+          starred: true
+        },
         orderBy: (j, { asc }) => [asc(j.position), asc(j.id)]
       });
     },
@@ -50,7 +57,13 @@ export const drizzleReader: BoardReader = {
         },
         with: {
           feedback: {
-            columns: { id: true, byUser: true, rating: true, note: true },
+            columns: {
+              id: true,
+              byUser: true,
+              traitScores: true,
+              stage: true,
+              note: true
+            },
             orderBy: (f, { asc }) => [asc(f.id)]
           }
         },

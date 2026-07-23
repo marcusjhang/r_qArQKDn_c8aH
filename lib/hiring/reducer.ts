@@ -11,7 +11,7 @@
 // removeStage) so the reducer, the store's pre-checks, and the server actions
 // all compute the same result from the same code.
 
-import { DEFAULT_STAGES } from './config';
+import { DEFAULT_STAGES, DEFAULT_TRAITS } from './config';
 import {
   addStageToPipeline,
   placeInStage,
@@ -19,15 +19,24 @@ import {
   removeStage,
   reorderStages
 } from './helpers';
-import type { Candidate, HiringState, RatingValue, Status } from './types';
+import type { Candidate, HiringState, Status, TraitScores } from './types';
 
 export type HiringEvent =
   // Adopt a fresh server snapshot (error recovery after a failed write).
   | { type: 'reset'; state: HiringState }
   // Jobs
-  | { type: 'createJob'; tempId: number; title: string }
+  | {
+      type: 'createJob';
+      tempId: number;
+      title: string;
+      description: string;
+      traits: string[];
+    }
   | { type: 'reconcileJobId'; tempId: number; realId: number }
   | { type: 'setJobStarred'; jobId: number; starred: boolean }
+  | { type: 'setJobDescription'; jobId: number; description: string }
+  | { type: 'setJobTraits'; jobId: number; traits: string[] }
+  | { type: 'reorderTrait'; jobId: number; index: number; dir: 1 | -1 }
   | { type: 'deleteJob'; jobId: number }
   // Candidates
   | {
@@ -56,11 +65,11 @@ export type HiringEvent =
   | { type: 'setStatus'; id: number; status: Status }
   | { type: 'setCandidateStarred'; id: number; starred: boolean }
   | {
-      type: 'addFeedback';
+      type: 'saveFeedback';
       id: number;
       tempId: number;
       byUser: number;
-      rating: RatingValue;
+      traitScores: TraitScores;
       note: string;
     }
   | { type: 'reconcileFeedbackId'; tempId: number; realId: number }
@@ -112,6 +121,8 @@ export function hiringReducer(
             id: event.tempId,
             title: event.title,
             stages: [...DEFAULT_STAGES],
+            traits: event.traits.length ? event.traits : [...DEFAULT_TRAITS],
+            description: event.description || null,
             starred: false
           }
         ]
@@ -131,6 +142,34 @@ export function hiringReducer(
         jobs: state.jobs.map((j) =>
           j.id === event.jobId ? { ...j, starred: event.starred } : j
         )
+      };
+
+    case 'setJobDescription':
+      return {
+        ...state,
+        jobs: state.jobs.map((j) =>
+          j.id === event.jobId
+            ? { ...j, description: event.description || null }
+            : j
+        )
+      };
+
+    case 'setJobTraits':
+      return {
+        ...state,
+        jobs: state.jobs.map((j) =>
+          j.id === event.jobId ? { ...j, traits: event.traits } : j
+        )
+      };
+
+    case 'reorderTrait':
+      return {
+        ...state,
+        jobs: state.jobs.map((j) => {
+          if (j.id !== event.jobId) return j;
+          const result = reorderStages(j.traits, event.index, event.dir);
+          return result.ok ? { ...j, traits: result.stages } : j;
+        })
       };
 
     case 'deleteJob':
@@ -203,19 +242,34 @@ export function hiringReducer(
         starred: event.starred
       }));
 
-    case 'addFeedback':
-      return mapCandidate(state, event.id, (c) => ({
-        ...c,
-        feedback: [
-          ...c.feedback,
-          {
-            id: event.tempId,
-            byUser: event.byUser,
-            rating: event.rating,
-            note: event.note
-          }
-        ]
-      }));
+    case 'saveFeedback':
+      return mapCandidate(state, event.id, (c) => {
+        const existing = c.feedback.find((f) => f.byUser === event.byUser);
+        if (existing) {
+          // One entry per user: update in place, preserving its stage + id.
+          return {
+            ...c,
+            feedback: c.feedback.map((f) =>
+              f.byUser === event.byUser
+                ? { ...f, traitScores: event.traitScores, note: event.note }
+                : f
+            )
+          };
+        }
+        return {
+          ...c,
+          feedback: [
+            ...c.feedback,
+            {
+              id: event.tempId,
+              byUser: event.byUser,
+              traitScores: event.traitScores,
+              note: event.note,
+              stage: c.stage
+            }
+          ]
+        };
+      });
 
     case 'reconcileFeedbackId':
       // The optimistic feedback row carries a negative temp id until the server

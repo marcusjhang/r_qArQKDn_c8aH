@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   candidateById,
-  candidateRating,
+  overallScore,
   canReviewCandidate,
   formatJobMeta,
   jobById,
@@ -33,8 +33,18 @@ function candidate(over: Partial<Candidate> = {}): Candidate {
   };
 }
 
-function withRatings(...values: RatingValue[]): Candidate['feedback'] {
-  return values.map((v, i) => ({ id: i + 1, byUser: 1, rating: v, note: '' }));
+/** Feedback entries each scoring a single trait `trait` with the given values. */
+function withTraitScores(
+  trait: string,
+  ...values: RatingValue[]
+): Candidate['feedback'] {
+  return values.map((v, i) => ({
+    id: i + 1,
+    byUser: i + 1,
+    traitScores: { [trait]: v },
+    note: '',
+    stage: ''
+  }));
 }
 
 function job(over: Partial<Job> = {}): Job {
@@ -42,6 +52,8 @@ function job(over: Partial<Job> = {}): Job {
     id: 1,
     title: 'Founding Engineer',
     stages: ['Applied', 'Screen', 'Interview', 'Offer', 'Hired'],
+    traits: [],
+    description: null,
     starred: false,
     ...over
   };
@@ -75,7 +87,7 @@ describe('jobById', () => {
 
 describe('canReviewCandidate', () => {
   const reviewed = candidate({
-    feedback: [{ id: 1, byUser: 7, rating: 3, note: '' }]
+    feedback: [{ id: 1, byUser: 7, traitScores: {}, note: '', stage: '' }]
   });
 
   it('allows a signed-in user who has not reviewed yet', () => {
@@ -141,10 +153,9 @@ describe('formatJobMeta', () => {
   });
 });
 
-describe('roundedRating / candidateRating', () => {
+describe('roundedRating', () => {
   it('returns null when there is nothing to round', () => {
     expect(roundedRating(null)).toBeNull();
-    expect(candidateRating(candidate())).toBeNull();
   });
 
   it('rounds to the nearest whole rating', () => {
@@ -156,9 +167,27 @@ describe('roundedRating / candidateRating', () => {
     expect(roundedRating(0.2)).toBe(1);
     expect(roundedRating(9)).toBe(4);
   });
+});
 
-  it('derives a candidate rating from its feedback average', () => {
-    expect(candidateRating(candidate({ feedback: withRatings(3, 4) }))).toBe(4);
+describe('overallScore', () => {
+  it('is null when no trait is scored', () => {
+    expect(overallScore([], candidate())).toBeNull();
+    expect(overallScore(['Craft'], candidate())).toBeNull();
+  });
+
+  it('averages a single trait across feedback entries', () => {
+    const c = candidate({ feedback: withTraitScores('Craft', 3, 4) });
+    expect(overallScore(['Craft'], c)).toBeCloseTo(3.5);
+  });
+
+  it('weights traits by rank (earlier = heavier)', () => {
+    // traits A (weight 2) and B (weight 1); A=4, B=1 → (2·4 + 1·1) / 3 = 3.
+    const c = candidate({
+      feedback: [
+        { id: 1, byUser: 1, traitScores: { A: 4, B: 1 }, note: '', stage: '' }
+      ]
+    });
+    expect(overallScore(['A', 'B'], c)).toBeCloseTo(3);
   });
 });
 

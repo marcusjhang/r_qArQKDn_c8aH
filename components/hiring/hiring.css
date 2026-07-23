@@ -2028,3 +2028,305 @@
   background-image: none;
   padding-right: 10px;
 }
+
+
+
+/* ============================================================= *
+ * Per-job traits, weighted scoring & collapsible detail sections
+ * ============================================================= */
+
+/* Collapsible section header (Scores) */
+.ht-root .scores {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.ht-root .section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+.ht-root .section-title-text {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+.ht-root .section-toggle .agg {
+  margin-left: auto;
+}
+.ht-root .chev {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+}
+.ht-root .chev.open {
+  transform: rotate(90deg);
+}
+
+/* Per-trait aggregate rows in the Scores section */
+.ht-root .trait-score-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ht-root .trait-score-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+.ht-root .trait-score-name {
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--text);
+}
+.ht-root .trait-rank {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  min-width: 22px;
+}
+
+/* Collapsible feedback entry */
+.ht-root .fb-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.ht-root .fb-head .avatar {
+  width: 20px;
+  height: 20px;
+  font-size: 9px;
+}
+.ht-root .fb-avg {
+  margin-left: auto;
+}
+.ht-root .stage-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+}
+.ht-root .fb-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.ht-root .fb-traits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ht-root .trait-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border-radius: var(--radius-pill);
+  padding: 2px 4px 2px 9px;
+}
+.ht-root .trait-tag-score {
+  font-size: 10.5px;
+  font-weight: 700;
+  border-radius: var(--radius-pill);
+  padding: 1px 7px;
+}
+
+/* Per-trait score pickers in the add/edit-feedback form */
+.ht-root .trait-score-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ht-root .trait-score-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ht-root .trait-score-input-name {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--text);
+}
+.ht-root .score-picker {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.ht-root .sp {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.ht-root .sp[aria-pressed='true'].syes {
+  background: var(--syes-bg);
+  color: var(--syes-fg);
+  border-color: var(--syes-fg);
+}
+.ht-root .sp[aria-pressed='true'].yes {
+  background: var(--yes-bg);
+  color: var(--yes-fg);
+  border-color: var(--yes-fg);
+}
+.ht-root .sp[aria-pressed='true'].no {
+  background: var(--no-bg);
+  color: var(--no-fg);
+  border-color: var(--no-fg);
+}
+.ht-root .sp[aria-pressed='true'].sno {
+  background: var(--sno-bg);
+  color: var(--sno-fg);
+  border-color: var(--sno-fg);
+}
+
+/* JD textarea + AI trait suggestion (modals) */
+.ht-root .jd-textarea {
+  min-height: 96px;
+  max-height: 260px;
+}
+.ht-root .suggest-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ht-root .btn.ai {
+  flex: 0 0 auto;
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-weak);
+  font-size: 12px;
+  padding: 5px 10px;
+}
+.ht-root .btn.ai:hover:not(:disabled) {
+  background: var(--primary);
+  color: #fff;
+}
+.ht-root .trait-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ht-root .trait-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 3px 6px 3px 11px;
+}
+.ht-root .chip-x {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 11px;
+  line-height: 1;
+}
+.ht-root .chip-x:hover {
+  background: var(--rej-bg);
+  color: var(--rej-fg);
+}
+
+/* Traits modal: the ranked, reorderable list */
+.ht-root .trait-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ht-root .trait-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  background: var(--surface);
+}
+.ht-root .trait-name {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text);
+}
+.ht-root .trait-rank-btns {
+  display: flex;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+.ht-root .rank-btn {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  line-height: 1;
+}
+.ht-root .rank-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.ht-root .trait-remove {
+  border: none;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 12px;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+.ht-root .trait-remove:hover {
+  background: var(--rej-bg);
+  color: var(--rej-fg);
+}
+.ht-root .trait-add {
+  display: flex;
+  gap: 8px;
+}
+.ht-root .trait-add input {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.ht-root .trait-add .btn {
+  flex: 0 0 auto;
+}
+

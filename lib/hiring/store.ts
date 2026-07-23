@@ -38,7 +38,7 @@ import { hiringReducer, type HiringEvent } from './reducer';
 import * as api from './actions';
 import { fetchBoard } from './board-query';
 import { hiringKeys } from './query-keys';
-import type { HiringState, RatingValue, Status } from './types';
+import type { HiringState, TraitScores, Status } from './types';
 
 /** Pure guard used by the board's column menu before calling deleteStage. */
 export function canDeleteStage(
@@ -56,9 +56,20 @@ export function canDeleteStage(
 }
 
 export interface HiringActions {
-  /** Create a job (with default stages); onReady fires with the new job id. */
-  createJob: (title: string, onReady: (id: number) => void) => void;
+  /**
+   * Create a job (with default stages). `traits` seeds the job's trait list
+   * (empty → defaults); onReady fires with the new job id.
+   */
+  createJob: (
+    title: string,
+    description: string,
+    traits: string[],
+    onReady: (id: number) => void
+  ) => void;
   setJobStarred: (jobId: number, starred: boolean) => void;
+  setJobDescription: (jobId: number, description: string) => void;
+  setJobTraits: (jobId: number, traits: string[]) => void;
+  reorderTrait: (jobId: number, index: number, dir: 1 | -1) => void;
   deleteJob: (jobId: number) => void;
   addCandidate: (
     jobId: number,
@@ -82,9 +93,13 @@ export interface HiringActions {
   advance: (id: number, dir: 1 | -1) => void;
   setStatus: (id: number, status: Status) => void;
   setCandidateStarred: (id: number, starred: boolean) => void;
-  addFeedback: (
+  /**
+   * Save the signed-in user's feedback (one entry per candidate, upserted).
+   * `byUser` populates the optimistic row only; the server derives the author.
+   */
+  saveFeedback: (
     id: number,
-    entry: { byUser: number; rating: RatingValue; note: string }
+    entry: { byUser: number; traitScores: TraitScores; note: string }
   ) => void;
   renameStage: (jobId: number, index: number, name: string) => void;
   addStage: (jobId: number, name: string) => void;
@@ -192,14 +207,26 @@ export function useHiringStore(initial: HiringState): {
   });
 
   const createJob = useCallback(
-    (title: string, onReady: (id: number) => void) => {
+    (
+      title: string,
+      description: string,
+      traits: string[],
+      onReady: (id: number) => void
+    ) => {
       const trimmed = title.trim();
       if (!trimmed) return;
+      const cleanTraits = traits.map((t) => t.trim()).filter(Boolean);
       const temp = tempId.current--;
-      dispatch({ type: 'createJob', tempId: temp, title: trimmed });
+      dispatch({
+        type: 'createJob',
+        tempId: temp,
+        title: trimmed,
+        description: description.trim(),
+        traits: cleanTraits
+      });
       onReady(temp); // switch to the optimistic job immediately
       persist({
-        run: () => api.createJob(trimmed),
+        run: () => api.createJob(trimmed, description.trim(), cleanTraits),
         onResult: (realId) => {
           if (realId != null) {
             const id = realId as number;
@@ -211,6 +238,40 @@ export function useHiringStore(initial: HiringState): {
       });
     },
     [dispatch, persist, flushPending]
+  );
+
+  const setJobDescription = useCallback(
+    (jobId: number, description: string) => {
+      dispatch({ type: 'setJobDescription', jobId, description });
+      whenReconciled(jobId, (id) =>
+        persist({ run: () => api.setJobDescription(id, description) })
+      );
+    },
+    [dispatch, persist, whenReconciled]
+  );
+
+  const setJobTraits = useCallback(
+    (jobId: number, traits: string[]) => {
+      const cleaned = traits.map((t) => t.trim()).filter(Boolean);
+      dispatch({ type: 'setJobTraits', jobId, traits: cleaned });
+      whenReconciled(jobId, (id) =>
+        persist({ run: () => api.setJobTraits(id, cleaned) })
+      );
+    },
+    [dispatch, persist, whenReconciled]
+  );
+
+  const reorderTrait = useCallback(
+    (jobId: number, index: number, dir: 1 | -1) => {
+      const job = snapshot().jobs.find((j) => j.id === jobId);
+      if (!job) return;
+      if (!reorderStages(job.traits, index, dir).ok) return;
+      dispatch({ type: 'reorderTrait', jobId, index, dir });
+      whenReconciled(jobId, (id) =>
+        persist({ run: () => api.reorderTrait(id, index, dir) })
+      );
+    },
+    [dispatch, persist, snapshot, whenReconciled]
   );
 
   const setJobStarred = useCallback(
@@ -367,17 +428,21 @@ export function useHiringStore(initial: HiringState): {
     [dispatch, persist, whenReconciled]
   );
 
-  const addFeedback = useCallback(
-    (id: number, entry: { byUser: number; rating: RatingValue; note: string }) => {
+  const saveFeedback = useCallback(
+    (
+      id: number,
+      entry: { byUser: number; traitScores: TraitScores; note: string }
+    ) => {
       // `byUser` populates the optimistic display row only — the server derives
       // the author from the session and never trusts a client-supplied one.
       const temp = tempId.current--;
-      dispatch({ type: 'addFeedback', id, tempId: temp, ...entry });
+      dispatch({ type: 'saveFeedback', id, tempId: temp, ...entry });
       whenReconciled(id, (realId) =>
         persist({
-          run: () => api.addFeedback(realId, entry.rating, entry.note),
+          run: () => api.saveFeedback(realId, entry.note, entry.traitScores),
           onResult: (fbId) => {
-            // Adopt the server's id so the optimistic row leaves temp-id state.
+            // Adopt the server's id so a newly-appended row leaves temp-id
+            // state (a no-op when an existing entry was edited in place).
             if (fbId != null) {
               dispatch({
                 type: 'reconcileFeedbackId',
@@ -458,6 +523,9 @@ export function useHiringStore(initial: HiringState): {
   const actions: HiringActions = {
     createJob,
     setJobStarred,
+    setJobDescription,
+    setJobTraits,
+    reorderTrait,
     deleteJob,
     addCandidate,
     editCandidate,
@@ -465,7 +533,7 @@ export function useHiringStore(initial: HiringState): {
     advance,
     setStatus,
     setCandidateStarred,
-    addFeedback,
+    saveFeedback,
     renameStage,
     addStage,
     reorderStage,

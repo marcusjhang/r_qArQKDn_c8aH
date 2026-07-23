@@ -13,7 +13,6 @@ import 'server-only';
 import { eq } from 'drizzle-orm';
 import { db, users, feedback, messages, candidates } from '@/lib/db';
 import { displayName, initials } from '@/lib/hiring/helpers';
-import { RATINGS } from '@/lib/hiring/config';
 import type { Member, MemberActivity } from './members-types';
 
 /** Most recent actions kept per member; older ones are trimmed (and flagged). */
@@ -40,7 +39,7 @@ export async function getMembers(): Promise<Member[]> {
       .select({
         id: feedback.id,
         byUser: feedback.byUser,
-        rating: feedback.rating,
+        traitScores: feedback.traitScores,
         createdAt: feedback.createdAt,
         candidateName: candidates.name
       })
@@ -71,7 +70,7 @@ export async function getMembers(): Promise<Member[]> {
       id: `feedback-${f.id}`,
       kind: 'feedback',
       at: f.createdAt.toISOString(),
-      summary: `Rated ${RATINGS[f.rating].label}`,
+      summary: feedbackSummary(f.traitScores),
       candidateName: f.candidateName
     });
   }
@@ -124,6 +123,23 @@ export async function getMembers(): Promise<Member[]> {
   });
 
   return members;
+}
+
+/**
+ * One-line summary of a feedback event for the activity timeline. The single
+ * verdict rating was replaced by per-trait scores, so summarize by how many
+ * traits were scored and their average (or a plain label when note-only).
+ */
+function feedbackSummary(raw: unknown): string {
+  // jsonb normally arrives parsed; tolerate a stringified value defensively.
+  const scoresObj =
+    typeof raw === 'string'
+      ? (JSON.parse(raw) as Record<string, number>)
+      : ((raw ?? {}) as Record<string, number>);
+  const scores = Object.values(scoresObj);
+  if (!scores.length) return 'Left feedback';
+  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+  return `Scored ${scores.length} trait${scores.length === 1 ? '' : 's'} (avg ${avg.toFixed(1)})`;
 }
 
 /** Collapse a chat message to a one-line summary for the activity timeline. */

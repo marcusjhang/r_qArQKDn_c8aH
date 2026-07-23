@@ -107,6 +107,7 @@ export default function StageColumn({
             <CandidateCard
               key={c.id}
               candidate={c}
+              traits={job.traits}
               users={state.users}
               sources={state.sources}
               bands={state.bands}

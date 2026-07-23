@@ -11,6 +11,7 @@
 // overlay state machine (lib/hiring/overlay.ts). The per-overlay render props
 // below are derived from that one union rather than kept in sync by hand.
 
+import { useState } from 'react';
 import {
   findUserIdByEmail,
   formatJobMeta,
@@ -27,6 +28,7 @@ import Board from './Board';
 import DetailDrawer from './DetailDrawer';
 import AddCandidateModal from './AddCandidateModal';
 import NewJobModal from './NewJobModal';
+import JobTraitsModal from './JobTraitsModal';
 import JobTabs from './JobTabs';
 import TopBar from './TopBar';
 import { ACCOUNT_LINKS } from './UserMenu';
@@ -47,6 +49,9 @@ export default function HiringApp({
   const { activeJob, showRejected, overlay, actions: view } = useBoardView(
     state.jobs
   );
+  // The per-job Traits/JD editor is a small self-contained modal, kept as local
+  // state rather than folded into the board overlay machine.
+  const [editingTraits, setEditingTraits] = useState(false);
 
   // The per-overlay render props, derived from the single overlay union.
   const openId = overlay.kind === 'detail' ? overlay.candidateId : null;
@@ -120,6 +125,14 @@ export default function HiringApp({
           Show rejected
         </label>
         <Button
+          variant="app"
+          onClick={() => setEditingTraits(true)}
+          disabled={!job}
+          title="Choose the important traits scored on this job"
+        >
+          ⚑ Traits{job ? ` · ${job.traits.length}` : ''}
+        </Button>
+        <Button
           variant="appPrimary"
           onClick={view.openAddCandidate}
           disabled={!job}
@@ -169,7 +182,23 @@ export default function HiringApp({
       {creatingJob && (
         <NewJobModal
           onClose={view.close}
-          onCreate={(title) => actions.createJob(title, view.selectJob)}
+          onCreate={(title, description, traits) =>
+            actions.createJob(title, description, traits, view.selectJob)
+          }
+        />
+      )}
+
+      {editingTraits && job && (
+        <JobTraitsModal
+          jobTitle={job.title}
+          traits={job.traits}
+          description={job.description ?? ''}
+          onChange={(next) => actions.setJobTraits(job.id, next)}
+          onReorder={(index, dir) => actions.reorderTrait(job.id, index, dir)}
+          onDescriptionChange={(desc) =>
+            actions.setJobDescription(job.id, desc)
+          }
+          onClose={() => setEditingTraits(false)}
         />
       )}
     </div>

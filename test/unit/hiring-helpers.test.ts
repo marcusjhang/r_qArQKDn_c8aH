@@ -11,7 +11,7 @@ import {
   parseYearsInput,
   isTerminal,
   isHiddenByDefault,
-  agg,
+  entryTraitAvg,
   MAX_PROFILE_URL
 } from '@/lib/hiring/helpers';
 import { MAX_YEARS_EXPERIENCE } from '@/lib/hiring/primitives';
@@ -467,43 +467,48 @@ describe('isHiddenByDefault', () => {
   });
 });
 
-// ── agg ───────────────────────────────────────────────────────────────────
+// ── entryTraitAvg ──────────────────────────────────────────────────────────
 
-describe('agg', () => {
-  it('returns null when there is no feedback', () => {
-    expect(agg(candidate({ feedback: [] }))).toBeNull();
+describe('entryTraitAvg', () => {
+  it('returns null when the entry scored no traits', () => {
+    expect(
+      entryTraitAvg({ id: 1, byUser: 1, traitScores: {}, note: '', stage: '' })
+    ).toBeNull();
   });
 
-  it('returns the mean of a single rating', () => {
+  it('returns the single trait score', () => {
     expect(
-      agg(candidate({ feedback: [{ id: 1, byUser: 1, rating: 3, note: '' }] }))
+      entryTraitAvg({
+        id: 1,
+        byUser: 1,
+        traitScores: { A: 3 },
+        note: '',
+        stage: ''
+      })
     ).toBe(3);
   });
 
-  it('returns the mean of multiple ratings', () => {
+  it('returns the mean of multiple trait scores', () => {
     expect(
-      agg(
-        candidate({
-          feedback: [
-            { id: 1, byUser: 1, rating: 2, note: '' },
-            { id: 2, byUser: 2, rating: 4, note: '' }
-          ]
-        })
-      )
+      entryTraitAvg({
+        id: 1,
+        byUser: 1,
+        traitScores: { A: 2, B: 4 },
+        note: '',
+        stage: ''
+      })
     ).toBe(3);
   });
 
   it('returns a fractional mean without rounding', () => {
     expect(
-      agg(
-        candidate({
-          feedback: [
-            { id: 1, byUser: 1, rating: 1, note: '' },
-            { id: 2, byUser: 2, rating: 2, note: '' },
-            { id: 3, byUser: 3, rating: 4, note: '' }
-          ]
-        })
-      )
+      entryTraitAvg({
+        id: 1,
+        byUser: 1,
+        traitScores: { A: 1, B: 2, C: 4 },
+        note: '',
+        stage: ''
+      })
     ).toBeCloseTo(7 / 3);
   });
 });

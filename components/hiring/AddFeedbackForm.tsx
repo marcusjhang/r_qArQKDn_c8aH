@@ -1,14 +1,13 @@
 'use client';
 
-// Add-feedback form: 4-point rating picker + note. Feedback is always authored
-// by the signed-in user (derived server-side), so there is no interviewer
-// picker — `canReview` gates whether the form shows at all: the current user
-// gets one entry per candidate (enforced by a DB unique constraint), so once
-// they've reviewed, the form is replaced with a done message. The draft state,
-// reset-on-candidate-change and validation live in useFeedbackDraft; this
-// component is the presentational shell around that hook.
+// Add/edit-feedback form: a per-trait 1-4 score picker + note. Feedback is
+// always authored by the signed-in user (derived server-side), so there is no
+// interviewer picker. The signed-in user gets one entry per candidate (a DB
+// unique constraint), edited in place: the button flips to "Update feedback"
+// once they've reviewed. The draft state, reset-on-candidate-change and
+// validation live in useFeedbackDraft; this is the presentational shell.
 
-import { RATINGS, type RatingValue } from '@/lib/hiring';
+import { RATINGS, type Feedback, type Job, type RatingValue } from '@/lib/hiring';
 import { Button } from '@/components/ui/button';
 import { useFeedbackDraft, type FeedbackEntry } from './useFeedbackDraft';
 
@@ -16,46 +15,65 @@ const RATING_ORDER: RatingValue[] = [1, 2, 3, 4];
 
 export default function AddFeedbackForm({
   resetKey,
-  canReview,
-  onAdd
+  currentUserId,
+  feedback,
+  job,
+  onSave
 }: {
   /** Identity of the open candidate — the draft resets when it changes. */
   resetKey: number | null;
-  /** Whether the signed-in user can still leave feedback (one entry each). */
-  canReview: boolean;
-  onAdd: (entry: FeedbackEntry) => void;
+  /** The signed-in user's id — the feedback author. */
+  currentUserId: number | null;
+  feedback: Feedback[];
+  job: Job | undefined;
+  onSave: (entry: FeedbackEntry) => void;
 }) {
-  const fb = useFeedbackDraft(resetKey, onAdd);
+  const traits = job?.traits ?? [];
+  const fb = useFeedbackDraft(resetKey, currentUserId, feedback, traits, onSave);
 
-  // The signed-in user has already reviewed this candidate (or isn't a
-  // resolvable reviewer) — nothing to add.
-  if (!canReview) {
+  // The whole app is auth-gated, so this is a defensive fallback only.
+  if (currentUserId == null) {
     return (
       <div className="add-fb">
-        <div className="fb-empty">You&rsquo;ve already left feedback.</div>
+        <div className="fb-empty">Sign in to leave feedback.</div>
       </div>
     );
   }
 
   return (
     <div className="add-fb">
-      <div className="field">
-        <span className="label">Rating</span>
-        <div className="rating-picker">
-          {RATING_ORDER.map((v) => (
-            <button
-              key={v}
-              className={`rp ${RATINGS[v].cls}`}
-              aria-pressed={fb.rating === v}
-              onClick={() => fb.pickRating(v)}
-            >
-              {RATINGS[v].label}
-            </button>
-          ))}
+      {traits.length > 0 && (
+        <div className="field">
+          <span className="label">Trait scores</span>
+          <div className="trait-score-inputs">
+            {traits.map((t, i) => (
+              <div className="trait-score-input" key={t}>
+                <span className="trait-score-input-name">
+                  <span className="trait-rank">#{i + 1}</span> {t}
+                </span>
+                <div className="score-picker">
+                  {RATING_ORDER.map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      className={`sp ${RATINGS[v].cls}`}
+                      aria-pressed={fb.traitScores[t] === v}
+                      onClick={() => fb.setTrait(t, v)}
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
       <div className="field">
-        <label className="label" htmlFor="feedback-note">Note</label>
+        <label className="label" htmlFor="feedback-note">
+          Note
+        </label>
         <textarea
           id="feedback-note"
           value={fb.note}
@@ -66,7 +84,7 @@ export default function AddFeedbackForm({
       </div>
       {fb.error && <div className="form-error">{fb.error}</div>}
       <Button variant="appPrimary" onClick={() => fb.submit()}>
-        Add feedback
+        {fb.editing ? 'Update feedback' : 'Add feedback'}
       </Button>
     </div>
   );

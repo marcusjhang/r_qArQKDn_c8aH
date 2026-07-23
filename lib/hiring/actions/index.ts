@@ -17,7 +17,15 @@
 // the store as `import * as api` and by the tests) is unchanged. Shared, non-
 // action helpers live in ./support (server-only, not `'use server'`).
 
-export { createJob, setJobStarred, deleteJob } from './jobs';
+export {
+  createJob,
+  setJobStarred,
+  deleteJob,
+  setJobDescription,
+  setJobTraits,
+  reorderTrait,
+  recommendTraits
+} from './jobs';
 export {
   addCandidate,
   editCandidate,
@@ -25,5 +33,5 @@ export {
   moveStage,
   setStatus
 } from './candidates';
-export { addFeedback } from './feedback';
+export { saveFeedback } from './feedback';
 export { addStage, renameStage, reorderStage, deleteStage } from './stages';

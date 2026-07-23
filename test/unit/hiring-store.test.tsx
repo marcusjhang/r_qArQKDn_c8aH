@@ -44,6 +44,9 @@ import type { Candidate, HiringState } from '@/lib/hiring/types';
 // file, so the store sees these mocks.
 vi.mock('@/lib/hiring/actions', () => ({
   createJob: vi.fn(),
+  setJobDescription: vi.fn(),
+  setJobTraits: vi.fn(),
+  reorderTrait: vi.fn(),
   addCandidate: vi.fn(),
   editCandidate: vi.fn(),
   setJobStarred: vi.fn(),
@@ -51,7 +54,7 @@ vi.mock('@/lib/hiring/actions', () => ({
   deleteJob: vi.fn(),
   moveStage: vi.fn(),
   setStatus: vi.fn(),
-  addFeedback: vi.fn(),
+  saveFeedback: vi.fn(),
   addStage: vi.fn(),
   renameStage: vi.fn(),
   reorderStage: vi.fn(),
@@ -108,7 +111,16 @@ function candidate(over: Partial<Candidate> = {}): Candidate {
 
 function makeState(over: Partial<HiringState> = {}): HiringState {
   return {
-    jobs: [{ id: 1, title: 'Engineer', stages: [...DEFAULT_STAGES], starred: false }],
+    jobs: [
+      {
+        id: 1,
+        title: 'Engineer',
+        stages: [...DEFAULT_STAGES],
+        traits: [],
+        description: null,
+        starred: false
+      }
+    ],
     candidates: [candidate()],
     users: [],
     sources: [],
@@ -163,10 +175,12 @@ describe('useHiringStore orchestration', () => {
     const { result } = renderHook(() => useHiringStore(makeState()), { wrapper: createWrapper() });
 
     await act(async () => {
-      result.current.actions.createJob('  Growth Lead  ', (id) => ready.push(id));
+      result.current.actions.createJob('  Growth Lead  ', '', [], (id) =>
+        ready.push(id)
+      );
     });
 
-    expect(api.createJob).toHaveBeenCalledWith('Growth Lead');
+    expect(api.createJob).toHaveBeenCalledWith('Growth Lead', '', []);
     expect(result.current.state.jobs.some((j) => j.title === 'Growth Lead')).toBe(
       true
     );
@@ -177,7 +191,7 @@ describe('useHiringStore orchestration', () => {
     const { result } = renderHook(() => useHiringStore(makeState()), { wrapper: createWrapper() });
 
     await act(async () => {
-      result.current.actions.createJob('   ', (id) => ready.push(id));
+      result.current.actions.createJob('   ', '', [], (id) => ready.push(id));
     });
 
     expect(api.createJob).not.toHaveBeenCalled();
@@ -193,7 +207,7 @@ describe('useHiringStore orchestration', () => {
     const { result } = renderHook(() => useHiringStore(makeState()), { wrapper: createWrapper() });
 
     await act(async () => {
-      result.current.actions.createJob('Designer', (id) => ready.push(id));
+      result.current.actions.createJob('Designer', '', [], (id) => ready.push(id));
     });
 
     // Optimistic row uses a negative temp id; onReady has fired once with it.
@@ -236,7 +250,7 @@ describe('useHiringStore orchestration', () => {
     const { result } = renderHook(() => useHiringStore(makeState()), { wrapper: createWrapper() });
 
     await act(async () => {
-      result.current.actions.createJob('Recruiter', (id) => ready.push(id));
+      result.current.actions.createJob('Recruiter', '', [], (id) => ready.push(id));
     });
 
     const job = result.current.state.jobs.find((j) => j.title === 'Recruiter');

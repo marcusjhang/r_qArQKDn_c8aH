@@ -9,17 +9,39 @@ import { revalidateTag } from 'next/cache';
 import { requireUser } from '@/lib/auth';
 import { db, jobs } from '@/lib/db';
 import { BOARD_TAGS } from '../cache';
-import { MAX_FAVORITES } from '../helpers';
-import { DEFAULT_STAGES } from '../config';
-import { zId, zJobTitle } from '../schemas';
+import { MAX_FAVORITES, reorderStages } from '../helpers';
+import { DEFAULT_STAGES, DEFAULT_TRAITS } from '../config';
+import {
+  zId,
+  zIndex,
+  zDir,
+  zJobTitle,
+  zJobDescription,
+  zTraitList
+} from '../schemas';
+import { suggestTraits } from '../ai';
+import { loadJobTraits } from './support';
 
 /**
  * Create a new job with the compulsory default stages. Returns the new id so
  * the client can reconcile its optimistic job and switch the board to it.
+ * `traits` seeds the job's important-traits list (empty → the defaults) and
+ * `description` the pasteable JD.
  */
-export async function createJob(titleRaw: string): Promise<number | null> {
+export async function createJob(
+  titleRaw: string,
+  descriptionRaw = '',
+  traitsRaw?: string[]
+): Promise<number | null> {
   await requireUser();
   const title = zJobTitle.parse(titleRaw);
+  const description = zJobDescription.parse(descriptionRaw ?? '');
+  // Use the caller's chosen traits (e.g. AI suggestions accepted at creation)
+  // when provided and non-empty; otherwise fall back to the defaults.
+  const traits =
+    traitsRaw && traitsRaw.length
+      ? zTraitList.parse(traitsRaw).map((t) => t.trim())
+      : [...DEFAULT_TRAITS];
   const [{ maxPos }] = await db
     .select({ maxPos: sql<number>`coalesce(max(${jobs.position}), -1)` })
     .from(jobs);
@@ -28,11 +50,82 @@ export async function createJob(titleRaw: string): Promise<number | null> {
     .values({
       title,
       stages: [...DEFAULT_STAGES],
+      traits,
+      description,
       position: Number(maxPos) + 1
     })
     .returning({ id: jobs.id });
   revalidateTag(BOARD_TAGS.jobs);
   return row?.id ?? null;
+}
+
+/** Update a job's free-text description (JD). */
+export async function setJobDescription(
+  jobIdRaw: number,
+  descriptionRaw: string
+) {
+  await requireUser();
+  const jobId = zId.parse(jobIdRaw);
+  const description = zJobDescription.parse(descriptionRaw ?? '');
+  await db.update(jobs).set({ description }).where(eq(jobs.id, jobId));
+  revalidateTag(BOARD_TAGS.jobs);
+}
+
+/**
+ * Replace a job's important-traits list (add/remove/reorder). Validated
+ * (capped, unique) then written in one update. Historical feedback keeps any
+ * scores it recorded; the UI only surfaces scores for traits still on the job.
+ */
+export async function setJobTraits(jobIdRaw: number, traitsRaw: string[]) {
+  await requireUser();
+  const jobId = zId.parse(jobIdRaw);
+  const traits = zTraitList.parse(traitsRaw).map((t) => t.trim());
+  await db.update(jobs).set({ traits }).where(eq(jobs.id, jobId));
+  revalidateTag(BOARD_TAGS.jobs);
+}
+
+/**
+ * Swap a trait with its neighbour to re-rank it. Reuses the shared
+ * `reorderStages` ordered-list helper — traits are just another ordered
+ * string[], so the swap+bounds rule is identical.
+ */
+export async function reorderTrait(
+  jobIdRaw: number,
+  indexRaw: number,
+  dirRaw: 1 | -1
+) {
+  await requireUser();
+  const jobId = zId.parse(jobIdRaw);
+  const index = zIndex.parse(indexRaw);
+  const dir = zDir.parse(dirRaw);
+  const traits = await loadJobTraits(jobId);
+  if (!traits) return;
+  const result = reorderStages(traits, index, dir);
+  if (!result.ok) return;
+  await db
+    .update(jobs)
+    .set({ traits: result.stages })
+    .where(eq(jobs.id, jobId));
+  revalidateTag(BOARD_TAGS.jobs);
+}
+
+/**
+ * Ask the AI recommender for a focused few traits from a job title and
+ * description. Read-only (no DB writes, no cache change); returns [] rather
+ * than throwing on a backend error so the UI can degrade to manual entry.
+ */
+export async function recommendTraits(
+  titleRaw: string,
+  descriptionRaw: string
+): Promise<string[]> {
+  await requireUser();
+  try {
+    const title = zJobTitle.parse(titleRaw);
+    const description = zJobDescription.parse(descriptionRaw ?? '');
+    return await suggestTraits(title, description);
+  } catch {
+    return [];
+  }
 }
 
 export async function setJobStarred(jobIdRaw: number, starred: boolean) {

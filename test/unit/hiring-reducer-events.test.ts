@@ -27,6 +27,8 @@ function job(over: Partial<Job> = {}): Job {
     id: 1,
     title: 'Founding Engineer',
     stages: ['Applied', 'Interview', 'Hired'],
+    traits: [],
+    description: null,
     starred: false,
     ...over
   };
@@ -61,13 +63,17 @@ describe('hiringReducer', () => {
       const result = hiringReducer(initial, {
         type: 'createJob',
         tempId: -1,
-        title: 'Designer'
+        title: 'Designer',
+        description: 'Design things',
+        traits: ['Craft']
       });
       expect(result.jobs).toHaveLength(2);
       expect(result.jobs[1]).toEqual({
         id: -1,
         title: 'Designer',
         stages: [...DEFAULT_STAGES],
+        traits: ['Craft'],
+        description: 'Design things',
         starred: false
       });
       // A fresh copy of DEFAULT_STAGES, not the shared module array.
@@ -342,39 +348,47 @@ describe('hiringReducer', () => {
     });
   });
 
-  describe('addFeedback', () => {
-    it('appends a feedback entry carrying the tempId', () => {
+  describe('saveFeedback', () => {
+    it('appends a feedback entry carrying the tempId and candidate stage', () => {
       const initial = state({
         candidates: [candidate({ id: 1, feedback: [] })]
       });
       const result = hiringReducer(initial, {
-        type: 'addFeedback',
+        type: 'saveFeedback',
         id: 1,
         tempId: -9,
         byUser: 2,
-        rating: 4,
+        traitScores: { Ownership: 4 },
         note: 'Strong hire'
       });
       expect(result.candidates[0].feedback).toEqual([
-        { id: -9, byUser: 2, rating: 4, note: 'Strong hire' }
+        {
+          id: -9,
+          byUser: 2,
+          traitScores: { Ownership: 4 },
+          note: 'Strong hire',
+          stage: 'Applied'
+        }
       ]);
     });
 
-    it('appends after existing feedback', () => {
+    it('appends a new entry after a different user’s feedback', () => {
       const initial = state({
         candidates: [
           candidate({
             id: 1,
-            feedback: [{ id: 1, byUser: 1, rating: 3, note: 'ok' }]
+            feedback: [
+              { id: 1, byUser: 1, traitScores: {}, note: 'ok', stage: 'Applied' }
+            ]
           })
         ]
       });
       const result = hiringReducer(initial, {
-        type: 'addFeedback',
+        type: 'saveFeedback',
         id: 1,
         tempId: -9,
         byUser: 2,
-        rating: 2,
+        traitScores: {},
         note: 'meh'
       });
       expect(result.candidates[0].feedback.map((f) => f.id)).toEqual([1, -9]);
@@ -590,7 +604,13 @@ describe('hiringReducer', () => {
     it('does not mutate the input jobs array on createJob', () => {
       const jobs = [job({ id: 1 })];
       const initial = state({ jobs });
-      hiringReducer(initial, { type: 'createJob', tempId: -1, title: 'X' });
+      hiringReducer(initial, {
+        type: 'createJob',
+        tempId: -1,
+        title: 'X',
+        description: '',
+        traits: []
+      });
       expect(jobs).toHaveLength(1);
       expect(initial.jobs).toBe(jobs);
     });

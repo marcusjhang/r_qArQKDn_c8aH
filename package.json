@@ -19,6 +19,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.112.5",
     "@radix-ui/react-slot": "^1.1.1",
     "@tanstack/react-query": "^5.101.4",
     "@types/node": "20.17.6",
