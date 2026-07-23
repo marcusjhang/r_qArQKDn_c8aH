@@ -8,7 +8,10 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['test/unit/**/*.test.ts'],
+    // Pure logic tests run in Node (the config default); the one hook test
+    // opts into jsdom via a per-file `// @vitest-environment jsdom` docblock
+    // (vitest 4 removed environmentMatchGlobs). Include .tsx so it's picked up.
+    include: ['test/unit/**/*.test.{ts,tsx}'],
     coverage: {
       // v8 native coverage. Report the framework-free business logic in `lib/`
       // (what the unit suite actually exercises); UI, generated, and config

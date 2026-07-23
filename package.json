@@ -58,9 +58,11 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.6",
     "@playwright/test": "^1.61.1",
+    "@testing-library/react": "^16.1.0",
     "@vitest/coverage-v8": "4.1.10",
     "eslint": "^9",
     "eslint-config-next": "15.5.18",
+    "jsdom": "^26.0.0",
     "knip": "^6.27.0",
     "vitest": "^4.1.10"
   }
