@@ -73,8 +73,11 @@ export default function SeniorityBandsPanel({
       addFields={
         <>
           <div className="field" style={{ flex: '2 1 160px' }}>
-            <span className="label">Label</span>
+            <label className="label" htmlFor="bands-label">
+              Label
+            </label>
             <input
+              id="bands-label"
               type="text"
               placeholder="e.g. Staff"
               maxLength={40}
@@ -83,8 +86,11 @@ export default function SeniorityBandsPanel({
             />
           </div>
           <div className="field" style={{ flex: '0 0 120px' }}>
-            <span className="label">From (years)</span>
+            <label className="label" htmlFor="bands-min">
+              From (years)
+            </label>
             <input
+              id="bands-min"
               type="number"
               min={0}
               max={maxYears}
@@ -108,6 +114,7 @@ export default function SeniorityBandsPanel({
             <input
               className="source-edit"
               type="text"
+              aria-label={`Label for ${b.label}`}
               maxLength={40}
               autoFocus
               value={list.editDraft.label}
@@ -119,6 +126,7 @@ export default function SeniorityBandsPanel({
             />
             <input
               className="band-years-edit"
+              aria-label={`From (years) for ${b.label}`}
               type="number"
               min={0}
               max={maxYears}

@@ -47,8 +47,11 @@ export default function SourcesPanel({
       }
       addFields={
         <div className="field" style={{ flex: '1 1 220px' }}>
-          <span className="label">Add source</span>
+          <label className="label" htmlFor="sources-name">
+            Add source
+          </label>
           <input
+            id="sources-name"
             type="text"
             placeholder="e.g. AngelList"
             maxLength={40}
@@ -69,6 +72,7 @@ export default function SourcesPanel({
             <input
               className="source-edit"
               type="text"
+              aria-label={`Rename ${s.name}`}
               maxLength={40}
               autoFocus
               value={list.editDraft.name}

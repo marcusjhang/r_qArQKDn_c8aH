@@ -32,8 +32,9 @@ export default function NewJobModal({
     <Modal title="New job" onClose={onClose}>
       <form className="modal-form" onSubmit={submit}>
         <div className="field">
-          <span className="label">Job title</span>
+          <label className="label" htmlFor="newjob-title">Job title</label>
           <input
+            id="newjob-title"
             type="text"
             autoFocus
             maxLength={80}

@@ -11,6 +11,7 @@
 
 import { useEffect, useRef } from 'react';
 import type { HiringActions, Candidate, HiringState } from '@/lib/hiring';
+import { useFocusTrap } from './hooks/useFocusTrap';
 import DetailHeader from './DetailHeader';
 import DetailForm from './DetailForm';
 import FeedbackList from './FeedbackList';
@@ -43,6 +44,11 @@ export default function DetailDrawer({
   if (candidate) lastRef.current = candidate;
   const view = candidate ?? lastRef.current;
   const open = candidate != null;
+
+  // Trap focus inside the drawer while open and restore it to the trigger on
+  // close; `inert` (below) takes the closed drawer out of the tab order so its
+  // controls can't be reached behind the board.
+  const trapRef = useFocusTrap<HTMLElement>(open);
 
   // Close on Escape while open.
   useEffect(() => {
@@ -77,10 +83,12 @@ export default function DetailDrawer({
         aria-hidden={!open}
       />
       <aside
+        ref={trapRef}
         className={`drawer${open ? ' open' : ''}`}
-        aria-hidden={!open}
+        inert={!open}
         role="dialog"
         aria-modal="true"
+        tabIndex={-1}
       >
         <DetailHeader
           view={view}

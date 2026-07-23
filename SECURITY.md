@@ -104,3 +104,21 @@ and duplicate checks still fully gate account creation server-side
 Genuine input-validation failures (missing email/password, password shorter
 than the minimum length) still return a clear `400` — these describe the
 request, not account existence, so they leak nothing.
+
+## Rate limiting (auth endpoints)
+
+The two unauthenticated auth endpoints are throttled to blunt credential
+stuffing / brute-force and unlimited account creation:
+
+- **Login** — `POST /api/auth/callback/credentials` is limited per client IP
+  (see the wrapper in `app/api/auth/[...nextauth]/route.ts`).
+- **Register** — `POST /api/register` is limited per client IP and per targeted
+  email (`app/api/register/route.ts`).
+
+Over the limit returns **HTTP 429** with a `Retry-After` header. The limiter
+(`lib/rate-limit.ts`) is a sliding window kept **in-memory per server process**,
+so behind multiple instances / serverless cold starts the effective limit is
+per-instance, not global — a meaningful mitigation, not a hard guarantee. The
+production-grade upgrade is a shared store (Redis / Upstash); the client IP is
+read from `x-forwarded-for` / `x-real-ip` and fails safe to a shared bucket when
+absent.

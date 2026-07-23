@@ -62,8 +62,9 @@ export default function AllowlistPanel({
       description="Only these emails can sign up."
       addFields={
         <div className="field" style={{ flex: '1 1 220px' }}>
-          <span className="label">Add email</span>
+          <label className="label" htmlFor="allowlist-email">Add email</label>
           <input
+            id="allowlist-email"
             type="text"
             placeholder="name@company.com"
             value={list.addDraft.email}

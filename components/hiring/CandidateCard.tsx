@@ -45,7 +45,20 @@ export default function CandidateCard({
     <div
       className={`card${candidate.starred ? ' starred' : ''}`}
       {...dragProps}
+      role="button"
+      tabIndex={0}
+      aria-label={`Open ${candidate.name}`}
       onClick={() => onOpen(candidate.id)}
+      onKeyDown={(e) => {
+        // Enter/Space open the card, mirroring a native button — but only when
+        // the card itself is focused, so activating an inner control (the star
+        // button, the profile links) doesn't also open the drawer.
+        if (e.target !== e.currentTarget) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpen(candidate.id);
+        }
+      }}
     >
       <div className="card-top">
         <button

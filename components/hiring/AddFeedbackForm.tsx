@@ -54,8 +54,9 @@ export default function AddFeedbackForm({
         </div>
       </div>
       <div className="field">
-        <span className="label">Note</span>
+        <label className="label" htmlFor="feedback-note">Note</label>
         <textarea
+          id="feedback-note"
           value={fb.note}
           maxLength={2000}
           onChange={(e) => fb.setNote(e.target.value)}
