@@ -9,6 +9,9 @@
 
 import type { RatingValue, Status } from './types';
 
+/** Display name for the application brand (used in alt text, titles, etc.). */
+export const APP_NAME = 'Lightsprint';
+
 /** 4-point verdict scale (Decision 4). `cls` maps to a color chip in the CSS. */
 export const RATINGS: Record<RatingValue, { label: string; cls: string }> = {
   1: { label: 'Strong No', cls: 'sno' },
