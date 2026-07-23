@@ -1,9 +1,11 @@
+import { readFileSync } from 'node:fs';
 import { describe, it, expect } from 'vitest';
 import {
   evaluateAccess,
   gateMatchesPath,
   resolveUserId,
   credentialsSchema,
+  GATE_MATCHER,
   LOGIN_PATH,
   CHANGE_PASSWORD_PATH
 } from '@/lib/auth-policy';
@@ -133,6 +135,17 @@ describe('gateMatchesPath — which requests reach the auth gate', () => {
     ]) {
       expect(gateMatchesPath(pathname)).toBe(false);
     }
+  });
+
+  it('middleware.ts inlines the exact GATE_MATCHER pattern (drift guard)', () => {
+    // Next statically analyses `config.matcher` at build time and rejects a
+    // non-literal value, so middleware.ts cannot import GATE_MATCHER — it embeds
+    // an identical copy. Assert the copy matches so the two never diverge and
+    // leave a route wrongly gated (or wrongly public). Backslashes in the runtime
+    // pattern appear doubled in the single-quoted source literal.
+    const src = readFileSync(new URL('../../middleware.ts', import.meta.url), 'utf8');
+    const asSourceLiteral = GATE_MATCHER.replace(/\\/g, '\\\\');
+    expect(src).toContain(asSourceLiteral);
   });
 });
 
