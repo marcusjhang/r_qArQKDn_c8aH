@@ -7,11 +7,12 @@
 // allowlist is managed from /members — see app/(dashboard)/members/actions.ts.)
 
 import { z } from 'zod';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { and, eq, ne, sql } from 'drizzle-orm';
 import { db, candidates, users } from '@/lib/db';
 import { sources, seniorityBands } from '@/lib/schema/hiring';
 import { MAX_YEARS_EXPERIENCE } from '@/lib/hiring/primitives';
+import { BOARD_TAGS } from '@/lib/hiring/cache';
 import { auth } from '@/lib/auth';
 import type { SettingsResult } from '@/lib/settings-types';
 
@@ -72,7 +73,10 @@ export async function updateProfile(
     .where(eq(users.id, id));
 
   revalidatePath('/settings');
-  revalidatePath('/');
+  // The board renders owner initials from these names — invalidate the cached
+  // board users list (see lib/hiring/service/reader.ts `loadUsers`) rather than
+  // the whole `/` route.
+  revalidateTag(BOARD_TAGS.users);
   return { ok: true };
 }
 
@@ -96,6 +100,7 @@ export async function addSource(nameRaw: string): Promise<SettingsResult> {
     return { ok: false, error: 'That source already exists.' };
   }
   revalidatePath('/settings');
+  revalidateTag(BOARD_TAGS.sources);
   return { ok: true };
 }
 
@@ -128,6 +133,7 @@ export async function renameSource(
   }
   await db.update(sources).set({ name }).where(eq(sources.id, id));
   revalidatePath('/settings');
+  revalidateTag(BOARD_TAGS.sources);
   return { ok: true };
 }
 
@@ -156,6 +162,7 @@ export async function removeSource(idRaw: number): Promise<SettingsResult> {
   }
   await db.delete(sources).where(eq(sources.id, id));
   revalidatePath('/settings');
+  revalidateTag(BOARD_TAGS.sources);
   return { ok: true };
 }
 
@@ -190,6 +197,7 @@ export async function addBand(
     return { ok: false, error: 'A band with that threshold already exists.' };
   }
   revalidatePath('/settings');
+  revalidateTag(BOARD_TAGS.bands);
   return { ok: true };
 }
 
@@ -230,6 +238,7 @@ export async function updateBand(
     .set({ label, minYears })
     .where(eq(seniorityBands.id, id));
   revalidatePath('/settings');
+  revalidateTag(BOARD_TAGS.bands);
   return { ok: true };
 }
 
@@ -244,5 +253,6 @@ export async function removeBand(idRaw: number): Promise<SettingsResult> {
   }
   await db.delete(seniorityBands).where(eq(seniorityBands.id, id));
   revalidatePath('/settings');
+  revalidateTag(BOARD_TAGS.bands);
   return { ok: true };
 }
