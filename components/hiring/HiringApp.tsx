@@ -141,7 +141,6 @@ export default function HiringApp({
           onSelect={view.openInJob}
         />
         <div className="spacer" />
-        <CsvMenu state={state} onImport={view.openImport} />
         <label className="toggle">
           <input
             type="checkbox"
@@ -150,6 +149,7 @@ export default function HiringApp({
           />{' '}
           Show rejected
         </label>
+        <CsvMenu state={state} onImport={view.openImport} />
         <Button
           variant="app"
           onClick={() => setEditingTraits(true)}
