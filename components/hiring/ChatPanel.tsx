@@ -10,26 +10,22 @@
 // The thread's state + behaviour (load/optimistic-send/mention autocomplete)
 // lives in useChatThread; this component renders it.
 
-import { displayName, formatMessageTime, initials } from '@/lib/hiring/helpers';
+import {
+  displayName,
+  formatMessageTime,
+  initials,
+  mentionHighlightPattern
+} from '@/lib/hiring/helpers';
 import type { User } from '@/lib/hiring/types';
 import { useChatThread } from './hooks/useChatThread';
 
-/** Escape a string for safe embedding in a RegExp. */
-function escapeRe(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 /** Render a body, highlighting the `@name` tokens for accounts that were tagged. */
 function renderBody(body: string, mentionNames: string[]) {
-  if (!mentionNames.length) return body;
-  // Longest-first alternation so "@Ben Ong" wins over "@Ben"; the trailing
-  // boundary stops "@Ben" lighting up inside "@Bennett" or adjacent text.
-  const re = new RegExp(
-    '@(' +
-      mentionNames.map(escapeRe).sort((a, b) => b.length - a.length).join('|') +
-      ')(?![\\p{L}\\d])',
-    'gu'
-  );
+  // The token-matching rule (longest-name-first, boundary-aware) is a pure
+  // domain concern owned by helpers; this component only walks the matches to
+  // build the highlighted nodes.
+  const re = mentionHighlightPattern(mentionNames);
+  if (!re) return body;
   const out: React.ReactNode[] = [];
   let last = 0;
   let m: RegExpExecArray | null;
