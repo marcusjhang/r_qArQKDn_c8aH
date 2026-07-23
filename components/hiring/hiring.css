@@ -1737,20 +1737,21 @@
   color: var(--text-muted);
   padding: 12px 10px;
 }
+.ht-root .notif-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
 .ht-root .notif-list {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 .ht-root .notif-item {
-  text-align: left;
-  border: none;
-  background: transparent;
-  padding: 8px 10px;
-  border-radius: 6px;
+  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  align-items: stretch;
+  border-radius: 6px;
   color: var(--text);
 }
 .ht-root .notif-item:hover {
@@ -1761,6 +1762,39 @@
 }
 .ht-root .notif-item.unread:hover {
   filter: brightness(0.98);
+}
+.ht-root .notif-open {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: inherit;
+}
+.ht-root .notif-dismiss {
+  flex: none;
+  align-self: flex-start;
+  margin: 6px 6px 0 0;
+  padding: 3px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  color: var(--text-muted);
+  line-height: 0;
+  opacity: 0;
+}
+.ht-root .notif-item:hover .notif-dismiss,
+.ht-root .notif-dismiss:focus-visible {
+  opacity: 1;
+}
+.ht-root .notif-dismiss:hover {
+  background: var(--surface);
+  color: var(--text);
 }
 .ht-root .notif-item-top {
   display: flex;
