@@ -1,5 +1,12 @@
-import { describe, it, expect } from 'vitest';
-import { RateLimiter, clientIp } from '@/lib/rate-limit';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import {
+  RateLimiter,
+  InMemoryRateLimitStore,
+  PostgresRateLimitStore,
+  createDefaultStore,
+  clientIp,
+  type RateLimitExecutor
+} from '@/lib/rate-limit';
 
 // A controllable clock so the sliding window can be exercised deterministically.
 function fakeClock(start = 0) {
@@ -7,49 +14,129 @@ function fakeClock(start = 0) {
   return { now: () => t, advance: (ms: number) => (t += ms) };
 }
 
-describe('RateLimiter', () => {
-  it('allows hits up to the limit, then blocks', () => {
+// The in-memory store is the reference implementation of the window algorithm.
+function memLimiter(
+  opts: { limit: number; windowMs: number },
+  now: () => number
+) {
+  return new RateLimiter(new InMemoryRateLimitStore(), opts, now);
+}
+
+describe('RateLimiter (in-memory store)', () => {
+  it('allows hits up to the limit, then blocks', async () => {
     const clock = fakeClock();
-    const rl = new RateLimiter({ limit: 3, windowMs: 1000 }, clock.now);
-    expect(rl.check('k').allowed).toBe(true);
-    expect(rl.check('k').allowed).toBe(true);
-    expect(rl.check('k').allowed).toBe(true);
-    const blocked = rl.check('k');
+    const rl = memLimiter({ limit: 3, windowMs: 1000 }, clock.now);
+    expect((await rl.check('k')).allowed).toBe(true);
+    expect((await rl.check('k')).allowed).toBe(true);
+    expect((await rl.check('k')).allowed).toBe(true);
+    const blocked = await rl.check('k');
     expect(blocked.allowed).toBe(false);
     expect(blocked.remaining).toBe(0);
     expect(blocked.retryAfterMs).toBeGreaterThan(0);
   });
 
-  it('reports decreasing remaining counts', () => {
-    const rl = new RateLimiter({ limit: 3, windowMs: 1000 }, fakeClock().now);
-    expect(rl.check('k').remaining).toBe(2);
-    expect(rl.check('k').remaining).toBe(1);
-    expect(rl.check('k').remaining).toBe(0);
+  it('reports decreasing remaining counts', async () => {
+    const rl = memLimiter({ limit: 3, windowMs: 1000 }, fakeClock().now);
+    expect((await rl.check('k')).remaining).toBe(2);
+    expect((await rl.check('k')).remaining).toBe(1);
+    expect((await rl.check('k')).remaining).toBe(0);
   });
 
-  it('frees the window once the oldest hit ages out', () => {
+  it('frees the window once the oldest hit ages out', async () => {
     const clock = fakeClock();
-    const rl = new RateLimiter({ limit: 2, windowMs: 1000 }, clock.now);
-    rl.check('k');
-    rl.check('k');
-    expect(rl.check('k').allowed).toBe(false);
+    const rl = memLimiter({ limit: 2, windowMs: 1000 }, clock.now);
+    await rl.check('k');
+    await rl.check('k');
+    expect((await rl.check('k')).allowed).toBe(false);
     clock.advance(1001);
-    expect(rl.check('k').allowed).toBe(true);
+    expect((await rl.check('k')).allowed).toBe(true);
   });
 
-  it('tracks keys independently', () => {
-    const rl = new RateLimiter({ limit: 1, windowMs: 1000 }, fakeClock().now);
-    expect(rl.check('a').allowed).toBe(true);
-    expect(rl.check('b').allowed).toBe(true);
-    expect(rl.check('a').allowed).toBe(false);
+  it('reports retryAfterMs from the oldest hit, not extended by blocked hits', async () => {
+    const clock = fakeClock();
+    const rl = memLimiter({ limit: 1, windowMs: 1000 }, clock.now);
+    await rl.check('k'); // oldest hit at t=0
+    clock.advance(400);
+    const first = await rl.check('k');
+    expect(first.retryAfterMs).toBe(600); // 0 + 1000 - 400
+    clock.advance(100);
+    // A second blocked hit must not push the window forward: still keyed off t=0.
+    expect((await rl.check('k')).retryAfterMs).toBe(500); // 0 + 1000 - 500
   });
 
-  it('reset() clears recorded hits', () => {
-    const rl = new RateLimiter({ limit: 1, windowMs: 1000 }, fakeClock().now);
-    rl.check('k');
-    expect(rl.check('k').allowed).toBe(false);
-    rl.reset();
-    expect(rl.check('k').allowed).toBe(true);
+  it('tracks keys independently', async () => {
+    const rl = memLimiter({ limit: 1, windowMs: 1000 }, fakeClock().now);
+    expect((await rl.check('a')).allowed).toBe(true);
+    expect((await rl.check('b')).allowed).toBe(true);
+    expect((await rl.check('a')).allowed).toBe(false);
+  });
+
+  it('reset() clears recorded hits', async () => {
+    const rl = memLimiter({ limit: 1, windowMs: 1000 }, fakeClock().now);
+    await rl.check('k');
+    expect((await rl.check('k')).allowed).toBe(false);
+    await rl.reset();
+    expect((await rl.check('k')).allowed).toBe(true);
+  });
+});
+
+describe('RateLimiter fail-open', () => {
+  it('allows the request when the store throws', async () => {
+    const store = {
+      check: vi.fn().mockRejectedValue(new Error('db down'))
+    };
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const rl = new RateLimiter(store, { limit: 5, windowMs: 1000 });
+    const res = await rl.check('k');
+    expect(res).toEqual({ allowed: true, remaining: 5, retryAfterMs: 0 });
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+});
+
+describe('PostgresRateLimitStore', () => {
+  it('delegates to its executor and marshals the row', async () => {
+    const exec: RateLimitExecutor = vi.fn(async (key, opts, now) => {
+      expect(key).toBe('login:ip:1.2.3.4');
+      expect(opts).toEqual({ limit: 10, windowMs: 5000 });
+      expect(now).toBe(42);
+      return { allowed: false, remaining: 0, retryAfterMs: 1234 };
+    });
+    const store = new PostgresRateLimitStore(exec);
+    const res = await store.check('login:ip:1.2.3.4', { limit: 10, windowMs: 5000 }, 42);
+    expect(res).toEqual({ allowed: false, remaining: 0, retryAfterMs: 1234 });
+    expect(exec).toHaveBeenCalledOnce();
+  });
+});
+
+describe('createDefaultStore', () => {
+  const original = { ...process.env };
+  afterEach(() => {
+    process.env = { ...original };
+  });
+
+  it('honors RATE_LIMIT_STORE=memory even when DATABASE_URL is set', () => {
+    process.env.RATE_LIMIT_STORE = 'memory';
+    process.env.DATABASE_URL = 'postgres://x';
+    expect(createDefaultStore()).toBeInstanceOf(InMemoryRateLimitStore);
+  });
+
+  it('honors RATE_LIMIT_STORE=postgres', () => {
+    process.env.RATE_LIMIT_STORE = 'postgres';
+    delete process.env.DATABASE_URL;
+    expect(createDefaultStore()).toBeInstanceOf(PostgresRateLimitStore);
+  });
+
+  it('uses Postgres when DATABASE_URL is set and no override', () => {
+    delete process.env.RATE_LIMIT_STORE;
+    process.env.DATABASE_URL = 'postgres://x';
+    expect(createDefaultStore()).toBeInstanceOf(PostgresRateLimitStore);
+  });
+
+  it('falls back to in-memory with no DATABASE_URL and no override', () => {
+    delete process.env.RATE_LIMIT_STORE;
+    delete process.env.DATABASE_URL;
+    expect(createDefaultStore()).toBeInstanceOf(InMemoryRateLimitStore);
   });
 });
 

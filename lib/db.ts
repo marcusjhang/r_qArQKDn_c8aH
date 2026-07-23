@@ -5,6 +5,7 @@ import postgres from 'postgres';
 import * as schema from './schema';
 
 export { users, type SelectUser, allowedEmails, type SelectAllowedEmail } from './schema';
+export { rateLimitHits, type SelectRateLimitHit } from './schema';
 export {
   jobs,
   candidates,

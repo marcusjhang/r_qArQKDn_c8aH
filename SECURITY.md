@@ -115,10 +115,28 @@ stuffing / brute-force and unlimited account creation:
 - **Register** — `POST /api/register` is limited per client IP and per targeted
   email (`app/api/register/route.ts`).
 
-Over the limit returns **HTTP 429** with a `Retry-After` header. The limiter
-(`lib/rate-limit.ts`) is a sliding window kept **in-memory per server process**,
-so behind multiple instances / serverless cold starts the effective limit is
-per-instance, not global — a meaningful mitigation, not a hard guarantee. The
-production-grade upgrade is a shared store (Redis / Upstash); the client IP is
-read from `x-forwarded-for` / `x-real-ip` and fails safe to a shared bucket when
-absent.
+Over the limit returns **HTTP 429** with a `Retry-After` header. The client IP
+is read from `x-forwarded-for` / `x-real-ip` and fails safe to a shared bucket
+when absent.
+
+The limiter (`lib/rate-limit.ts`) is a sliding-window log behind a pluggable
+store, selected by `createDefaultStore()`:
+
+- **Postgres (`PostgresRateLimitStore`) — the scalable, default production
+  path.** Every app instance reads/writes one `rate_limit_hits` table via the
+  `rate_limit_hit()` SQL function, which prunes, decides, and appends the hit
+  **atomically under a per-key row lock**. Because all instances share one
+  authoritative counter, the limit is **global** across instances and serverless
+  cold starts — not per-process. This reuses the Postgres database the app
+  already depends on, so it needs no extra infrastructure (Redis / Upstash would
+  be an equivalent alternative only if one were already in the stack).
+- **In-memory (`InMemoryRateLimitStore`) — local dev / tests.** State lives in a
+  module-level Map, so the limit is per-process (a meaningful mitigation, not a
+  hard guarantee behind multiple instances).
+
+The store is chosen automatically — Postgres when `DATABASE_URL` is set, else
+in-memory — and can be forced with `RATE_LIMIT_STORE=postgres|memory` (see
+`.env.example`). If the store errors (e.g. the database is briefly
+unreachable), the limiter **fails open** (allows the request and logs a warning)
+so a store outage can never lock every user out of signing in; rate limiting is
+a best-effort mitigation, so availability wins over strict enforcement.
