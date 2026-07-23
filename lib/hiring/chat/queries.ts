@@ -10,8 +10,8 @@ import 'server-only';
 // the production Drizzle-backed store — the seam keeps the read (and its
 // per-user scoping) unit-testable without a database.
 
-import { drizzleChatStore, getNotificationsWith } from './chat-logic';
-import type { Notification } from './types';
+import { drizzleChatStore, getNotificationsWith } from './logic';
+import type { Notification } from '../model/types';
 
 /**
  * The mentions targeting one user, newest first — the notification inbox.

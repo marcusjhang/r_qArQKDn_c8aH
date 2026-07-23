@@ -11,15 +11,15 @@
 // removeStage) so the reducer, the store's pre-checks, and the server actions
 // all compute the same result from the same code.
 
-import { DEFAULT_STAGES } from './config';
+import { DEFAULT_STAGES } from '../model/config';
 import {
   addStageToPipeline,
   placeInStage,
   placeWithStatus,
   removeStage,
   reorderStages
-} from './helpers';
-import type { Candidate, HiringState, RatingValue, Status } from './types';
+} from '../helpers';
+import type { Candidate, HiringState, RatingValue, Status } from '../model/types';
 
 export type HiringEvent =
   // Adopt a fresh server snapshot (error recovery after a failed write).

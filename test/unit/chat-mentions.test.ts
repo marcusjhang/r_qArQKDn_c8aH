@@ -4,7 +4,7 @@ import {
   mentionSuggestions,
   mentionPresent
 } from '@/lib/hiring/helpers';
-import type { User } from '@/lib/hiring/types';
+import type { User } from '@/lib/hiring/model/types';
 
 const users: User[] = [
   { id: 1, firstName: 'Ben', lastName: 'Ong', email: 'benong@x.io' },

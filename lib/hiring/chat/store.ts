@@ -12,7 +12,7 @@ import 'server-only';
 // it — does not construct the postgres client or require `DATABASE_URL`.
 
 import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
-import type { Notification } from './types';
+import type { Notification } from '../model/types';
 
 /** A relational message row as read back for shaping into a `ChatMessage`. */
 export interface MessageRow {
@@ -209,7 +209,7 @@ export const drizzleChatStore: ChatStore = {
   async notificationsFor(userId, limit) {
     const { db, users, messages, mentions, candidates } =
       await import('@/lib/db');
-    const { displayName } = await import('./helpers');
+    const { displayName } = await import('../helpers');
     const rows = await db
       .select({
         id: mentions.id,

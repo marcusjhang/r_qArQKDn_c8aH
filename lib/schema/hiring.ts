@@ -1,7 +1,7 @@
 // Hiring Pipeline Tracker domain schema: the jobs → candidates → feedback
 // tables plus the relational wiring for the db.query API. Reads go through
-// lib/hiring/service.ts; writes through the zod-validated server actions in
-// lib/hiring/actions.ts.
+// lib/hiring/core/service.ts; writes through the zod-validated server actions in
+// lib/hiring/core/actions.ts.
 
 import {
   pgTable,
@@ -20,7 +20,7 @@ import {
   STATUSES,
   MAX_YEARS_EXPERIENCE,
   type RatingValue
-} from '../hiring/primitives';
+} from '../hiring/model/primitives';
 import { users } from './auth';
 
 // Orthogonal candidate status (Decision 3), built from the single-sourced

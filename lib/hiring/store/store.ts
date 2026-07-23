@@ -20,10 +20,10 @@ import {
   reorderStages,
   removeStage,
   MAX_FAVORITES
-} from './helpers';
+} from '../helpers';
 import { hiringReducer } from './reducer';
-import * as api from './actions';
-import type { HiringState, RatingValue, Status } from './types';
+import * as api from '../core/actions';
+import type { HiringState, RatingValue, Status } from '../model/types';
 
 /** Pure guard used by the board's column menu before calling deleteStage. */
 export function canDeleteStage(

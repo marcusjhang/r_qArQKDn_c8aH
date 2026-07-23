@@ -15,7 +15,7 @@ import {
   RATING_VALUES,
   MAX_YEARS_EXPERIENCE,
   type RatingValue
-} from './primitives';
+} from '../model/primitives';
 
 /* Scalar validators */
 export const zId = z.number().int().positive();

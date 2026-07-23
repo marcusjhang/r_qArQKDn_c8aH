@@ -13,8 +13,8 @@ import {
   agg,
   MAX_PROFILE_URL
 } from '@/lib/hiring/helpers';
-import { MAX_YEARS_EXPERIENCE } from '@/lib/hiring/primitives';
-import type { Candidate, SeniorityBand, Source, User } from '@/lib/hiring/types';
+import { MAX_YEARS_EXPERIENCE } from '@/lib/hiring/model/primitives';
+import type { Candidate, SeniorityBand, Source, User } from '@/lib/hiring/model/types';
 
 // ── Minimal factories ──────────────────────────────────────────────────────
 

@@ -12,7 +12,7 @@ import {
   isTerminalStage,
   type Placement
 } from '@/lib/hiring/helpers';
-import type { Candidate, Status } from '@/lib/hiring/types';
+import type { Candidate, Status } from '@/lib/hiring/model/types';
 
 // Minimal candidate factory — only the fields the logic reads matter.
 function candidate(over: Partial<Candidate> = {}): Candidate {

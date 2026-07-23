@@ -7,11 +7,11 @@ rendered under the auth-gated `app/(dashboard)` route.
 
 - **Types**: import DTOs and domain types from `@/lib/hiring` (the client
   barrel), which re-exports them as `import type` from the service facade. Never
-  import from `@/lib/hiring/service` or `@/lib/schema` here — those are
+  import from `@/lib/hiring/core/service` or `@/lib/schema` here — those are
   `server-only` and will break the client build.
 - **Reads**: initial board state is fetched server-side and handed in as props;
   components read from the client store, not the database.
-- **Writes**: mutate through the store actions in `lib/hiring/store.ts` (which
+- **Writes**: mutate through the store actions in `lib/hiring/store/store.ts` (which
   apply optimistic updates and call the server action), never by calling the
   `'use server'` actions directly from a component. See the **server-actions**
   skill for the store → action → rollback contract.
@@ -26,6 +26,6 @@ rendered under the auth-gated `app/(dashboard)` route.
 - Primitives come from `components/ui/` (shadcn). Styles: Tailwind plus the
   scoped `hiring.css`.
 
-Keep decision logic (validation, placement, sorting) in `lib/hiring/helpers.ts`
+Keep decision logic (validation, placement, sorting) in `lib/hiring/helpers`
 so it stays testable — components should stay presentational. For the frontend
 review checklist see the **pr-code-review** skill (`references/frontend.md`).

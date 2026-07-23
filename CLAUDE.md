@@ -36,10 +36,10 @@ bun run db:generate  # generate migration after schema change
 - Hiring pipeline tracker at `/`. UI in `components/hiring/`, domain/config/store
   in `lib/hiring/`. The Drizzle schema is split by domain under `lib/schema/`
   (`auth.ts`, `hiring.ts`, re-exported from `lib/schema/index.ts`). The hiring
-  UI DTOs and reads are behind the `lib/hiring/service.ts` facade — DTO
+  UI DTOs and reads are behind the `lib/hiring/core/service.ts` facade — DTO
   interfaces are authored there and guarded against schema drift at compile
-  time, and components import the UI types from `lib/hiring/types.ts`. Writes go
-  through the zod-validated server actions in `lib/hiring/actions.ts`.
+  time, and components import the UI types from `lib/hiring/model/types.ts`. Writes go
+  through the zod-validated server actions in `lib/hiring/core/actions.ts`.
 - Owners / interviewers and candidate sources are **not** hardcoded configs —
   they are DB-driven. Owners/interviewers are the `users` accounts (`service.ts`
   `loadUsers`); sources are the seeded `sources` table (`loadSources`). Both are

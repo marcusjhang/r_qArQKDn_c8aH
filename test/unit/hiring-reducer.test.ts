@@ -6,9 +6,9 @@
 // the pre-existing job / candidate reconciliations.
 
 import { describe, it, expect } from 'vitest';
-import { hiringReducer, type HiringEvent } from '@/lib/hiring/reducer';
-import { DEFAULT_STAGES } from '@/lib/hiring/config';
-import type { Candidate, Feedback, HiringState } from '@/lib/hiring/types';
+import { hiringReducer, type HiringEvent } from '@/lib/hiring/store/reducer';
+import { DEFAULT_STAGES } from '@/lib/hiring/model/config';
+import type { Candidate, Feedback, HiringState } from '@/lib/hiring/model/types';
 
 function feedback(over: Partial<Feedback> = {}): Feedback {
   return { id: 1, byUser: 1, rating: 3, note: '', ...over };

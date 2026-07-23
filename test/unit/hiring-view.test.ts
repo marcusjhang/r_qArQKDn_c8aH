@@ -8,7 +8,7 @@ import {
   roundedRating,
   stageNavigation
 } from '@/lib/hiring/helpers';
-import type { Candidate, Job, RatingValue } from '@/lib/hiring/types';
+import type { Candidate, Job, RatingValue } from '@/lib/hiring/model/types';
 
 // Minimal factories — only the fields each derivation reads matter.
 let seq = 0;

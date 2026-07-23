@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { hiringReducer, type HiringEvent } from '@/lib/hiring/reducer';
-import { DEFAULT_STAGES } from '@/lib/hiring/config';
-import type { Candidate, HiringState, Job } from '@/lib/hiring/types';
+import { hiringReducer, type HiringEvent } from '@/lib/hiring/store/reducer';
+import { DEFAULT_STAGES } from '@/lib/hiring/model/config';
+import type { Candidate, HiringState, Job } from '@/lib/hiring/model/types';
 
 // Minimal candidate factory — only the fields the reducer touches matter.
 function candidate(over: Partial<Candidate> = {}): Candidate {

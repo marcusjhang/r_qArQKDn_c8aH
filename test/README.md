@@ -5,9 +5,9 @@ Two layers, matching the two testing frameworks configured in `package.json`.
 ## Unit tests — Vitest (`test/unit/`)
 
 Fast, pure-function tests with no database or browser. They target the
-framework-free hiring business logic in `lib/hiring/helpers.ts` (status/stage
+framework-free hiring business logic in `lib/hiring/helpers` (status/stage
 placement, stage-array edits, name validation, board filtering + sorting) and
-the dependency-injected `getBoard` reader in `lib/hiring/service.ts`.
+the dependency-injected `getBoard` reader in `lib/hiring/core/service.ts`.
 
 ```bash
 bun run test           # run the unit suite once
@@ -60,7 +60,7 @@ will skip the managed web server.
 
 ## Adding tests
 
-- Unit: prefer testing pure functions in `lib/hiring/helpers.ts`. When adding
+- Unit: prefer testing pure functions in `lib/hiring/helpers`. When adding
   new business rules, put the decision logic there (not inline in `actions.ts` /
   `store.ts` / components) so it stays testable and shared across layers.
 - Injecting data: follow the `BoardReader` pattern in `service.ts` — accept the

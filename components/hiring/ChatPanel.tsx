@@ -11,7 +11,7 @@
 // lives in useChatThread; this component renders it.
 
 import { displayName, formatMessageTime, initials } from '@/lib/hiring/helpers';
-import type { User } from '@/lib/hiring/types';
+import type { User } from '@/lib/hiring/model/types';
 import { useChatThread } from './hooks/useChatThread';
 
 /** Escape a string for safe embedding in a RegExp. */

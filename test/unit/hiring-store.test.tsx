@@ -16,10 +16,10 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, cleanup } from '@testing-library/react';
-import { useHiringStore } from '@/lib/hiring/store';
-import { DEFAULT_STAGES } from '@/lib/hiring/config';
-import * as api from '@/lib/hiring/actions';
-import type { Candidate, HiringState } from '@/lib/hiring/types';
+import { useHiringStore } from '@/lib/hiring/store/store';
+import { DEFAULT_STAGES } from '@/lib/hiring/model/config';
+import * as api from '@/lib/hiring/core/actions';
+import type { Candidate, HiringState } from '@/lib/hiring/model/types';
 
 // router.refresh is asserted in the resync path; hoisted so the next/navigation
 // factory (which vitest hoists above imports) can close over it.
@@ -29,7 +29,7 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh }) }));
 // Replace the whole server-actions module with spies — the store imports it as
 // `import * as api from './actions'`, and this specifier resolves to the same
 // file, so the store sees these mocks.
-vi.mock('@/lib/hiring/actions', () => ({
+vi.mock('@/lib/hiring/core/actions', () => ({
   createJob: vi.fn(),
   addCandidate: vi.fn(),
   editCandidate: vi.fn(),

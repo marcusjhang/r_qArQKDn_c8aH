@@ -22,10 +22,10 @@ Next.js 15 App Router (Turbopack, React Server Components by default).
   it protected. To make a route **public**, you must adjust the matcher AND the
   `authorized` logic; see the **auth** skill for the exact recipe (and keep
   `SECURITY.md` in sync).
-- Server Components fetch through the domain facades (`lib/hiring/service.ts`),
+- Server Components fetch through the domain facades (`lib/hiring/core/service.ts`),
   not the `db` singleton directly. Mutations use `'use server'` actions —
   colocate route-specific ones (as `settings/actions.ts` does) or reuse
-  `lib/hiring/actions.ts`.
+  `lib/hiring/core/actions.ts`.
 
 Anything touching login, middleware, the allowlist, registration, or auth env
 vars → use the **auth** skill.

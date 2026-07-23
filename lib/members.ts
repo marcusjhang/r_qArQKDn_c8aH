@@ -13,7 +13,7 @@ import 'server-only';
 import { eq } from 'drizzle-orm';
 import { db, users, feedback, messages, candidates } from '@/lib/db';
 import { displayName, initials } from '@/lib/hiring/helpers';
-import { RATINGS } from '@/lib/hiring/config';
+import { RATINGS } from '@/lib/hiring/model/config';
 import type { Member, MemberActivity } from './members-types';
 
 /** Most recent actions kept per member; older ones are trimmed (and flagged). */

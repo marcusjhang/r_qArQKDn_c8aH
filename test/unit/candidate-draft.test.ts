@@ -8,7 +8,7 @@ import {
   MAX_YEARS_EXPERIENCE,
   type CandidateDraft
 } from '@/lib/hiring/helpers';
-import type { Candidate, Source, User } from '@/lib/hiring/types';
+import type { Candidate, Source, User } from '@/lib/hiring/model/types';
 
 const sources: Source[] = [
   { id: 10, name: 'Referral' },

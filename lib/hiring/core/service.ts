@@ -34,9 +34,9 @@ import type {
 } from '@/lib/schema/hiring';
 import type { SelectUser } from '@/lib/schema/auth';
 import { BOARD_TAGS } from './cache';
-import type { RatingValue, Status } from './primitives';
+import type { RatingValue, Status } from '../model/primitives';
 
-export type { Status, RatingValue } from './primitives';
+export type { Status, RatingValue } from '../model/primitives';
 
 /**
  * A user — an owner / interviewer. Projected from the account row (see
@@ -145,16 +145,21 @@ export interface BoardReader {
   loadBands(): Promise<SeniorityBand[]>;
 }
 
-// Drizzle-backed reader. `db` is imported lazily so that merely importing this
-// module (e.g. from a unit test that injects a fake reader) does not construct
-// the postgres client or require DATABASE_URL to be set.
-//
-// Each read is wrapped in `unstable_cache` under a per-entity tag, so the
-// board's jobs and candidates are served from the Data Cache instead of hitting
-// Postgres on every request. The matching server action revalidates only the
-// tag(s) it mutated (see `actions.ts`), so a candidate edit never forces the
-// jobs list to be re-queried, and vice-versa. Only this production reader is
-// cached — a test-injected `BoardReader` runs uncached and untouched.
+/**
+ * The production `BoardReader`, backed by Drizzle. `db` is imported lazily
+ * inside each method so that merely importing this module (e.g. from a unit
+ * test that injects a fake reader) does not construct the postgres client or
+ * require `DATABASE_URL` to be set.
+ *
+ * `loadJobs` / `loadCandidates` are wrapped in `unstable_cache` under a
+ * per-entity tag, so they're served from the Data Cache instead of hitting
+ * Postgres on every request; the matching server action revalidates only the
+ * tag(s) it mutated (see `actions.ts`), so a candidate edit never forces the
+ * jobs list to be re-queried, and vice-versa. `loadUsers` / `loadSources` /
+ * `loadBands` are read fresh (uncached) so a new sign-up, seeded source, or
+ * /settings edit is selectable on the very next render. Only this production
+ * reader is cached — a test-injected `BoardReader` runs uncached and untouched.
+ */
 const drizzleReader: BoardReader = {
   loadJobs: unstable_cache(
     async (): Promise<Job[]> => {

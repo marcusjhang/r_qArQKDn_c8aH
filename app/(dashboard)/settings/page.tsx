@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth';
 import { getSources } from '@/lib/sources';
 import { getSeniorityBands } from '@/lib/seniority';
-import { MAX_YEARS_EXPERIENCE } from '@/lib/hiring/primitives';
+import { MAX_YEARS_EXPERIENCE } from '@/lib/hiring/model/primitives';
 import { getProfile } from '@/lib/profile';
 import SettingsView from '@/components/settings/SettingsView';
 import {

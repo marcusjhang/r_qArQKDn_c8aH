@@ -23,8 +23,8 @@ import {
   markAllNotificationsReadWith,
   markNotificationReadWith,
   postMessageWith
-} from './chat-logic';
-import type { ChatMessage } from './types';
+} from './logic';
+import type { ChatMessage } from '../model/types';
 
 /** The signed-in caller's email from the session, or null when not signed in. */
 async function callerEmail(): Promise<string | null> {

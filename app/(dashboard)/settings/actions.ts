@@ -11,7 +11,7 @@ import { revalidatePath } from 'next/cache';
 import { and, eq, ne, sql } from 'drizzle-orm';
 import { db, candidates, users } from '@/lib/db';
 import { sources, seniorityBands } from '@/lib/schema/hiring';
-import { MAX_YEARS_EXPERIENCE } from '@/lib/hiring/primitives';
+import { MAX_YEARS_EXPERIENCE } from '@/lib/hiring/model/primitives';
 import { auth } from '@/lib/auth';
 import type { SettingsResult } from '@/lib/settings-types';
 
@@ -44,7 +44,7 @@ async function signedInUserId(): Promise<number | null> {
 /**
  * Update the signed-in user's first/last name. These are the account's name of
  * record; the display name and avatar initials (first word + last word) are
- * derived from them (see lib/hiring/helpers.ts). Revalidates the board too,
+ * derived from them (see lib/hiring/helpers). Revalidates the board too,
  * since owner initials render from these fields.
  */
 export async function updateProfile(

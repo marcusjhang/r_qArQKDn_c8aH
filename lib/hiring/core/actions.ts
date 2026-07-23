@@ -3,7 +3,7 @@
 // Server actions — the single write path for the board. Each validates its
 // input at runtime (zod, from ./schemas), mutates Postgres, then revalidates
 // only the cache tag(s) whose rows it changed — `board:jobs`, `board:candidates`,
-// or both (see ./cache and the tagged reads in ./queries). Because these actions
+// or both (see ./cache and the tagged reads in ./service). Because these actions
 // are the board's sole write path, per-tag invalidation keeps the Data Cache
 // consistent without a cache-wide `revalidatePath('/')`. Mirrors the store's
 // mutation surface one-to-one so the client can call them optimistically. A
@@ -27,9 +27,9 @@ import {
   placeInStage,
   placeWithStatus,
   MAX_FAVORITES
-} from './helpers';
-import { DEFAULT_STAGES } from './config';
-import type { Status } from './types';
+} from '../helpers';
+import { DEFAULT_STAGES } from '../model/config';
+import type { Status } from '../model/types';
 import {
   zId,
   zIndex,
@@ -116,7 +116,14 @@ export async function createJob(titleRaw: string): Promise<number | null> {
   return row?.id ?? null;
 }
 
-/** Returns the new candidate's id so the client can reconcile its optimistic row. */
+/**
+ * Insert a candidate into `jobIdRaw`'s first stage with `active` status. The
+ * raw args are the serialized client inputs; ids are zod-parsed and the text
+ * fields validated/normalized via `candidateInsertSchema` before the write.
+ * No-ops (returns null) when the job no longer exists. Side effects: one
+ * `candidates` insert and a `board:candidates` cache revalidation. Returns the
+ * new candidate's id so the client can reconcile its optimistic row.
+ */
 export async function addCandidate(
   jobIdRaw: number,
   nameRaw: string,
@@ -188,6 +195,12 @@ export async function editCandidate(
   revalidateTag(BOARD_TAGS.candidates);
 }
 
+/**
+ * Star / unstar a job (starred jobs pin as inline tabs). Starring enforces the
+ * `MAX_FAVORITES` cap atomically via a single conditional UPDATE (see the inline
+ * note); the client guard in the store mirrors this for UX, but this server
+ * check is authoritative. Side effect: a `board:jobs` cache revalidation.
+ */
 export async function setJobStarred(jobIdRaw: number, starred: boolean) {
   await requireUser();
   const jobId = zId.parse(jobIdRaw);
@@ -239,6 +252,13 @@ export async function deleteJob(jobIdRaw: number) {
   revalidateTag(BOARD_TAGS.candidates);
 }
 
+/**
+ * Move candidate `idRaw` into `stageRaw`, letting `placeInStage` couple the
+ * resulting status (entering the terminal stage marks them hired; leaving it
+ * clears a stale hired). No-ops when the candidate is missing or `stageRaw` is
+ * not one of the job's stages (see the inline guard). Side effect: a
+ * `board:candidates` cache revalidation.
+ */
 export async function moveStage(idRaw: number, stageRaw: string) {
   await requireUser();
   const id = zId.parse(idRaw);
@@ -262,6 +282,12 @@ export async function moveStage(idRaw: number, stageRaw: string) {
   revalidateTag(BOARD_TAGS.candidates);
 }
 
+/**
+ * Set candidate `idRaw`'s status to `statusRaw`, letting `placeWithStatus`
+ * couple the stage (setting `hired` pulls the card into the terminal stage when
+ * one exists). No-ops when the candidate is missing. Side effect: a
+ * `board:candidates` cache revalidation.
+ */
 export async function setStatus(idRaw: number, statusRaw: Status) {
   await requireUser();
   const id = zId.parse(idRaw);
@@ -308,6 +334,14 @@ export async function addFeedback(
   return row?.id ?? null;
 }
 
+/**
+ * Add a stage to `jobIdRaw`'s pipeline, inserted just before the terminal stage
+ * by the shared `addStageToPipeline` rule. Runs in a transaction that locks the
+ * job row (see `lockJobStages`) so concurrent stage edits can't clobber each
+ * other's array. Silently no-ops on a missing job or a name the shared rule
+ * rejects. Side effect: a `board:jobs` cache revalidation when the array
+ * actually changed.
+ */
 export async function addStage(jobIdRaw: number, nameRaw: string) {
   await requireUser();
   const jobId = zId.parse(jobIdRaw);
@@ -322,6 +356,13 @@ export async function addStage(jobIdRaw: number, nameRaw: string) {
   if (changed) revalidateTag(BOARD_TAGS.jobs);
 }
 
+/**
+ * Rename the stage at `indexRaw` on `jobIdRaw` and re-point every candidate
+ * sitting in the old column, atomically under a job-row lock (see the inline
+ * note and `lockJobStages`). No-ops on a missing job/stage, an unchanged name,
+ * or a name the shared `validateStageName` rule rejects. Side effects when the
+ * rename applies: `board:jobs` and `board:candidates` cache revalidations.
+ */
 export async function renameStage(
   jobIdRaw: number,
   indexRaw: number,
@@ -358,6 +399,12 @@ export async function renameStage(
   }
 }
 
+/**
+ * Move the stage at `indexRaw` one slot in `dirRaw` (+1 / -1) on `jobIdRaw`,
+ * via the shared `reorderStages` swap, under a job-row lock so it serializes
+ * against other stage edits. No-ops on a missing job or an out-of-bounds move.
+ * Side effect: a `board:jobs` cache revalidation when the order changed.
+ */
 export async function reorderStage(
   jobIdRaw: number,
   indexRaw: number,
@@ -378,6 +425,14 @@ export async function reorderStage(
   if (changed) revalidateTag(BOARD_TAGS.jobs);
 }
 
+/**
+ * Delete the stage at `indexRaw` from `jobIdRaw`. Runs in a transaction that
+ * locks the job row and counts the column's occupants under that same lock, so
+ * the emptiness check and the array write can't straddle a concurrent edit; the
+ * shared `removeStage`/`stageDeletable` rules allow the delete only on an empty
+ * column that leaves at least two stages. No-ops otherwise. Side effect: a
+ * `board:jobs` cache revalidation when a stage was removed.
+ */
 export async function deleteStage(jobIdRaw: number, indexRaw: number) {
   await requireUser();
   const jobId = zId.parse(jobIdRaw);

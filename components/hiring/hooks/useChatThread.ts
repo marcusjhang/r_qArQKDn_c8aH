@@ -15,7 +15,7 @@ import {
   useRef,
   useState
 } from 'react';
-import { loadThread, postMessage } from '@/lib/hiring/chat-actions';
+import { loadThread, postMessage } from '@/lib/hiring/chat/actions';
 import {
   activeMention,
   displayName,
@@ -23,7 +23,7 @@ import {
   mentionPresent,
   mentionSuggestions
 } from '@/lib/hiring/helpers';
-import type { ChatMessage, User } from '@/lib/hiring/types';
+import type { ChatMessage, User } from '@/lib/hiring/model/types';
 
 export function useChatThread({
   candidateId,

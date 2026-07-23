@@ -10,7 +10,7 @@ import { loginToBoard, openCandidate } from './helpers';
 //
 // Uses the seeded candidate "Marcus Webb" (job "Founding Engineer"), seeded in
 // the "Applied" stage with the default pipeline (Applied -> Screen -> ...), so
-// advancing moves them Applied -> Screen. See lib/hiring/seed.ts.
+// advancing moves them Applied -> Screen. See lib/hiring/model/seed.ts.
 const CANDIDATE = 'Marcus Webb';
 const FROM_STAGE = 'Applied';
 const TO_STAGE = 'Screen';

@@ -14,9 +14,9 @@ import {
   dismissNotification,
   markAllNotificationsRead,
   markNotificationRead
-} from '@/lib/hiring/chat-actions';
+} from '@/lib/hiring/chat/actions';
 import { formatMessageTime } from '@/lib/hiring/helpers';
-import type { Notification } from '@/lib/hiring/types';
+import type { Notification } from '@/lib/hiring/model/types';
 import { useDismissableMenu } from './hooks/useDismissableMenu';
 
 export default function NotificationBell({

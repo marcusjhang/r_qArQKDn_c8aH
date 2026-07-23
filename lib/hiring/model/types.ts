@@ -16,7 +16,7 @@ export type {
   HiringState,
   Status,
   RatingValue
-} from './service';
+} from '../core/service';
 
 /* ---------- Chat / mentions / notifications ---------- */
 
