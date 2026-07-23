@@ -29,7 +29,8 @@ TanStack Query **is** the board's client-state layer, adopted in PR #88:
 - Optimistic updates run the **same** pure `reducer.ts` events straight into the
   cache via `setQueryData`.
 - Writes go through a single `useMutation` wrapping the retained zod-validated
-  `'use server'` actions (kept for Drizzle-level atomicity + `revalidateTag`).
+  `'use server'` actions (kept for Drizzle-level atomicity + the zod runtime
+  guard; the board is uncached, so the actions never `revalidateTag`).
 - A failed write resyncs by invalidating the board query, which refetches the
   authoritative rows (via `fetchBoard` in `board-query.ts`) and replaces the
   optimistic cache — the rollback.

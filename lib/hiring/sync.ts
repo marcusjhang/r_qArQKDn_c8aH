@@ -98,10 +98,8 @@ export function useOptimisticSync(invalidate: () => void): OptimisticSync {
     for (const fn of queue) fn(realId);
   }, []);
 
-  // Every write goes through this one mutation: it runs the server action, hands
-  // a create's returned id to `onResult` for reconciliation, and resyncs on
-  // failure (which rolls the optimistic change back). `mutate` is referentially
-  // stable, so it's safe in the store's callback deps.
+  // The single write path documented on `persist` above. `mutate` is
+  // referentially stable, so it's safe in the store's callback deps.
   const { mutate: persist } = useMutation({
     mutationFn: ({ run }: PersistArgs) => run(),
     onSuccess: (result, { onResult }) => onResult?.(result),
