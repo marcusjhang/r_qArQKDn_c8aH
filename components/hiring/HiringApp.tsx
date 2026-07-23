@@ -32,6 +32,8 @@ import TopBar from './TopBar';
 import { ACCOUNT_LINKS } from './UserMenu';
 import NotificationBell from './NotificationBell';
 import CandidateSearch from './CandidateSearch';
+import CsvMenu from './CsvMenu';
+import ImportDialog from './ImportDialog';
 import './hiring.css';
 
 export default function HiringApp({
@@ -54,6 +56,7 @@ export default function HiringApp({
     overlay.kind === 'detail' ? overlay.focusMessageId : null;
   const addingCandidate = overlay.kind === 'addCandidate';
   const creatingJob = overlay.kind === 'newJob';
+  const importing = overlay.kind === 'import';
 
   const job = jobById(state.jobs, activeJob) ?? state.jobs[0];
 
@@ -111,6 +114,7 @@ export default function HiringApp({
           onSelect={view.openInJob}
         />
         <div className="spacer" />
+        <CsvMenu state={state} onImport={view.openImport} />
         <label className="toggle">
           <input
             type="checkbox"
@@ -170,6 +174,15 @@ export default function HiringApp({
         <NewJobModal
           onClose={view.close}
           onCreate={(title) => actions.createJob(title, view.selectJob)}
+        />
+      )}
+
+      {importing && (
+        <ImportDialog
+          state={state}
+          currentUserId={currentUserId}
+          onImport={actions.importCandidates}
+          onClose={view.close}
         />
       )}
     </div>

@@ -36,6 +36,7 @@ import { useOptimisticSync } from './sync';
 import * as api from './actions';
 import { fetchBoard } from './board-query';
 import { hiringKeys } from './query-keys';
+import type { ImportRow } from './import';
 import type { HiringState, RatingValue, Status } from './types';
 
 /** Pure guard used by the board's column menu before calling deleteStage. */
@@ -88,6 +89,18 @@ export interface HiringActions {
   addStage: (jobId: number, name: string) => void;
   reorderStage: (jobId: number, index: number, dir: 1 | -1) => void;
   deleteStage: (jobId: number, index: number) => void;
+  /**
+   * Bulk-import resolved CSV rows. Not optimistic — a bulk insert can create
+   * jobs and sources too, so on success we resync from the server rather than
+   * projecting many temp rows into the cache. `onDone` fires with the count on
+   * success; `onError` fires if the write fails (so the dialog can leave its
+   * busy state and surface the failure instead of hanging).
+   */
+  importCandidates: (
+    rows: ImportRow[],
+    onDone: (result: { inserted: number }) => void,
+    onError?: () => void
+  ) => void;
 }
 
 export function useHiringStore(initial: HiringState): {
@@ -124,7 +137,7 @@ export function useHiringStore(initial: HiringState): {
   // The optimistic server-state-sync engine: temp-id counter, temp-id
   // reconciliation queue, the single persist mutation, and resync. Extracted so
   // this hook is just the cache wiring plus the action definitions.
-  const { nextTempId, persist, whenReconciled, flushPending } =
+  const { nextTempId, persist, whenReconciled, flushPending, resync } =
     useOptimisticSync(invalidate);
 
   // Always-current authoritative snapshot for handlers that read before writing.
@@ -409,6 +422,32 @@ export function useHiringStore(initial: HiringState): {
     [dispatch, persist, snapshot, whenReconciled]
   );
 
+  const importCandidates = useCallback(
+    (
+      rows: ImportRow[],
+      onDone: (result: { inserted: number }) => void,
+      onError?: () => void
+    ) => {
+      if (rows.length === 0) {
+        onDone({ inserted: 0 });
+        return;
+      }
+      // Not optimistic: the bulk write can create jobs + sources too, so we let
+      // the server commit, then resync the board query to adopt the new rows.
+      // On failure `onError` lets the dialog recover (the shared mutation
+      // onError still resyncs to roll back).
+      persist({
+        run: () => api.importCandidates(rows),
+        onResult: (result) => {
+          onDone(result as { inserted: number });
+          resync();
+        },
+        onError
+      });
+    },
+    [persist, resync]
+  );
+
   const actions: HiringActions = {
     createJob,
     setJobStarred,
@@ -423,7 +462,8 @@ export function useHiringStore(initial: HiringState): {
     renameStage,
     addStage,
     reorderStage,
-    deleteStage
+    deleteStage,
+    importCandidates
   };
 
   return { state, actions };

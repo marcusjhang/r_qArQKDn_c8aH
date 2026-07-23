@@ -2114,3 +2114,160 @@
   background-image: none;
   padding-right: 10px;
 }
+
+/* ---------- CSV menu (board toolbar) ---------- */
+.ht-root .export-menu {
+  position: relative;
+  display: inline-flex;
+}
+.ht-root .export-pop {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  min-width: 240px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 4px;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+}
+.ht-root .export-item {
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 5px;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+}
+.ht-root .export-item:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+.ht-root .export-item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.ht-root .export-item-title {
+  font-size: 13px;
+  font-weight: 500;
+}
+.ht-root .export-item-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ---------- CSV import dialog ---------- */
+.ht-root .import-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.ht-root .linklike {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--primary);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.ht-root .import-textarea {
+  width: 100%;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+.ht-root .import-summary {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--hired-bg);
+  color: var(--hired-fg);
+  font-size: 13px;
+}
+.ht-root .import-error {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--rej-bg);
+  color: var(--rej-fg);
+  font-size: 13px;
+}
+.ht-root .import-preview {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+.ht-root .import-preview-head {
+  color: var(--text);
+}
+.ht-root .import-preview-errcount {
+  color: var(--sno-fg);
+}
+.ht-root .import-filename,
+.ht-root .import-creates {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.ht-root .import-errors {
+  margin: 0;
+  padding-left: 16px;
+  max-height: 160px;
+  overflow-y: auto;
+  color: var(--text);
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ht-root .import-err-line {
+  color: var(--sno-fg);
+  font-weight: 600;
+}
+.ht-root .import-ref-row {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  font-size: 12px;
+}
+.ht-root .import-ref {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.ht-root .import-ref summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--text);
+}
+.ht-root .import-ref dl {
+  margin: 8px 0 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+}
+.ht-root .import-ref dt {
+  font-weight: 600;
+  color: var(--text);
+}
+.ht-root .import-ref dd {
+  margin: 0;
+}
+.ht-root .import-ref dd ul {
+  margin: 0;
+  padding-left: 14px;
+}

@@ -7,7 +7,7 @@ import * as schema from './schema';
 
 export { users, allowedEmails, apiTokens } from './schema';
 export { rateLimitHits } from './schema';
-export { jobs, candidates, feedback, messages, mentions } from './schema';
+export { jobs, candidates, feedback, sources, messages, mentions } from './schema';
 
 /**
  * Build a Drizzle client for an explicit connection string. Factored out of the
