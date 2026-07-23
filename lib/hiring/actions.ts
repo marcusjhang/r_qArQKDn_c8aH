@@ -11,7 +11,7 @@
 // (The whole app is gated by the auth middleware, so a caller here is already
 // an authenticated user.)
 
-import { and, eq, ne, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { revalidateTag } from 'next/cache';
 import { db, jobs, candidates, feedback } from '@/lib/db';
 import { BOARD_TAGS } from './cache';
@@ -141,14 +141,25 @@ export async function editCandidate(
 export async function setJobStarred(jobIdRaw: number, starred: boolean) {
   const jobId = zId.parse(jobIdRaw);
   if (starred) {
-    // Enforce the favorites cap (count other starred jobs).
-    const [{ n }] = await db
-      .select({ n: sql<number>`count(*)` })
-      .from(jobs)
-      .where(and(eq(jobs.starred, true), ne(jobs.id, jobId)));
-    if (Number(n) >= MAX_FAVORITES) return;
+    // Enforce the favorites cap atomically: a single conditional UPDATE that
+    // sets starred=true only while fewer than MAX_FAVORITES *other* jobs are
+    // starred. The count subquery is evaluated within the same statement as
+    // the write, so concurrent stars contend on the same rows and cannot both
+    // slip past the cap — unlike a separate count-then-update, which reads a
+    // stale count. The client-side guard in store.ts mirrors this UX-side; the
+    // server check here is authoritative.
+    await db
+      .update(jobs)
+      .set({ starred: true })
+      .where(
+        and(
+          eq(jobs.id, jobId),
+          sql`(select count(*) from ${jobs} where ${jobs.starred} = true and ${jobs.id} <> ${jobId}) < ${MAX_FAVORITES}`
+        )
+      );
+  } else {
+    await db.update(jobs).set({ starred: false }).where(eq(jobs.id, jobId));
   }
-  await db.update(jobs).set({ starred: !!starred }).where(eq(jobs.id, jobId));
   revalidateTag(BOARD_TAGS.jobs);
 }
 
