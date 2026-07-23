@@ -19,6 +19,8 @@ import { relations, sql } from 'drizzle-orm';
 import {
   STATUSES,
   MAX_YEARS_EXPERIENCE,
+  DEFAULT_STAGE_WARN_DAYS,
+  MAX_STAGE_WARN_DAYS,
   type RatingValue
 } from '../hiring/primitives';
 import { users } from './auth';
@@ -57,6 +59,32 @@ export const seniorityBands = pgTable('seniority_bands', {
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
+// Pipeline settings — a single row holding the one universal "warn after N days
+// in a stage" threshold, managed from /settings and seeded in db/seed.ts. The
+// board flags a candidate as overdue once they have sat in their CURRENT stage
+// for at least `stageWarnDays` whole days, applied uniformly to every stage (no
+// per-stage config). Singleton: the seed ensures exactly one row and the update
+// action edits it in place.
+export const pipelineSettings = pgTable(
+  'pipeline_settings',
+  {
+    id: serial('id').primaryKey(),
+    // Whole days a candidate may sit in ANY stage before the board warns.
+    stageWarnDays: integer('stage_warn_days')
+      .notNull()
+      .default(DEFAULT_STAGE_WARN_DAYS),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+  },
+  (t) => ({
+    // At least a day, at most MAX_STAGE_WARN_DAYS — DB-level teeth so a bad
+    // write can't slip past the zod validator.
+    warnRange: check(
+      'pipeline_settings_warn_range',
+      sql`${t.stageWarnDays} between 1 and ${sql.raw(String(MAX_STAGE_WARN_DAYS))}`
+    )
+  })
+);
+
 // A job owns its own ordered, per-job stage list (Decision 1), stored as an
 // ordered JSON array of stage names so candidates can key off the stage name.
 export const jobs = pgTable('jobs', {
@@ -80,6 +108,12 @@ export const candidates = pgTable(
       .references(() => jobs.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     stage: text('stage').notNull(),
+    // When the candidate entered its CURRENT stage. Set on insert and reset on
+    // every stage change (see moveStage / setStatus in actions.ts), so it
+    // always measures time-in-current-stage — the basis for the overdue
+    // warning (see stageOverdue in helpers.ts). Renaming/reordering a stage
+    // does NOT move the candidate, so it leaves this untouched.
+    stageEnteredAt: timestamp('stage_entered_at').defaultNow().notNull(),
     // The accountable owner — a user account (see lib/schema/auth.ts).
     owner: integer('owner')
       .notNull()
@@ -185,6 +219,7 @@ export type SelectCandidate = typeof candidates.$inferSelect;
 export type SelectFeedback = typeof feedback.$inferSelect;
 export type SelectSource = typeof sources.$inferSelect;
 export type SelectSeniorityBand = typeof seniorityBands.$inferSelect;
+export type SelectPipelineSettings = typeof pipelineSettings.$inferSelect;
 export type SelectMessage = typeof messages.$inferSelect;
 export type SelectMention = typeof mentions.$inferSelect;
 

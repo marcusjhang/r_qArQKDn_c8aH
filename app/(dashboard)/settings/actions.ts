@@ -1,18 +1,21 @@
 'use server';
 
-// Manage the signed-in profile, candidate sources, and seniority bands from
-// /settings. The middleware only gates *page* routes; a Server Action can be
-// POSTed to the public /login route by action id and skip that gate, so each
-// action confirms the session itself via signedInUserId(). (The signup
-// allowlist is managed from /members — see app/(dashboard)/members/actions.ts.)
+// Manage the signed-in profile, candidate sources, seniority bands, and stage
+// time-limits from /settings. The middleware only gates *page* routes; a Server
+// Action can be POSTed to the public /login route by action id and skip that
+// gate, so each action confirms the session itself via signedInUserId(). (The
+// signup allowlist is managed from /members — see app/(dashboard)/members/actions.ts.)
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
-import { and, eq, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, ne, sql } from 'drizzle-orm';
 import { db, candidates, users, apiTokens } from '@/lib/db';
-import { sources, seniorityBands } from '@/lib/schema/hiring';
-import { MAX_YEARS_EXPERIENCE } from '@/lib/hiring/primitives';
+import { sources, seniorityBands, pipelineSettings } from '@/lib/schema/hiring';
+import {
+  MAX_YEARS_EXPERIENCE,
+  MAX_STAGE_WARN_DAYS
+} from '@/lib/hiring/primitives';
 import { auth } from '@/lib/auth';
 import type { SettingsResult, CreateTokenResult } from '@/lib/settings-types';
 import { mintToken } from '@/lib/mcp/auth';
@@ -22,6 +25,9 @@ const zId = z.number().int().positive();
 const zSourceName = z.string().trim().min(1).max(40);
 const zBandLabel = z.string().trim().min(1).max(40);
 const zMinYears = z.number().int().min(0).max(MAX_YEARS_EXPERIENCE);
+// The one universal stage-warn threshold: at least a day, at most
+// MAX_STAGE_WARN_DAYS.
+const zWarnDays = z.number().int().min(1).max(MAX_STAGE_WARN_DAYS);
 // First/last are optional (some people go by one name); each capped to the
 // column width. Trimmed before storing.
 const zName = z.string().trim().max(50);
@@ -40,6 +46,24 @@ export type { SettingsResult };
 async function signedInUserId(): Promise<number | null> {
   const session = await auth();
   return Number(session?.user?.id) || null;
+}
+
+/**
+ * A Postgres unique-violation (SQLSTATE 23505). The rename/update actions below
+ * pre-check for a name clash with a SELECT, but that read-then-write has a TOCTOU
+ * window: two concurrent renames to the same name both pass the SELECT, then the
+ * second UPDATE trips the case-insensitive unique index. Catching that lets the
+ * action return the same graceful "already exists" result instead of throwing an
+ * unhandled 500 — the DB stays the source of truth, the pre-check just improves
+ * the common-case message.
+ */
+function isUniqueViolation(e: unknown): boolean {
+  return (
+    typeof e === 'object' &&
+    e !== null &&
+    'code' in e &&
+    (e as { code?: unknown }).code === '23505'
+  );
 }
 
 /* ---------- Current account profile ---------- */
@@ -153,7 +177,14 @@ export async function renameSource(
   if (clash) {
     return { ok: false, error: 'That source already exists.' };
   }
-  await db.update(sources).set({ name }).where(eq(sources.id, id));
+  try {
+    await db.update(sources).set({ name }).where(eq(sources.id, id));
+  } catch (e) {
+    if (isUniqueViolation(e)) {
+      return { ok: false, error: 'That source already exists.' };
+    }
+    throw e;
+  }
   revalidatePath('/settings');
   return { ok: true };
 }
@@ -252,10 +283,17 @@ export async function updateBand(
   if (clash) {
     return { ok: false, error: 'A band with that threshold already exists.' };
   }
-  await db
-    .update(seniorityBands)
-    .set({ label, minYears })
-    .where(eq(seniorityBands.id, id));
+  try {
+    await db
+      .update(seniorityBands)
+      .set({ label, minYears })
+      .where(eq(seniorityBands.id, id));
+  } catch (e) {
+    if (isUniqueViolation(e)) {
+      return { ok: false, error: 'A band with that threshold already exists.' };
+    }
+    throw e;
+  }
   revalidatePath('/settings');
   return { ok: true };
 }
@@ -270,6 +308,45 @@ export async function removeBand(idRaw: number): Promise<SettingsResult> {
     return { ok: false, error: 'Invalid band.' };
   }
   await db.delete(seniorityBands).where(eq(seniorityBands.id, id));
+  revalidatePath('/settings');
+  return { ok: true };
+}
+
+/* ---------- Stage warn threshold (pipeline settings) ---------- */
+
+/**
+ * Set the one universal "warn after N days in a stage" threshold — the board
+ * flags a candidate as overdue once they have sat in their current stage for at
+ * least this many whole days, applied to every stage. Updates the single
+ * pipeline_settings row in place (inserting it if the table is somehow empty).
+ * The board picks up the change on its next (uncached) server render.
+ */
+export async function updateStageWarnDays(
+  daysRaw: number
+): Promise<SettingsResult> {
+  if (!(await signedInUserId())) return { ok: false, error: 'Not signed in.' };
+  let days: number;
+  try {
+    days = zWarnDays.parse(daysRaw);
+  } catch {
+    return {
+      ok: false,
+      error: `Enter a number of days from 1 to ${MAX_STAGE_WARN_DAYS}.`
+    };
+  }
+  const [existing] = await db
+    .select({ id: pipelineSettings.id })
+    .from(pipelineSettings)
+    .orderBy(asc(pipelineSettings.id))
+    .limit(1);
+  if (existing) {
+    await db
+      .update(pipelineSettings)
+      .set({ stageWarnDays: days })
+      .where(eq(pipelineSettings.id, existing.id));
+  } else {
+    await db.insert(pipelineSettings).values({ stageWarnDays: days });
+  }
   revalidatePath('/settings');
   return { ok: true };
 }

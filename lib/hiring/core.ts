@@ -35,7 +35,7 @@ import {
   candidateEditSchema,
   feedbackInsertSchema
 } from './schemas';
-import { lockJobStages } from './actions/support';
+import { lockJobStages, withStageClock } from './actions/support';
 
 async function loadJobStages(jobId: number): Promise<string[] | null> {
   const [j] = await db
@@ -189,7 +189,12 @@ export async function moveStageCore(
   // board renders, and a stray terminal stage would wrongly flip to hired.
   if (!stages.includes(stage)) return null;
   const placement = placeInStage(stage, c, stages);
-  await db.update(candidates).set(placement).where(eq(candidates.id, id));
+  // Reset the stage clock only on an actual stage change, so re-dropping a card
+  // in its own column (or a no-op move) doesn't restart the overdue timer.
+  await db
+    .update(candidates)
+    .set(withStageClock(placement, c.stage))
+    .where(eq(candidates.id, id));
   return placement;
 }
 
@@ -220,7 +225,12 @@ export async function setStatusCore(
   // Setting status to Hired moves the card into the Hired stage if one exists.
   const stages = status === 'hired' ? await loadJobStages(c.jobId) : null;
   const placement = placeWithStatus(status, c, stages ?? []);
-  await db.update(candidates).set(placement).where(eq(candidates.id, id));
+  // A status change that also moves the card (to the terminal stage) restarts
+  // the clock; a status change that stays in place leaves it running.
+  await db
+    .update(candidates)
+    .set(withStageClock(placement, c.stage))
+    .where(eq(candidates.id, id));
   return placement;
 }
 

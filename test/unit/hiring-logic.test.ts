@@ -10,6 +10,11 @@ import {
   selectStageCards,
   terminalStage,
   isTerminalStage,
+  daysInStage,
+  stageAgeLabel,
+  stageOverdue,
+  overdueForOwner,
+  MS_PER_DAY,
   type Placement
 } from '@/lib/hiring/helpers';
 import type { Candidate, Status } from '@/lib/hiring/types';
@@ -21,6 +26,7 @@ function candidate(over: Partial<Candidate> = {}): Candidate {
     jobId: 1,
     name: 'Ada',
     stage: 'Applied',
+    stageEnteredAt: new Date(0),
     owner: 1,
     source: 1,
     yearsExperience: null,
@@ -287,5 +293,123 @@ describe('selectStageCards', () => {
     const before = cands.map((c) => c.id);
     selectStageCards(cands, 'Applied', true);
     expect(cands.map((c) => c.id)).toEqual(before);
+  });
+});
+
+describe('daysInStage', () => {
+  const now = 100 * MS_PER_DAY;
+
+  it('floors whole days since the candidate entered the stage', () => {
+    expect(daysInStage(new Date((100 - 3) * MS_PER_DAY), now)).toBe(3);
+    // A partial day floors down.
+    expect(daysInStage(now - 3 * MS_PER_DAY - 5 * 3_600_000, now)).toBe(3);
+  });
+
+  it('accepts a Date, an ISO string, or epoch ms', () => {
+    const entered = (100 - 2) * MS_PER_DAY;
+    expect(daysInStage(new Date(entered), now)).toBe(2);
+    expect(daysInStage(new Date(entered).toISOString(), now)).toBe(2);
+    expect(daysInStage(entered, now)).toBe(2);
+  });
+
+  it('clamps a future stageEnteredAt to 0 (never negative)', () => {
+    expect(daysInStage(now + 5 * MS_PER_DAY, now)).toBe(0);
+  });
+});
+
+describe('stageAgeLabel', () => {
+  const now = 100 * MS_PER_DAY;
+
+  it('uses days once at least a day has passed', () => {
+    expect(stageAgeLabel(now - 4 * MS_PER_DAY, now)).toBe('4d');
+  });
+
+  it('falls back to hours, then minutes', () => {
+    expect(stageAgeLabel(now - 5 * 3_600_000, now)).toBe('5h');
+    expect(stageAgeLabel(now - 12 * 60_000, now)).toBe('12m');
+  });
+
+  it('reads "just now" under a minute', () => {
+    expect(stageAgeLabel(now - 30_000, now)).toBe('just now');
+  });
+});
+
+describe('stageOverdue', () => {
+  const now = 100 * MS_PER_DAY;
+  const warnDays = 7;
+
+  it('is true once the warn threshold is reached (warn after N days)', () => {
+    const c = candidate({ stageEnteredAt: new Date((100 - 7) * MS_PER_DAY) });
+    expect(stageOverdue(c, warnDays, now)).toBe(true);
+  });
+
+  it('is false while still within the threshold', () => {
+    const c = candidate({ stageEnteredAt: new Date((100 - 6) * MS_PER_DAY) });
+    expect(stageOverdue(c, warnDays, now)).toBe(false);
+  });
+
+  it('applies the one threshold to every stage', () => {
+    const c = candidate({
+      stage: 'Offer',
+      stageEnteredAt: new Date((100 - 8) * MS_PER_DAY)
+    });
+    expect(stageOverdue(c, warnDays, now)).toBe(true);
+  });
+
+  it('never warns for terminal candidates (hired / rejected)', () => {
+    const base = { stageEnteredAt: new Date((100 - 30) * MS_PER_DAY) };
+    expect(
+      stageOverdue(candidate({ ...base, status: 'hired' }), warnDays, now)
+    ).toBe(false);
+    expect(
+      stageOverdue(candidate({ ...base, status: 'rejected' }), warnDays, now)
+    ).toBe(false);
+  });
+});
+
+describe('overdueForOwner', () => {
+  const now = 100 * MS_PER_DAY;
+  const warnDays = 7;
+  const old = (days: number) => new Date((100 - days) * MS_PER_DAY);
+
+  it('returns only the given owner’s overdue candidates', () => {
+    const cands = [
+      candidate({ id: 1, owner: 7, stage: 'Applied', stageEnteredAt: old(20) }), // overdue, mine
+      candidate({ id: 2, owner: 9, stage: 'Applied', stageEnteredAt: old(20) }), // overdue, someone else
+      candidate({ id: 3, owner: 7, stage: 'Applied', stageEnteredAt: old(3) }) // mine, not overdue
+    ];
+    const alerts = overdueForOwner(cands, warnDays, 7, now);
+    expect(alerts.map((a) => a.candidateId)).toEqual([1]);
+    expect(alerts[0]).toMatchObject({ stage: 'Applied', days: 20 });
+  });
+
+  it('excludes terminal candidates', () => {
+    const cands = [
+      candidate({
+        id: 2,
+        owner: 7,
+        stage: 'Interview',
+        stageEnteredAt: old(30),
+        status: 'hired'
+      }),
+      candidate({
+        id: 3,
+        owner: 7,
+        stage: 'Interview',
+        stageEnteredAt: old(30),
+        status: 'rejected'
+      })
+    ];
+    expect(overdueForOwner(cands, warnDays, 7, now)).toEqual([]);
+  });
+
+  it('sorts longest-in-stage first', () => {
+    const cands = [
+      candidate({ id: 1, owner: 7, stage: 'Interview', stageEnteredAt: old(9) }),
+      candidate({ id: 2, owner: 7, stage: 'Applied', stageEnteredAt: old(30) })
+    ];
+    expect(
+      overdueForOwner(cands, warnDays, 7, now).map((a) => a.candidateId)
+    ).toEqual([2, 1]);
   });
 });

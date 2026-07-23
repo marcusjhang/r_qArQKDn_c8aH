@@ -20,6 +20,7 @@ function board(over: Partial<HiringState> = {}): HiringState {
     ],
     sources: [{ id: 1, name: 'LinkedIn' }],
     bands: [],
+    stageWarnDays: 5,
     ...over
   };
 }

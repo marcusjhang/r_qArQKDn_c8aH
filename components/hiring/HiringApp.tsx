@@ -17,6 +17,7 @@ import {
   jobById,
   jobStats,
   liveCount,
+  overdueForOwner,
   useHiringStore,
   type HiringState,
   type Notification
@@ -32,6 +33,7 @@ import TopBar from './TopBar';
 import { ACCOUNT_LINKS } from './UserMenu';
 import NotificationBell from './NotificationBell';
 import CandidateSearch from './CandidateSearch';
+import { useNow } from './hooks/useNow';
 import CsvMenu from './CsvMenu';
 import ImportDialog from './ImportDialog';
 import './hiring.css';
@@ -49,6 +51,8 @@ export default function HiringApp({
   const { activeJob, showRejected, overlay, actions: view } = useBoardView(
     state.jobs
   );
+  // Shared clock for time-in-stage / overdue UI (null until mounted — see hook).
+  const now = useNow();
 
   // The per-overlay render props, derived from the single overlay union.
   const openId = overlay.kind === 'detail' ? overlay.candidateId : null;
@@ -67,6 +71,19 @@ export default function HiringApp({
   // Thin adapter so JobTabs keeps its (jobId) => number prop contract.
   const jobLiveCount = (jobId: number) => liveCount(state.candidates, jobId);
 
+  // The signed-in owner's overdue candidates, surfaced in the notification bell.
+  // Derived from the live clock (null until mounted) so it tracks the same
+  // overdue state as the card/drawer warnings and clears when a candidate moves.
+  const stageAlerts =
+    now == null || currentUserId == null
+      ? []
+      : overdueForOwner(
+          state.candidates,
+          state.stageWarnDays,
+          currentUserId,
+          now
+        );
+
   const meta = formatJobMeta(
     job
       ? jobStats(state.candidates, job.id)
@@ -83,7 +100,9 @@ export default function HiringApp({
         topRight={
           <NotificationBell
             notifications={notifications}
+            stageAlerts={stageAlerts}
             onOpen={view.openFromNotification}
+            onOpenAlert={view.openInJob}
           />
         }
       >
@@ -137,6 +156,7 @@ export default function HiringApp({
         actions={actions}
         activeJob={activeJob}
         showRejected={showRejected}
+        now={now}
         onOpen={view.openFromBoard}
       />
 
@@ -145,6 +165,7 @@ export default function HiringApp({
         actions={actions}
         openId={openId}
         currentUserId={currentUserId}
+        now={now}
         onClose={view.close}
         focusMessageId={focusMessageId}
       />

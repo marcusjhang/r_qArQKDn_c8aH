@@ -445,6 +445,23 @@
   padding: 2px 7px;
   white-space: nowrap;
 }
+/* Time-in-stage tag on a card. Subtle by default; escalates to a red warning
+   when the candidate has overstayed the stage's configured limit (see
+   stageOverdue). Sits beside the rating + status pills in card-bottom-left. */
+.ht-root .time-tag {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  flex: 0 0 auto;
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+.ht-root .time-tag.overdue {
+  background: var(--sno-bg);
+  color: var(--sno-fg);
+}
 
 /* Add stage ghost column */
 .ht-root .add-stage {
@@ -848,6 +865,18 @@
 .ht-root .drawer-foot .stage-now b {
   color: var(--text);
 }
+/* Time-in-stage line under the stage name in the drawer footer; turns red and
+   bold when the candidate has overstayed the stage's configured limit. */
+.ht-root .drawer-foot .stage-age {
+  display: block;
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.ht-root .drawer-foot .stage-age.overdue {
+  color: var(--sno-fg);
+  font-weight: 600;
+}
 
 @container plan-preview (min-width: 560px) {
   .ht-root .drawer {
@@ -1050,6 +1079,13 @@
   align-items: flex-end;
   gap: var(--space-3);
   flex-wrap: wrap;
+}
+/* Inline "Saved" confirmation next to a settings save button. */
+.ht-root .settings-saved {
+  align-self: center;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ok-fg, var(--text-muted));
 }
 /* Vertically stacked settings form (e.g. the Security password fields), capped
    so the inputs don't stretch the full panel width. */
@@ -1890,6 +1926,20 @@
 .ht-root .notif-dismiss:hover {
   background: var(--surface);
   color: var(--text);
+}
+/* Stalled-candidate (owner) alert — a red accent so it reads as a warning,
+   distinct from the primary-weak tint of an unread mention. Uses the same
+   --sno-* tokens as the card's .time-tag.overdue for consistency. */
+.ht-root .notif-item.alert,
+.ht-root .notif-item.alert.unread {
+  background: var(--sno-bg);
+  border-left: 3px solid var(--sno-fg);
+}
+.ht-root .notif-item.alert:hover {
+  filter: brightness(0.98);
+}
+.ht-root .notif-item.alert .notif-who {
+  color: var(--sno-fg);
 }
 .ht-root .notif-item-top {
   display: flex;

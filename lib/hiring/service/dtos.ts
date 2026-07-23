@@ -66,6 +66,8 @@ export interface Candidate {
   jobId: number;
   name: string;
   stage: string;
+  /** When the candidate entered its current stage (drives the overdue warning). */
+  stageEnteredAt: Date;
   owner: number;
   source: number;
   yearsExperience: number | null;
@@ -94,6 +96,9 @@ export interface HiringState {
   sources: Source[];
   /** The configurable seniority bands (years-of-experience → label mapping). */
   bands: SeniorityBand[];
+  /** The one universal "warn after N days in a stage" threshold (see
+   *  pipeline_settings), applied to every stage's overdue check. */
+  stageWarnDays: number;
 }
 
 /** The data dependency `getBoard` reads from (Drizzle-backed in production, an
@@ -104,6 +109,8 @@ export interface BoardReader {
   loadUsers(): Promise<User[]>;
   loadSources(): Promise<Source[]>;
   loadBands(): Promise<SeniorityBand[]>;
+  /** The single universal stage-warn-days threshold (from pipeline_settings). */
+  loadStageWarnDays(): Promise<number>;
 }
 
 // Compile-time guard: every DTO must stay a faithful projection of its Drizzle

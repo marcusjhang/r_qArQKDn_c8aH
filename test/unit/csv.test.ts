@@ -25,6 +25,7 @@ function board(over: Partial<HiringState> = {}): HiringState {
         jobId: 1,
         name: 'Ada Lovelace',
         stage: 'Screen',
+        stageEnteredAt: new Date(0),
         owner: 1,
         source: 1,
         yearsExperience: 6,
@@ -42,6 +43,7 @@ function board(over: Partial<HiringState> = {}): HiringState {
         jobId: 2,
         name: 'Alan Turing',
         stage: 'Interview',
+        stageEnteredAt: new Date(0),
         owner: 2,
         source: 2,
         yearsExperience: null,
@@ -65,6 +67,7 @@ function board(over: Partial<HiringState> = {}): HiringState {
       { id: 2, label: 'Mid', minYears: 2 },
       { id: 3, label: 'Junior', minYears: 0 }
     ],
+    stageWarnDays: 5,
     ...over
   };
 }

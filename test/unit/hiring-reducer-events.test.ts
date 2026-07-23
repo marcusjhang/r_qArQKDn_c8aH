@@ -10,6 +10,7 @@ function candidate(over: Partial<Candidate> = {}): Candidate {
     jobId: 1,
     name: 'Ada',
     stage: 'Applied',
+    stageEnteredAt: new Date(0),
     owner: 1,
     source: 1,
     yearsExperience: null,
@@ -42,6 +43,7 @@ function state(over: Partial<HiringState> = {}): HiringState {
     ],
     sources: [{ id: 1, name: 'Referral' }],
     bands: [{ id: 1, label: 'Senior', minYears: 5 }],
+    stageWarnDays: 5,
     ...over
   };
 }
@@ -201,6 +203,7 @@ describe('hiringReducer', () => {
       });
       const result = hiringReducer(initial, {
         type: 'moveStage',
+        at: new Date(0),
         id: 1,
         stage: 'Hired'
       });
@@ -216,6 +219,7 @@ describe('hiringReducer', () => {
       });
       const result = hiringReducer(initial, {
         type: 'moveStage',
+        at: new Date(0),
         id: 1,
         stage: 'Interview'
       });
@@ -231,6 +235,7 @@ describe('hiringReducer', () => {
       });
       const result = hiringReducer(initial, {
         type: 'moveStage',
+        at: new Date(0),
         id: 1,
         stage: 'Interview'
       });
@@ -286,6 +291,7 @@ describe('hiringReducer', () => {
       });
       const result = hiringReducer(initial, {
         type: 'setStatus',
+        at: new Date(0),
         id: 1,
         status: 'hired'
       });
@@ -302,6 +308,7 @@ describe('hiringReducer', () => {
       });
       const result = hiringReducer(initial, {
         type: 'setStatus',
+        at: new Date(0),
         id: 1,
         status: 'hired'
       });
@@ -317,6 +324,7 @@ describe('hiringReducer', () => {
       });
       const result = hiringReducer(initial, {
         type: 'setStatus',
+        at: new Date(0),
         id: 1,
         status: 'rejected'
       });
@@ -613,6 +621,7 @@ describe('hiringReducer', () => {
       const initial = state({ candidates: [original] });
       const result = hiringReducer(initial, {
         type: 'moveStage',
+        at: new Date(0),
         id: 1,
         stage: 'Hired'
       });

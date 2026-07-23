@@ -226,7 +226,9 @@ export function useHiringStore(initial: HiringState): {
         owner,
         linkedinUrl,
         githubUrl,
-        yearsExperience
+        yearsExperience,
+        // Optimistic stage-clock start; the DB default (now) is the real value.
+        at: new Date()
       });
       persist({
         run: () =>
@@ -291,7 +293,9 @@ export function useHiringStore(initial: HiringState): {
 
   const moveTo = useCallback(
     (id: number, stage: string) => {
-      dispatch({ type: 'moveStage', id, stage });
+      // Stamp the move time so the reducer can restart the stage clock; the
+      // server independently records its own now (see withStageClock).
+      dispatch({ type: 'moveStage', id, stage, at: new Date() });
       whenReconciled(id, (realId) =>
         persist({ run: () => api.moveStage(realId, stage) })
       );
@@ -316,7 +320,7 @@ export function useHiringStore(initial: HiringState): {
 
   const setStatus = useCallback(
     (id: number, status: Status) => {
-      dispatch({ type: 'setStatus', id, status });
+      dispatch({ type: 'setStatus', id, status, at: new Date() });
       whenReconciled(id, (realId) =>
         persist({ run: () => api.setStatus(realId, status) })
       );
