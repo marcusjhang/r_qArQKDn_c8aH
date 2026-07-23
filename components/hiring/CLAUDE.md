@@ -18,6 +18,17 @@ rendered under the auth-gated `app/(dashboard)` route.
   contract. The board's client state is backed by TanStack Query (provider in
   the root layout); the chat thread and notification bell use
   `useQuery`/`useMutation` too.
+- **One client-state system: TanStack Query.** Server data on the client lives in
+  the Query cache — the board via `lib/hiring/store.ts`, chat and notifications
+  via their own `useQuery`/`useMutation`. Do not add a second client cache or
+  hand-roll a new store for server data; the legacy optimistic store is being
+  folded onto Query, not extended.
+- **Guard every `queryFn` server action.** A `'use server'` read wired into a
+  `useQuery` (`fetchBoard`, `loadThread`, `fetchNotifications`) ships its action
+  id in the client bundle and is directly POST-able by an anonymous caller, so it
+  MUST resolve and check the session itself (`auth()` / `callerEmail()`) exactly
+  like the write actions. A read action with no session gate is an authentication
+  bypass.
 
 ## Structure
 

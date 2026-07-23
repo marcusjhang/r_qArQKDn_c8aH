@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   dismissAllNotificationsWith,
   dismissNotificationWith,
@@ -224,7 +224,7 @@ describe('loadThreadWith', () => {
     const store = seed();
     await postMessageWith(store, alice.email, 10, 'first', []);
     await postMessageWith(store, bob.email, 10, 'second', []);
-    const thread = await loadThreadWith(store, 10);
+    const thread = await loadThreadWith(store, alice.email, 10);
     expect(thread.map((m) => m.body)).toEqual(['first', 'second']);
     expect(thread[0].authorName).toBe('Alice Ng');
     expect(thread[0].authorInitials).toBe('AN');
@@ -233,7 +233,14 @@ describe('loadThreadWith', () => {
 
   it('rejects a non-positive candidate id (zod guard)', async () => {
     const store = seed();
-    await expect(loadThreadWith(store, 0)).rejects.toThrow();
+    await expect(loadThreadWith(store, alice.email, 0)).rejects.toThrow();
+  });
+
+  it('returns an empty thread when the caller is not signed in', async () => {
+    const store = seed();
+    await postMessageWith(store, alice.email, 10, 'first', []);
+    expect(await loadThreadWith(store, null, 10)).toEqual([]);
+    expect(await loadThreadWith(store, 'ghost@example.com', 10)).toEqual([]);
   });
 });
 

@@ -29,6 +29,25 @@ jobs:
       - name: Unit tests + coverage
         run: bun run test:coverage
 
+  lint:
+    name: Lint (eslint)
+    runs-on: ubuntu-latest
+    # Enforcing: `bun run lint` runs `eslint . --max-warnings 0`, so any error OR
+    # warning fails this job and blocks the merge. This is why the eslint config
+    # (eslint-config-next) has to actually resolve — a broken config that can't
+    # load would otherwise let lint regressions through unnoticed.
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint
+        run: bun run lint
+
   knip:
     name: Dead code audit (knip)
     runs-on: ubuntu-latest
