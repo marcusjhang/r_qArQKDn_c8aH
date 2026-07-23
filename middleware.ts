@@ -1,3 +1,5 @@
+import { GATE_MATCHER } from '@/lib/auth-policy';
+
 export { auth as middleware } from '@/lib/auth';
 
 // The `authorized` callback in lib/auth.ts gates every matched request behind
@@ -14,9 +16,8 @@ export { auth as middleware } from '@/lib/auth';
 //   - `favicon.ico` and any request ending in a static-asset extension (images,
 //              fonts, web manifest, txt/xml) — e.g. the brand SVG in /public —
 //              so static assets render without a login redirect breaking the UI.
-// Everything else (all page routes) reaches the auth gate.
+// Everything else (all page routes) reaches the auth gate. The pattern lives in
+// lib/auth-policy.ts as GATE_MATCHER (single source of truth, unit-tested there).
 export const config = {
-  matcher: [
-    '/((?!api/|_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|bmp|woff|woff2|ttf|otf|eot|txt|xml|webmanifest)$).*)'
-  ]
+  matcher: [GATE_MATCHER]
 };

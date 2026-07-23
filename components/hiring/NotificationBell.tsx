@@ -21,6 +21,7 @@ import { fetchNotifications } from '@/lib/hiring/board-query';
 import { hiringKeys } from '@/lib/hiring/query-keys';
 import { formatMessageTime } from '@/lib/hiring/helpers';
 import type { Notification } from '@/lib/hiring/types';
+import { Button } from '@/components/ui/button';
 import { useDismissableMenu } from './hooks/useDismissableMenu';
 
 export default function NotificationBell({
@@ -83,14 +84,15 @@ export default function NotificationBell({
 
   return (
     <div className="notif" ref={menu.wrapRef}>
-      <button
-        className="btn notif-btn"
+      <Button
+        variant="app"
+        className="notif-btn"
         aria-label={`Notifications${unread ? ` (${unread} unread)` : ''}`}
         {...menu.triggerProps}
       >
         <Bell size={16} aria-hidden />
         {unread > 0 && <span className="notif-badge">{unread > 99 ? '99+' : unread}</span>}
-      </button>
+      </Button>
 
       {menu.open && (
         <div className="notif-menu" {...menu.menuProps}>

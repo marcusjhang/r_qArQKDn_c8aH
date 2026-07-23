@@ -6,6 +6,7 @@
 
 import { useState } from 'react';
 import { partitionJobTabs, MAX_FAVORITES, type Job } from '@/lib/hiring';
+import { Button } from '@/components/ui/button';
 import { useDismissableMenu } from './hooks/useDismissableMenu';
 
 const INLINE_CAP = 3;
@@ -55,13 +56,14 @@ export default function JobTabs({
       ))}
 
       <div className="jobmenu-wrap">
-        <button
-          className="btn jobmenu-trigger"
+        <Button
+          variant="app"
+          className="jobmenu-trigger"
           title="All jobs"
           {...menu.triggerProps}
         >
           {overflow.length ? `${overflow.length} more ` : 'Jobs '}▾
-        </button>
+        </Button>
         {menu.open && (
           <div className="jobmenu" {...menu.menuProps}>
             {sorted.map((j) => (

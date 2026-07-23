@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   userById,
+  findUserIdByEmail,
   sourceName,
   displayName,
   initials,
@@ -70,6 +71,28 @@ describe('userById', () => {
 
   it('returns undefined for an empty list', () => {
     expect(userById([], 1)).toBeUndefined();
+  });
+});
+
+// ── findUserIdByEmail ────────────────────────────────────────────────────────
+
+describe('findUserIdByEmail', () => {
+  const users = [
+    user({ id: 1, email: 'me@test.com' }),
+    user({ id: 2, email: 'other@test.com' })
+  ];
+
+  it('resolves the id for a matching email', () => {
+    expect(findUserIdByEmail(users, 'other@test.com')).toBe(2);
+  });
+
+  it('returns null for an unknown email', () => {
+    expect(findUserIdByEmail(users, 'nobody@test.com')).toBeNull();
+  });
+
+  it('returns null when the email is missing', () => {
+    expect(findUserIdByEmail(users, null)).toBeNull();
+    expect(findUserIdByEmail(users, undefined)).toBeNull();
   });
 });
 

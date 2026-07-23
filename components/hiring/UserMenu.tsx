@@ -10,6 +10,7 @@
 
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
+import { Button } from '@/components/ui/button';
 import { useDismissableMenu } from './hooks/useDismissableMenu';
 
 /**
@@ -38,12 +39,12 @@ export default function UserMenu({
 
   return (
     <div className="usermenu" ref={menu.wrapRef}>
-      <button className="btn usermenu-trigger" {...menu.triggerProps}>
+      <Button variant="app" className="usermenu-trigger" {...menu.triggerProps}>
         <span className="usermenu-email" title={email ?? undefined}>
           {email ?? 'Account'}
         </span>
         <span className="caret">▾</span>
-      </button>
+      </Button>
       {menu.open && (
         <div className="usermenu-menu" {...menu.menuProps}>
           {navItems.length > 0 && (

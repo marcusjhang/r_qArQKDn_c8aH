@@ -29,9 +29,12 @@ which side each module lives on.
 ## Where logic goes
 
 - Pure, framework-free rules (status/stage placement, stage-array edits,
-  validation, filter/sort) live in `helpers.ts` and are unit-tested. Put new
-  business rules there — not inline in `actions.ts`, `store.ts`, or components —
-  so they stay testable and shared across layers.
+  validation, filter/sort, board-view derivations) live in `helpers/` (split by
+  concern — users, profile-urls, mentions, seniority, candidate-draft,
+  candidate-status, stages, board-view — behind the `helpers/index.ts` barrel)
+  and are unit-tested. Put new business rules in the matching module — not
+  inline in an action, `store.ts`, or a component — so they stay testable and
+  shared across layers.
 - `primitives.ts` = the `Status` / `RatingValue` literal unions and their
   arrays; `config.ts` = `FOUNDERS`, `SOURCES`, and other static config. zod
   schemas and DTOs are built from these single sources — extend the source, not
@@ -42,8 +45,8 @@ which side each module lives on.
 ## Barrel (`index.ts`)
 
 Re-exports only client-safe modules (`config`, `helpers`, `types`, `store`).
-`service.ts`/`schemas.ts` are excluded (`server-only`) and `actions.ts` is
-imported directly by the store to avoid a cycle — keep it that way.
+`service/`/`schemas.ts` are excluded (`server-only`) and `actions/` is imported
+directly by the store to avoid a cycle — keep it that way.
 
 For schema/read details see the **drizzle** skill; for the write path see the
 **server-actions** skill.

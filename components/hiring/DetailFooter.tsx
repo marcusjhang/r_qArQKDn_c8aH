@@ -5,6 +5,7 @@
 // buttons), and moving returns to the board so the change is visible.
 
 import { stageNavigation, type Candidate, type Job } from '@/lib/hiring';
+import { Button } from '@/components/ui/button';
 
 export default function DetailFooter({
   view,
@@ -23,14 +24,14 @@ export default function DetailFooter({
         Stage: <b>{view?.stage ?? '—'}</b>
       </div>
       {canMoveBack && (
-        <button className="btn" onClick={() => onMove(-1)}>
+        <Button variant="app" onClick={() => onMove(-1)}>
           ← Move back
-        </button>
+        </Button>
       )}
       {canAdvance && (
-        <button className="btn primary" onClick={() => onMove(1)}>
+        <Button variant="appPrimary" onClick={() => onMove(1)}>
           Advance stage →
-        </button>
+        </Button>
       )}
     </div>
   );

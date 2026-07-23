@@ -211,18 +211,33 @@ export function clientIp(req: Request): string {
   return req.headers.get('x-real-ip')?.trim() || 'unknown';
 }
 
+/** The environment inputs that select the backing store. */
+export interface RateLimitStoreEnv {
+  RATE_LIMIT_STORE?: string;
+  DATABASE_URL?: string;
+  // Index signature so a full `process.env` (ProcessEnv) is assignable as the
+  // default without a cast; only the two keys above are ever read.
+  [key: string]: string | undefined;
+}
+
 /**
  * Pick the backing store for this deployment:
  *   - RATE_LIMIT_STORE=memory   → in-memory (force per-process, e.g. for tests)
  *   - RATE_LIMIT_STORE=postgres → Postgres (force the shared store)
  *   - otherwise                 → Postgres when DATABASE_URL is set (the normal
  *                                 deployed case), else in-memory (local dev).
+ *
+ * The environment is an explicit argument (defaulting to `process.env`) so the
+ * selection can be unit-tested by passing a structured override object rather
+ * than mutating global `process.env`.
  */
-export function createDefaultStore(): RateLimitStore {
-  const mode = process.env.RATE_LIMIT_STORE?.toLowerCase();
+export function createDefaultStore(
+  env: RateLimitStoreEnv = process.env
+): RateLimitStore {
+  const mode = env.RATE_LIMIT_STORE?.toLowerCase();
   if (mode === 'memory') return new InMemoryRateLimitStore();
   if (mode === 'postgres') return new PostgresRateLimitStore();
-  if (process.env.DATABASE_URL) return new PostgresRateLimitStore();
+  if (env.DATABASE_URL) return new PostgresRateLimitStore();
   return new InMemoryRateLimitStore();
 }
 

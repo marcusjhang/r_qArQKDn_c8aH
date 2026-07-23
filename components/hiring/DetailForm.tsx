@@ -20,6 +20,7 @@ import {
   type Source,
   type SeniorityBand
 } from '@/lib/hiring';
+import { Button } from '@/components/ui/button';
 import CandidateFields from './CandidateFields';
 import { useCandidateDraft } from './hooks/useCandidateDraft';
 
@@ -107,21 +108,21 @@ export default function DetailForm({
         <div className="modal-actions">
           {editing ? (
             <>
-              <button className="btn" onClick={cancelEdit}>
+              <Button variant="app" onClick={cancelEdit}>
                 Cancel
-              </button>
-              <button
-                className="btn primary"
+              </Button>
+              <Button
+                variant="appPrimary"
                 disabled={!dirty(view)}
                 onClick={saveDetails}
               >
                 Save details
-              </button>
+              </Button>
             </>
           ) : (
-            <button className="btn" disabled={!view} onClick={startEdit}>
+            <Button variant="app" disabled={!view} onClick={startEdit}>
               Edit
-            </button>
+            </Button>
           )}
         </div>
       </div>
