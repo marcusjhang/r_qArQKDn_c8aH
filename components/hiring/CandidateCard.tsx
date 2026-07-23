@@ -22,6 +22,7 @@ import {
   type SeniorityBand,
   type StageSla
 } from '@/lib/hiring';
+import { Avatar } from '@/components/ui/avatar';
 import RatingChip from './RatingChip';
 import ProfileLinks from './ProfileLinks';
 
@@ -98,9 +99,7 @@ export default function CandidateCard({
             linkedinUrl={candidate.linkedinUrl}
             githubUrl={candidate.githubUrl}
           />
-          <span className="avatar" title={displayName(owner)}>
-            {initials(owner)}
-          </span>
+          <Avatar title={displayName(owner)}>{initials(owner)}</Avatar>
         </span>
       </div>
       <div className="card-bottom">

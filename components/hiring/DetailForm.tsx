@@ -21,6 +21,7 @@ import {
   type SeniorityBand
 } from '@/lib/hiring';
 import { Button } from '@/components/ui/button';
+import { FormError } from '@/components/ui/form-error';
 import CandidateFields from './CandidateFields';
 import { useCandidateDraft } from './hooks/useCandidateDraft';
 
@@ -104,7 +105,7 @@ export default function DetailForm({
           disabled={!editing}
           yearsPlaceholder="Unspecified"
         />
-        {editing && error && <div className="form-error">{error}</div>}
+        {editing && <FormError message={error} />}
         <div className="modal-actions">
           {editing ? (
             <>

@@ -16,7 +16,7 @@ import {
   dismissNotification,
   markAllNotificationsRead,
   markNotificationRead
-} from '@/lib/hiring/chat-actions';
+} from '@/lib/hiring/chat/actions';
 import { fetchNotifications } from '@/lib/hiring/board-query';
 import { hiringKeys } from '@/lib/hiring/query-keys';
 import { formatMessageTime, type StageAlert } from '@/lib/hiring/helpers';

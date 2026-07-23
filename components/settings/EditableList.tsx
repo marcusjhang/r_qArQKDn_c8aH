@@ -9,6 +9,7 @@
 // `useEditableList`. Item rows key on `item.id`.
 
 import type { ReactNode } from 'react';
+import { FormError } from '@/components/ui/form-error';
 
 export interface EditableListItem {
   id: number;
@@ -64,7 +65,7 @@ export default function EditableList<T extends EditableListItem>({
           {addLabel}
         </button>
       </form>
-      {error && <div className="form-error">{error}</div>}
+      <FormError message={error} />
 
       <ul className="email-list">
         {items.length === 0 && <li className="email-empty">{emptyText}</li>}

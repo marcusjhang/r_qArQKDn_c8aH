@@ -15,6 +15,7 @@ import {
   type SeniorityBand
 } from '@/lib/hiring';
 import { Button } from '@/components/ui/button';
+import { FormError } from '@/components/ui/form-error';
 import Modal from './Modal';
 import CandidateFields from './CandidateFields';
 import { useCandidateDraft } from './hooks/useCandidateDraft';
@@ -72,7 +73,7 @@ export default function AddCandidateModal({
           autoFocusName
           yearsPlaceholder="Optional, e.g. 5"
         />
-        {error && <div className="form-error">{error}</div>}
+        <FormError message={error} />
         <div className="modal-actions">
           <Button type="button" variant="app" onClick={onClose}>
             Cancel
