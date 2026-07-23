@@ -11,6 +11,7 @@ import {
   pgEnum,
   serial,
   boolean,
+  jsonb,
   check,
   unique,
   uniqueIndex
@@ -21,7 +22,7 @@ import {
   MAX_YEARS_EXPERIENCE,
   DEFAULT_STAGE_WARN_DAYS,
   MAX_STAGE_WARN_DAYS,
-  type RatingValue
+  type TraitScores
 } from '../hiring/primitives';
 import { users } from './auth';
 
@@ -93,6 +94,12 @@ export const jobs = pgTable('jobs', {
   // Native text[] (not jsonb) — a real array, so it round-trips cleanly and
   // stays inspectable/queryable in SQL.
   stages: text('stages').array().notNull(),
+  // Ordered per-job trait list — the qualities candidates are scored on. Array
+  // order IS the ranking (index 0 = rank #1 = most important), driving the
+  // weighted overall score. Empty by default; seeded/AI-suggested per job.
+  traits: text('traits').array().notNull().default(sql`'{}'::text[]`),
+  // Pasteable job description (JD); the AI trait suggester reads it.
+  description: text('description'),
   position: integer('position').notNull().default(0),
   // Starred jobs are pinned as inline tabs (shown outside the jobs dropdown).
   starred: boolean('starred').notNull().default(false),
@@ -157,16 +164,23 @@ export const feedback = pgTable(
     byUser: integer('by_user')
       .notNull()
       .references(() => users.id),
-    // 4-point verdict rating (1 = Strong No … 4 = Strong Yes). $type pins the
-    // column to RatingValue; the CHECK below backs that at the DB level.
-    rating: integer('rating').$type<RatingValue>().notNull(),
+    // Per-trait scores (1–4) keyed by the job's trait name. The candidate's
+    // headline score is the rank-weighted average of these across entries; the
+    // old single verdict rating was dropped in favour of this.
+    traitScores: jsonb('trait_scores')
+      .$type<TraitScores>()
+      .notNull()
+      .default({}),
+    // The candidate's stage when this entry was left ("given at"), so feedback
+    // stays anchored to the round it was gathered in even after the candidate
+    // advances.
+    stage: text('stage').notNull().default(''),
     note: text('note').notNull().default(''),
     createdAt: timestamp('created_at').defaultNow().notNull()
   },
   (t) => ({
-    ratingRange: check('rating_range', sql`${t.rating} between 1 and 4`),
     // One entry per interviewer per candidate (Decision 7) — enforced, not just
-    // documented. Re-rating requires editing the existing entry, not a 2nd row.
+    // documented. Re-scoring requires editing the existing entry, not a 2nd row.
     oneByUserPerCandidate: unique('feedback_candidate_by_user_unique').on(
       t.candidateId,
       t.byUser

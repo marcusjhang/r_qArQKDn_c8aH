@@ -430,20 +430,24 @@ export function registerHiringTools(server: McpServer): void {
     {
       title: 'Add feedback',
       description:
-        'Leave feedback on a candidate: a 1–4 rating (1 = Strong No, 2 = ' +
-        'No, 3 = Yes, 4 = Strong Yes) and an optional note. Attributed to you ' +
-        '(the token owner) — one entry per person per candidate.',
+        'Leave feedback on a candidate: per-trait scores (1–4, where 1 = ' +
+        'Strong No … 4 = Strong Yes) keyed by the job trait name, plus an ' +
+        'optional note. Only the job’s current traits are recorded, and ' +
+        'when the job tracks traits you must score at least one. Attributed to ' +
+        'you (the token owner) — one entry per person per candidate, edited in ' +
+        'place on a repeat call.',
       inputSchema: {
         id: z.number().int().positive().describe('Candidate id.'),
-        rating: z
-          .number()
-          .int()
-          .describe('1 = Strong No, 2 = No, 3 = Yes, 4 = Strong Yes.'),
+        traitScores: z
+          .record(z.string(), z.number().int().min(1).max(4))
+          .describe(
+            'Map of trait name to a 1–4 score (1 = Strong No … 4 = Strong Yes).'
+          ),
         note: z.string().optional().describe('Optional free-text note.')
       }
     },
     async (
-      args: { id: number; rating: number; note?: string },
+      args: { id: number; traitScores: Record<string, number>; note?: string },
       extra: ToolExtra
     ): Promise<CallToolResult> => {
       try {
@@ -451,15 +455,16 @@ export function registerHiringTools(server: McpServer): void {
         const feedbackId = await addFeedbackCore(
           actor,
           args.id,
-          args.rating,
+          args.traitScores ?? {},
           args.note ?? ''
         );
         if (feedbackId == null) {
-          return fail(`No candidate found with id ${args.id}.`);
+          return fail(
+            `Could not record feedback on candidate ${args.id} — the candidate ` +
+              `does not exist, or none of the scored traits are on its job.`
+          );
         }
-        return ok(
-          `Recorded feedback (rating ${args.rating}) on candidate ${args.id}.`
-        );
+        return ok(`Recorded feedback on candidate ${args.id}.`);
       } catch (error) {
         // reason() maps the one-entry-per-person unique violation (and other
         // Postgres constraint errors) to a clean, caller-safe message.

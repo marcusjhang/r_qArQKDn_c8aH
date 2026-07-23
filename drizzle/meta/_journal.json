@@ -176,6 +176,13 @@
       "when": 1784819137510,
       "tag": "0024_stiff_ink",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1784824959378,
+      "tag": "0025_thankful_the_hood",
+      "breakpoints": true
     }
   ]
 }

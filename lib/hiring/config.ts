@@ -47,3 +47,14 @@ export const DEFAULT_STAGES: string[] = [
   'Offer',
   'Hired'
 ];
+
+/**
+ * Default important traits a new job starts with. Teams tailor this per job
+ * (via the Traits modal); each is scored on the same 4-point scale in feedback.
+ */
+export const DEFAULT_TRAITS: string[] = [
+  'Technical depth',
+  'Communication',
+  'Ownership',
+  'Culture add'
+];

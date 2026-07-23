@@ -16,8 +16,22 @@ import type { HiringState } from '@/lib/hiring/types';
 function board(over: Partial<HiringState> = {}): HiringState {
   return {
     jobs: [
-      { id: 1, title: 'Software Engineer', stages: ['Applied', 'Screen', 'Hired'], starred: false },
-      { id: 2, title: 'Designer', stages: ['Applied', 'Interview', 'Hired'], starred: false }
+      {
+        id: 1,
+        title: 'Software Engineer',
+        stages: ['Applied', 'Screen', 'Hired'],
+        traits: ['Coding', 'Communication'],
+        description: null,
+        starred: false
+      },
+      {
+        id: 2,
+        title: 'Designer',
+        stages: ['Applied', 'Interview', 'Hired'],
+        traits: [],
+        description: null,
+        starred: false
+      }
     ],
     candidates: [
       {
@@ -33,9 +47,23 @@ function board(over: Partial<HiringState> = {}): HiringState {
         starred: true,
         linkedinUrl: 'https://www.linkedin.com/in/ada',
         githubUrl: null,
+        // Both traits average (4+3)/2 = 3.5, so the rank-weighted overall score
+        // is 3.5 regardless of weighting.
         feedback: [
-          { id: 1, byUser: 1, rating: 4, note: '' },
-          { id: 2, byUser: 2, rating: 3, note: '' }
+          {
+            id: 1,
+            byUser: 1,
+            traitScores: { Coding: 4, Communication: 4 },
+            stage: 'Screen',
+            note: ''
+          },
+          {
+            id: 2,
+            byUser: 2,
+            traitScores: { Coding: 3, Communication: 3 },
+            stage: 'Screen',
+            note: ''
+          }
         ]
       },
       {
@@ -121,23 +149,23 @@ describe('buildExportCsv', () => {
     expect(lines[0]).toBe(EXPORT_COLUMNS.join(','));
     expect(lines).toHaveLength(3);
 
-    // Ada: name resolved, source resolved, seniority derived, avg rating shown.
+    // Ada: name resolved, source resolved, seniority derived, overall score shown.
     expect(lines[1]).toContain('Software Engineer');
     expect(lines[1]).toContain('Ada Lovelace');
     expect(lines[1]).toContain('Ben Ong'); // owner id → display name
     expect(lines[1]).toContain('LinkedIn'); // source id → name
     expect(lines[1]).toContain('Senior'); // 6 yrs → Senior band
-    expect(lines[1]).toContain('3.5 (Strong Yes)'); // (4+3)/2 mean, rounds to 4
+    expect(lines[1]).toContain('3.5 (Strong Yes)'); // rank-weighted 3.5, rounds to 4
     expect(lines[1]).toContain('yes'); // starred
 
-    // Alan: no feedback → empty rating, no experience → empty seniority, and a
+    // Alan: no feedback → empty score, no experience → empty seniority, and a
     // user with no name falls back to the email.
     const alan = lines[2].split(',');
     expect(lines[2]).toContain('Designer');
     expect(lines[2]).toContain('chan@example.com');
     expect(lines[2]).toContain('On hold'); // status label
     expect(alan[6]).toBe(''); // years experience blank
-    expect(alan[8]).toBe(''); // average rating blank
+    expect(alan[8]).toBe(''); // overall score blank
   });
 
   it('reflects live state — no jobs/candidates yields a header-only CSV', () => {
@@ -164,7 +192,7 @@ describe('buildTemplateCsv', () => {
     expect(csv).not.toContain('#');
     expect(csv).not.toContain('Reference');
     // The importable header omits the derived/export-only columns.
-    expect(csv).not.toContain('Average rating');
+    expect(csv).not.toContain('Overall score');
     expect(csv).not.toContain('Seniority');
     expect(csv).not.toContain('Feedback count');
   });

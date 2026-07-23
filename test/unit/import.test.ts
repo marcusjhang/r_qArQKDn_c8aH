@@ -11,7 +11,14 @@ import type { HiringState } from '@/lib/hiring/types';
 function board(over: Partial<HiringState> = {}): HiringState {
   return {
     jobs: [
-      { id: 1, title: 'Software Engineer', stages: ['Applied', 'Screen', 'Hired'], starred: false }
+      {
+        id: 1,
+        title: 'Software Engineer',
+        stages: ['Applied', 'Screen', 'Hired'],
+        traits: [],
+        description: null,
+        starred: false
+      }
     ],
     candidates: [],
     users: [

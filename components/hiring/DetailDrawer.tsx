@@ -12,7 +12,6 @@
 import { useEffect, useRef } from 'react';
 import {
   candidateById,
-  canReviewCandidate,
   jobById,
   type HiringActions,
   type Candidate,
@@ -69,10 +68,6 @@ export default function DetailDrawer({
 
   const job = jobById(state.jobs, view?.jobId ?? null);
 
-  // Whether the signed-in user may leave feedback (one entry per interviewer,
-  // authored server-side from the session). The rule lives in the helper.
-  const canReview = canReviewCandidate(view, currentUserId);
-
   // Moving a candidate's stage returns you to the board so the move is visible.
   function moveAndClose(dir: 1 | -1) {
     if (!view) return;
@@ -114,16 +109,18 @@ export default function DetailDrawer({
           />
 
           <div className="feedback">
-            <FeedbackList view={view} users={state.users} />
+            <FeedbackList view={view} job={job} users={state.users} />
             <AddFeedbackForm
               resetKey={openId}
-              canReview={canReview}
-              onAdd={(entry) =>
+              currentUserId={currentUserId}
+              feedback={view?.feedback ?? []}
+              job={job}
+              onSave={(entry) =>
                 view &&
                 currentUserId != null &&
                 // byUser feeds the optimistic display row only; the server
                 // derives the real author from the session.
-                actions.addFeedback(view.id, { byUser: currentUserId, ...entry })
+                actions.saveFeedback(view.id, { byUser: currentUserId, ...entry })
               }
             />
           </div>

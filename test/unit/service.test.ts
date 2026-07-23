@@ -17,6 +17,8 @@ describe('getBoard', () => {
       id: 1,
       title: 'Founding Engineer',
       stages: ['Applied', 'Hired'],
+      traits: ['Technical depth'],
+      description: null,
       starred: true
     }
   ];

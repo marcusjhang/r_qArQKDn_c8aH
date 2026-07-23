@@ -23,6 +23,7 @@ import { drizzleReader } from './reader';
 export type {
   Status,
   RatingValue,
+  TraitScores,
   User,
   Source,
   SeniorityBand,

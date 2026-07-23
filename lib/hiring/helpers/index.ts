@@ -17,4 +17,5 @@ export * from './candidate-status';
 export * from './stages';
 export * from './board-view';
 export * from './candidate-search';
+export * from './traits';
 export * from './stage-time';

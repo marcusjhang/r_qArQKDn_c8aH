@@ -16,9 +16,9 @@ import type {
   SelectSeniorityBand
 } from '@/lib/schema/hiring';
 import type { SelectUser } from '@/lib/schema/auth';
-import type { RatingValue, Status } from '../primitives';
+import type { Status, TraitScores } from '../primitives';
 
-export type { Status, RatingValue } from '../primitives';
+export type { Status, RatingValue, TraitScores } from '../primitives';
 
 /**
  * A user — an owner / interviewer. Projected from the account row (see
@@ -56,7 +56,10 @@ export interface SeniorityBand {
 export interface Feedback {
   id: number;
   byUser: number;
-  rating: RatingValue;
+  /** Per-trait scores (1–4) keyed by the job's trait name. */
+  traitScores: TraitScores;
+  /** The candidate's stage when this entry was left ("given at"). */
+  stage: string;
   note: string;
 }
 
@@ -83,6 +86,10 @@ export interface Job {
   id: number;
   title: string;
   stages: string[];
+  /** Ordered trait list — order is the ranking that weights the score. */
+  traits: string[];
+  /** Pasteable job description (JD); feeds the AI trait suggester. */
+  description: string | null;
   starred: boolean;
 }
 

@@ -10,12 +10,44 @@ import { expect, type Page } from '@playwright/test';
 // start already signed in and these helpers just confirm the session.
 
 /**
- * Confirm the shared authenticated session (loaded from storageState) is live:
- * visiting a gated route must not bounce us to /login.
+ * Confirm/establish an authenticated session.
+ *
+ * With no credentials, rely on the shared pre-authenticated session (loaded from
+ * storageState): visiting a gated route must not bounce us to /login.
+ *
+ * With an `email`/`password`, sign in as that specific seeded user instead — for
+ * specs that need a particular account (e.g. the owner of overdue candidates).
+ * The shared session is dropped first, then we sign in through the form and
+ * clear the seeded account's forced first-login password change the same way
+ * `global.setup.ts` does, so we land on the board rather than /change-password.
  */
-export async function login(page: Page): Promise<void> {
-  await page.goto('/');
-  await expect(page).not.toHaveURL(/\/login/);
+export async function login(
+  page: Page,
+  email?: string,
+  password?: string
+): Promise<void> {
+  if (!email || !password) {
+    await page.goto('/');
+    await expect(page).not.toHaveURL(/\/login/);
+    return;
+  }
+
+  await page.context().clearCookies();
+  await page.goto('/login');
+  await page.getByPlaceholder('Email').fill(email);
+  await page.getByPlaceholder('Password').fill(password);
+  await page.getByRole('button', { name: 'Sign In' }).click();
+  await page.waitForURL((url) => !url.pathname.startsWith('/login'));
+
+  if (new URL(page.url()).pathname === '/change-password') {
+    await page.getByPlaceholder('New password', { exact: true }).fill(password);
+    await page.getByPlaceholder('Confirm new password').fill(password);
+    await page.getByRole('button', { name: 'Change password' }).click();
+  }
+
+  await expect(
+    page.getByRole('button', { name: /Add candidate/ })
+  ).toBeVisible();
 }
 
 /**

@@ -159,7 +159,13 @@ async function main() {
       const j = SEED_JOBS[i];
       const [row] = await db
         .insert(jobs)
-        .values({ title: j.title, stages: j.stages, position: i })
+        .values({
+          title: j.title,
+          stages: j.stages,
+          traits: j.traits,
+          description: j.description,
+          position: i
+        })
         .returning({ id: jobs.id });
       slugToId.set(j.slug, row.id);
     }
@@ -195,7 +201,8 @@ async function main() {
           c.feedback.map((f) => ({
             candidateId: row.id,
             byUser: resolveUser(f.by),
-            rating: f.v,
+            traitScores: f.traits ?? {},
+            stage: c.stage,
             note: f.note
           }))
         );

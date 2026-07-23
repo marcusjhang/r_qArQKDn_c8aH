@@ -5,7 +5,7 @@
 // drawer navigation, and the job-tab layout. Kept here (rather than inline in
 // the components) so the derivations are unit-testable on their own.
 
-import { agg, isHiddenByDefault, isTerminal } from './candidate-status';
+import { isHiddenByDefault, isTerminal } from './candidate-status';
 import type { Candidate, Job, RatingValue } from '../types';
 
 /** At most this many jobs can be favorited (pinned as inline tabs). */
@@ -108,18 +108,13 @@ export function stageNavigation(
 }
 
 /**
- * Round an aggregate rating (a 1–4 mean, see `agg`) to the nearest whole rating
- * value for the summary chip, or null when there is nothing to round. Clamped
- * into the 1–4 scale defensively.
+ * Round a 1–4 mean (a trait average or overall score) to the nearest whole
+ * value for a colour chip, or null when there is nothing to round. Clamped into
+ * the 1–4 scale defensively.
  */
 export function roundedRating(average: number | null): RatingValue | null {
   if (average == null) return null;
   return Math.min(4, Math.max(1, Math.round(average))) as RatingValue;
-}
-
-/** The rating-chip value for a candidate: rounded aggregate, or null. */
-export function candidateRating(c: Candidate): RatingValue | null {
-  return roundedRating(agg(c));
 }
 
 /** How the job switcher lays jobs out across inline tabs and the dropdown. */

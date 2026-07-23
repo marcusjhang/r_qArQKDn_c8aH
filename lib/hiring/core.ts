@@ -35,7 +35,7 @@ import {
   candidateEditSchema,
   feedbackInsertSchema
 } from './schemas';
-import { lockJobStages, withStageClock } from './actions/support';
+import { lockJobStages, withStageClock, loadJobTraits } from './actions/support';
 
 async function loadJobStages(jobId: number): Promise<string[] | null> {
   const [j] = await db
@@ -254,32 +254,47 @@ export async function setCandidateStarredCore(
 
 /**
  * Leave feedback on a candidate, attributed to `actorUserId` (the token's / the
- * session's user — a token can't leave feedback as someone else). Returns the
- * new feedback id, or null when the candidate doesn't exist. A unique
- * constraint allows one entry per user per candidate, so a second call for the
- * same pair throws (re-rating means editing the existing entry).
+ * session's user — a token can't leave feedback as someone else). Feedback is
+ * per-trait scores (1–4) keyed by the job's trait name; the scores are scoped to
+ * the job's current traits so a stale/renamed key can never persist, and when
+ * the job tracks traits at least one must be scored. Exactly one entry per
+ * (candidate, user): the first save inserts (recording the candidate's current
+ * stage), later saves by the same user update the scores/note in place. Returns
+ * the feedback id, or null when the candidate doesn't exist / nothing scored.
  */
 export async function addFeedbackCore(
   actorUserId: number,
   candidateIdRaw: number,
-  ratingRaw: number,
+  traitScoresRaw: Record<string, number>,
   noteRaw: string
 ): Promise<number | null> {
   const candidateId = zId.parse(candidateIdRaw);
-  const { byUser, rating, note } = feedbackInsertSchema.parse({
+  const { byUser, traitScores, note } = feedbackInsertSchema.parse({
     byUser: actorUserId,
-    rating: ratingRaw,
+    traitScores: traitScoresRaw ?? {},
     note: noteRaw ?? ''
   });
   const [c] = await db
-    .select({ id: candidates.id })
+    .select({ jobId: candidates.jobId, stage: candidates.stage })
     .from(candidates)
     .where(eq(candidates.id, candidateId))
     .limit(1);
   if (!c) return null;
+  const jobTraits = (await loadJobTraits(c.jobId)) ?? [];
+  const allowed = new Set(jobTraits);
+  const scoped = Object.fromEntries(
+    Object.entries(traitScores ?? {}).filter(([trait]) => allowed.has(trait))
+  );
+  if (jobTraits.length > 0 && Object.keys(scoped).length === 0) return null;
   const [row] = await db
     .insert(feedback)
-    .values({ candidateId, byUser, rating, note })
+    .values({ candidateId, byUser, traitScores: scoped, note, stage: c.stage })
+    // One entry per (candidate, user): re-saving edits it. `stage` is not in the
+    // update set, so it keeps the stage it was first created at.
+    .onConflictDoUpdate({
+      target: [feedback.candidateId, feedback.byUser],
+      set: { traitScores: scoped, note }
+    })
     .returning({ id: feedback.id });
   return row?.id ?? null;
 }

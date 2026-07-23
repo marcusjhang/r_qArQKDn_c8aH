@@ -49,20 +49,19 @@ test.describe('move a candidate between stages', () => {
   test('the stage change survives a reload (persisted)', async ({ page }) => {
     await openCandidate(page, CANDIDATE);
 
-    // Read the current stage from the drawer footer, then advance.
+    // Read the current stage from the drawer footer, then advance. The move is
+    // optimistic and the drawer closes immediately, but the reload below must
+    // not race the server write: reloading mid-flight aborts the pending
+    // moveStage server action before it commits, and the reopened stage would
+    // read the pre-move row. The board does no interval polling, so once the
+    // move (and any drawer-mount reads) settle the network goes idle — wait for
+    // that before reloading so the write is guaranteed committed.
     const footer = page.locator('.drawer-foot .stage-now');
     const before = (await footer.textContent())?.trim();
 
-    // Advancing is optimistic: the drawer closes immediately while the write is
-    // still in flight to the server action (a POST to the route). Reloading
-    // before it commits would cancel it and read back the old stage, so wait for
-    // that POST to settle first.
-    const persisted = page.waitForResponse(
-      (r) => r.request().method() === 'POST'
-    );
     await page.getByRole('button', { name: /Advance stage/ }).click();
     await expect(page.locator('aside.drawer.open')).toHaveCount(0);
-    await persisted;
+    await page.waitForLoadState('networkidle');
 
     // Reopen after a reload: the persisted stage should differ from before.
     await page.reload();

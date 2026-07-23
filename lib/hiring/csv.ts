@@ -16,7 +16,7 @@
 
 import { RATINGS, STATUS } from './config';
 import {
-  agg,
+  overallScore,
   displayName,
   seniorityFor,
   sourceName,
@@ -111,7 +111,7 @@ export const EXPORT_COLUMNS = [
   'Source',
   'Years experience',
   'Seniority',
-  'Average rating',
+  'Overall score',
   'Feedback count',
   'Starred',
   'LinkedIn URL',
@@ -120,7 +120,7 @@ export const EXPORT_COLUMNS = [
 
 /**
  * The importable columns — the subset a user can fill in and upload. Order is
- * the template's column order. Derived columns (Seniority, Average rating,
+ * the template's column order. Derived columns (Seniority, Overall score,
  * Feedback count) and Starred are export-only: they're computed or not part of
  * candidate creation. The importer matches by header name, so this order is for
  * humans, not the parser.
@@ -142,8 +142,10 @@ function statusLabel(status: string): string {
   return STATUS[status as keyof typeof STATUS] ?? status;
 }
 
-// Average rating rendered for a cell: "3.5 (Strong Yes)" or '' with no feedback.
-function ratingCell(average: number | null): string {
+// Overall score rendered for a cell: "3.5 (Strong Yes)" or '' with no scores.
+// The score is the candidate's rank-weighted trait average (1–4), so the same
+// RATINGS labels apply to the rounded value.
+function scoreCell(average: number | null): string {
   if (average == null) return '';
   const rounded = Math.min(4, Math.max(1, Math.round(average)));
   const label = RATINGS[rounded as keyof typeof RATINGS]?.label ?? '';
@@ -152,12 +154,15 @@ function ratingCell(average: number | null): string {
 
 /**
  * One export row for a candidate, with every id resolved to the label the board
- * shows. `jobTitle` is passed in (resolved by the caller against `state.jobs`)
- * so this stays a simple projection. Column order matches EXPORT_COLUMNS.
+ * shows. `jobTitle` and the job's ranked `traits` are passed in (resolved by the
+ * caller against `state.jobs`) so this stays a simple projection — the overall
+ * score is the rank-weighted average over those traits. Column order matches
+ * EXPORT_COLUMNS.
  */
 function candidateRow(
   state: HiringState,
   jobTitle: string,
+  traits: string[],
   c: HiringState['candidates'][number]
 ): (string | number | null)[] {
   return [
@@ -169,7 +174,7 @@ function candidateRow(
     sourceName(state.sources, c.source),
     c.yearsExperience ?? '',
     seniorityFor(state.bands, c.yearsExperience) ?? '',
-    ratingCell(agg(c)),
+    scoreCell(overallScore(traits, c)),
     c.feedback.length,
     c.starred ? 'yes' : 'no',
     c.linkedinUrl ?? '',
@@ -187,7 +192,7 @@ export function buildExportCsv(state: HiringState): string {
   const rows: (string | number | null)[][] = [[...EXPORT_COLUMNS]];
   for (const job of state.jobs) {
     for (const c of state.candidates.filter((c) => c.jobId === job.id)) {
-      rows.push(candidateRow(state, job.title, c));
+      rows.push(candidateRow(state, job.title, job.traits, c));
     }
   }
   return rowsToCsv(rows);

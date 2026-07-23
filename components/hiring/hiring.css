@@ -122,13 +122,41 @@
 .ht-root .jobtab {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: 7px 12px;
   border: 1px solid var(--border);
   background: var(--surface);
   border-radius: var(--radius-pill);
-  font-size: 13px;
   color: var(--text-muted);
+  overflow: hidden;
+}
+.ht-root .jobtab-star {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1;
+  padding: 8px 3px 8px 11px;
+  cursor: pointer;
+}
+.ht-root .jobtab-star[aria-pressed='true'],
+.ht-root .jobtab-star:hover:not(:disabled) {
+  color: var(--primary);
+}
+.ht-root .jobtab-star:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.ht-root .jobtab-select {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: inherit;
+  padding: 7px 12px 7px 5px;
+  cursor: pointer;
 }
 .ht-root .jobtab .count {
   background: var(--surface-2);
@@ -2186,6 +2214,420 @@
 .dark .ht-root select:disabled {
   background-image: none;
   padding-right: 10px;
+}
+
+/* ============================================================= *
+ * Per-job traits, weighted scoring & collapsible detail sections
+ * ============================================================= */
+
+/* Collapsible section header (Scores) */
+.ht-root .scores {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.ht-root .scores-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.ht-root .section-title-text {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+.ht-root .score-overall {
+  margin-left: auto;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.ht-root .score-overall.none {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.ht-root .chev {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+}
+.ht-root .chev.open {
+  transform: rotate(90deg);
+}
+
+/* Per-trait averages in the Scores section: quiet name + number, no pills. */
+.ht-root .score-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ht-root .score-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+}
+.ht-root .score-trait {
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--text);
+}
+.ht-root .score-val {
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ht-root .score-val.none {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: 12px;
+}
+.ht-root .trait-rank {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  min-width: 22px;
+}
+
+/* Collapsible feedback entry */
+.ht-root .fb-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.ht-root .fb-head .avatar {
+  width: 20px;
+  height: 20px;
+  font-size: 9px;
+}
+.ht-root .fb-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ht-root .fb-avg {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.ht-root .stage-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+}
+.ht-root .fb-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.ht-root .fb-traits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ht-root .trait-tag {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+}
+.ht-root .trait-tag-score {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Per-trait score pickers in the add/edit-feedback form */
+.ht-root .trait-score-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ht-root .trait-score-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ht-root .trait-score-input-name {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--text);
+}
+.ht-root .score-picker {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.ht-root .sp {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.ht-root .sp[aria-pressed='true'].syes {
+  background: var(--syes-bg);
+  color: var(--syes-fg);
+  border-color: var(--syes-fg);
+}
+.ht-root .sp[aria-pressed='true'].yes {
+  background: var(--yes-bg);
+  color: var(--yes-fg);
+  border-color: var(--yes-fg);
+}
+.ht-root .sp[aria-pressed='true'].no {
+  background: var(--no-bg);
+  color: var(--no-fg);
+  border-color: var(--no-fg);
+}
+.ht-root .sp[aria-pressed='true'].sno {
+  background: var(--sno-bg);
+  color: var(--sno-fg);
+  border-color: var(--sno-fg);
+}
+
+/* JD textarea + AI trait suggestion (modals) */
+.ht-root .jd-textarea {
+  min-height: 96px;
+  max-height: 260px;
+}
+.ht-root .suggest-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* A label with an inline "ⓘ" that reveals help on hover/focus (same reveal
+   pattern as the candidate search help). */
+.ht-root .label.label-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ht-root .info-hint {
+  position: relative;
+  display: inline-flex;
+}
+.ht-root .info-hint-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1;
+  padding: 0;
+  cursor: help;
+  display: inline-flex;
+  align-items: center;
+}
+.ht-root .info-hint-btn:hover,
+.ht-root .info-hint-btn:focus-visible {
+  color: var(--primary);
+}
+.ht-root .info-hint-pop {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 6px;
+  width: 260px;
+  max-width: 80vw;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 10px 12px;
+  z-index: 25;
+  font-size: 12.5px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text);
+}
+.ht-root .info-hint:hover .info-hint-pop,
+.ht-root .info-hint:focus-within .info-hint-pop {
+  display: block;
+}
+.ht-root .info-hint-title {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+/* Transparent bridge over the trigger-to-popup gap so the pointer can travel
+   into the tooltip (and on to the nested Formula hint) without it closing. */
+.ht-root .info-hint-pop::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 0;
+  right: 0;
+  height: 8px;
+}
+.ht-root .info-hint-pop p {
+  margin: 0;
+}
+.ht-root .info-hint-pop p + p {
+  margin-top: 6px;
+}
+.ht-root .info-hint-formula {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.ht-root .btn.ai {
+  flex: 0 0 auto;
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-weak);
+  font-size: 12px;
+  padding: 5px 10px;
+}
+.ht-root .btn.ai:hover:not(:disabled) {
+  background: var(--primary);
+  color: #fff;
+}
+.ht-root .trait-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ht-root .trait-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 3px 6px 3px 11px;
+}
+.ht-root .chip-x {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 11px;
+  line-height: 1;
+}
+.ht-root .chip-x:hover {
+  background: var(--rej-bg);
+  color: var(--rej-fg);
+}
+
+/* Traits modal: the ranked, reorderable list */
+.ht-root .trait-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ht-root .trait-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  background: var(--surface);
+}
+.ht-root .trait-name {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text);
+}
+.ht-root .trait-rank-btns {
+  display: flex;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+.ht-root .rank-btn {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  line-height: 1;
+}
+.ht-root .rank-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.ht-root .trait-remove {
+  border: none;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 12px;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+.ht-root .trait-remove:hover {
+  background: var(--rej-bg);
+  color: var(--rej-fg);
+}
+
+/* Add-a-trait row: the input grows, the Add button sits on its right. */
+.ht-root .add-trait-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.ht-root .add-trait-row input {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.ht-root .trait-add {
+  display: flex;
+  gap: 8px;
+}
+.ht-root .trait-add input {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.ht-root .trait-add .btn {
+  flex: 0 0 auto;
 }
 
 /* ---------- CSV menu (board toolbar) ---------- */

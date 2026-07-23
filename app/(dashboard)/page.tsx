@@ -1,6 +1,7 @@
 import HiringApp from '@/components/hiring/HiringApp';
 import { hiringService } from '@/lib/hiring/service';
 import { getNotifications } from '@/lib/hiring/chat/queries';
+import { traitAiEnabled } from '@/lib/hiring/ai';
 import { auth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,7 @@ export default async function Page() {
       initial={initial}
       userEmail={email}
       notifications={notifications}
+      aiEnabled={traitAiEnabled()}
     />
   );
 }

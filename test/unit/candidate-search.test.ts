@@ -30,8 +30,22 @@ function candidate(over: Partial<Candidate> = {}): Candidate {
 }
 
 const jobs: Job[] = [
-  { id: 1, title: 'Founding Engineer', stages: ['Applied', 'Hired'], starred: false },
-  { id: 2, title: 'Product Designer', stages: ['Applied', 'Hired'], starred: false }
+  {
+    id: 1,
+    title: 'Founding Engineer',
+    stages: ['Applied', 'Hired'],
+    traits: [],
+    description: null,
+    starred: false
+  },
+  {
+    id: 2,
+    title: 'Product Designer',
+    stages: ['Applied', 'Hired'],
+    traits: [],
+    description: null,
+    starred: false
+  }
 ];
 const users: User[] = [
   { id: 1, firstName: 'Ben', lastName: 'Ong', email: 'ben@x.io' },

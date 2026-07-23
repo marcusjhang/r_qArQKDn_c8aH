@@ -31,6 +31,16 @@ export async function currentUserId(): Promise<number | null> {
   return u?.id ?? null;
 }
 
+/** Read a job's current traits array outside a transaction, or null if absent. */
+export async function loadJobTraits(jobId: number): Promise<string[] | null> {
+  const [j] = await db
+    .select({ traits: jobs.traits })
+    .from(jobs)
+    .where(eq(jobs.id, jobId))
+    .limit(1);
+  return j?.traits ?? null;
+}
+
 // The transaction handle Drizzle passes to `db.transaction(cb)`, derived so we
 // don't have to import the ORM's transaction types.
 export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];

@@ -18,10 +18,12 @@ test.describe('candidate discussion chat', () => {
   test('sending a message appends it to the thread', async ({ page }) => {
     await openCandidate(page, CANDIDATE);
     const chat = page.locator('aside.drawer.open .chat');
-    // Match the title exactly — a substring match also hits the
-    // "Loading discussion…" placeholder (strict-mode violation). Then wait for
-    // that placeholder to clear so the optimistic post below isn't clobbered
-    // when the initial thread load resolves.
+    // Match the static section header exactly — a bare getByText('Discussion')
+    // also matches the "Loading discussion…" placeholder (case-insensitive
+    // substring), a strict-mode violation. `exact` pins it to the header, which
+    // renders immediately. Then wait for that placeholder to clear so the
+    // optimistic post below isn't clobbered when the initial thread load
+    // resolves.
     await expect(chat.getByText('Discussion', { exact: true })).toBeVisible();
     await expect(
       chat.locator('.chat-empty', { hasText: 'Loading' })

@@ -25,6 +25,7 @@ import ProfileLinks from './ProfileLinks';
 
 export default function CandidateCard({
   candidate,
+  traits,
   users,
   sources,
   bands,
@@ -35,6 +36,8 @@ export default function CandidateCard({
   onToggleStar
 }: {
   candidate: Candidate;
+  /** The job's ranked trait list — drives the card's weighted overall score. */
+  traits: string[];
   users: User[];
   sources: Source[];
   bands: SeniorityBand[];
@@ -99,7 +102,7 @@ export default function CandidateCard({
       </div>
       <div className="card-bottom">
         <span className="card-bottom-left">
-          <RatingChip candidate={candidate} />
+          <RatingChip candidate={candidate} traits={traits} />
           <span
             className={`status-pill st-${candidate.status}`}
             title={`Status: ${STATUS[candidate.status]}`}

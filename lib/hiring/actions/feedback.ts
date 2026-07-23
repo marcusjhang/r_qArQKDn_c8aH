@@ -14,17 +14,21 @@ import { addFeedbackCore } from '../core';
 import { currentUserId } from './support';
 
 /**
- * Add a feedback entry to a candidate. Returns the new feedback id so the
- * client can reconcile its optimistic row, or null when the caller can't be
- * resolved to an account.
+ * Save the signed-in user's feedback for a candidate. Exactly one entry per
+ * (candidate, user): the first save inserts (recording the candidate's current
+ * stage), later saves by the same user update the trait scores and note in
+ * place — the recorded stage is preserved. Trait scores are scoped to the job's
+ * current traits so a stale/renamed key can never persist. Returns the feedback
+ * id so the client can reconcile its optimistic row, or null when the caller
+ * can't be resolved to an account.
  */
-export async function addFeedback(
+export async function saveFeedback(
   idRaw: number,
-  ratingRaw: number,
-  noteRaw: string
+  noteRaw: string,
+  traitScoresRaw: Record<string, number> = {}
 ): Promise<number | null> {
   await requireUser();
   const byUser = await currentUserId();
   if (byUser == null) return null;
-  return addFeedbackCore(byUser, idRaw, ratingRaw, noteRaw);
+  return addFeedbackCore(byUser, idRaw, traitScoresRaw, noteRaw);
 }

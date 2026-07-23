@@ -1,23 +1,78 @@
 'use client';
 
-// Create a new job (pipeline). The job is created with the compulsory default
-// stages; the board switches to it once created.
+// Create a new job (pipeline). You can paste the job description (JD) and set
+// the important traits (manually or, when configured, via AI) before the job is
+// created. The traits UI is the shared TraitsEditor — identical to the Traits
+// modal — wired here to local state; the job starts with the default stages and
+// the board switches to it once created.
 
 import { useState } from 'react';
-import { DEFAULT_STAGES } from '@/lib/hiring';
+import {
+  mergeTraitSuggestions,
+  reorderStages,
+  MAX_JOB_DESCRIPTION
+} from '@/lib/hiring';
+// recommendTraits is a server action; the `@/lib/hiring` barrel deliberately
+// excludes actions/, so it is imported from that module directly.
+import { recommendTraits } from '@/lib/hiring/actions';
 import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
 import Modal from './Modal';
+import TraitsEditor from './TraitsEditor';
 
 export default function NewJobModal({
+  aiEnabled = false,
   onClose,
   onCreate
 }: {
+  /** Whether the AI trait recommender is configured; hides Suggest when false. */
+  aiEnabled?: boolean;
   onClose: () => void;
-  onCreate: (title: string) => void;
+  onCreate: (title: string, description: string, traits: string[]) => void;
 }) {
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [traits, setTraits] = useState<string[]>([]);
   const [error, setError] = useState('');
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestMsg, setSuggestMsg] = useState('');
+
+  async function suggest() {
+    const t = title.trim();
+    if (!t) {
+      setError('Enter a job title first.');
+      return;
+    }
+    setSuggesting(true);
+    setSuggestMsg('');
+    try {
+      const picks = await recommendTraits(t, description.trim());
+      if (!picks.length) {
+        setSuggestMsg('No suggestions. Add traits manually or try again.');
+        return;
+      }
+      const { traits: next, added } = mergeTraitSuggestions(traits, picks);
+      if (added) setTraits(next);
+      setSuggestMsg(
+        added
+          ? `Added ${added} suggested trait${added === 1 ? '' : 's'}.`
+          : 'Those suggestions are already in your list.'
+      );
+    } catch {
+      setSuggestMsg('Could not reach the AI service.');
+    } finally {
+      setSuggesting(false);
+    }
+  }
+
+  // Reorder is the ranking: order 0 is rank #1. Reuses the shared ordered-list
+  // helper so the local list ranks the same way the server actions do.
+  function reorderTrait(index: number, dir: 1 | -1) {
+    setTraits((cur) => {
+      const result = reorderStages(cur, index, dir);
+      return result.ok ? result.stages : cur;
+    });
+  }
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -26,7 +81,7 @@ export default function NewJobModal({
       setError('Enter a job title.');
       return;
     }
-    onCreate(trimmed);
+    onCreate(trimmed, description.trim(), traits);
     onClose();
   }
 
@@ -34,7 +89,9 @@ export default function NewJobModal({
     <Modal title="New job" onClose={onClose}>
       <form className="modal-form" onSubmit={submit}>
         <div className="field">
-          <label className="label" htmlFor="newjob-title">Job title</label>
+          <label className="label" htmlFor="newjob-title">
+            Job title
+          </label>
           <input
             id="newjob-title"
             type="text"
@@ -48,9 +105,35 @@ export default function NewJobModal({
             }}
           />
         </div>
-        <p className="settings-sub">
-          Starts with the default stages: {DEFAULT_STAGES.join(' → ')}.
-        </p>
+
+        <div className="field">
+          <label className="label" htmlFor="newjob-jd">
+            Job description (optional)
+          </label>
+          <textarea
+            id="newjob-jd"
+            className="jd-textarea"
+            maxLength={MAX_JOB_DESCRIPTION}
+            value={description}
+            placeholder={
+              aiEnabled
+                ? 'Paste the job description. AI can suggest traits from it.'
+                : 'Paste the job description.'
+            }
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+
+        <TraitsEditor
+          traits={traits}
+          aiEnabled={aiEnabled}
+          suggesting={suggesting}
+          suggestMsg={suggestMsg}
+          onChange={setTraits}
+          onReorder={reorderTrait}
+          onSuggest={suggest}
+        />
+
         <FormError message={error} />
         <div className="modal-actions">
           <Button type="button" variant="app" onClick={onClose}>

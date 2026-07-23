@@ -1,7 +1,7 @@
 // Seed / sample data (Decision 8), consumed by the DB seeder (`db/seed.ts`).
 //
 // Three realistic roles with ~12 candidates spread across stages, mixed
-// ratings, statuses, sources, and owners — including one rejected and one
+// trait scores, statuses, sources, and owners — including one rejected and one
 // hired candidate to demonstrate the terminal-state filter.
 //
 // Jobs are keyed by a temporary `slug`; the seeder inserts jobs first and
@@ -9,8 +9,8 @@
 // feedback authors are referenced by the user's EMAIL (a stable, readable key);
 // the seeder resolves each email to the seeded account's serial id.
 
-import { DEFAULT_STAGES, SENIORITY_BANDS } from './config';
-import type { RatingValue, Status } from './types';
+import { DEFAULT_STAGES, DEFAULT_TRAITS, SENIORITY_BANDS } from './config';
+import type { Status, TraitScores } from './types';
 
 /** Default seniority bands seeded into the (editable) seniority_bands table. */
 export const SEED_SENIORITY_BANDS = SENIORITY_BANDS;
@@ -40,13 +40,17 @@ export interface SeedJob {
   slug: string;
   title: string;
   stages: string[];
+  /** Ordered trait list — order is the ranking that weights the score. */
+  traits: string[];
+  description: string;
 }
 
 interface SeedFeedback {
   /** Interviewer's email (resolved to a user id by the seeder). */
   by: string;
-  v: RatingValue;
   note: string;
+  /** Per-trait scores (1–4) keyed by the job's trait name. */
+  traits?: TraitScores;
 }
 
 export interface SeedCandidate {
@@ -69,9 +73,36 @@ export interface SeedCandidate {
 }
 
 export const SEED_JOBS: SeedJob[] = [
-  { slug: 'eng', title: 'Founding Engineer', stages: [...DEFAULT_STAGES] },
-  { slug: 'design', title: 'Product Designer', stages: [...DEFAULT_STAGES] },
-  { slug: 'gtm', title: 'GTM Lead', stages: [...DEFAULT_STAGES] }
+  {
+    slug: 'eng',
+    title: 'Founding Engineer',
+    stages: [...DEFAULT_STAGES],
+    traits: ['Technical depth', 'Systems design', 'Ownership', 'Velocity'],
+    description:
+      'Founding engineer for an early-stage startup. Own features end to ' +
+      'end across the stack, design pragmatic systems, and ship quickly ' +
+      'without a safety net. Strong CS fundamentals and high autonomy.'
+  },
+  {
+    slug: 'design',
+    title: 'Product Designer',
+    stages: [...DEFAULT_STAGES],
+    traits: ['Craft', 'Product sense', 'Communication', 'Systems thinking'],
+    description:
+      'Product designer who owns the end-to-end experience: research, ' +
+      'interaction, and visual craft. Builds and maintains a design system ' +
+      'and partners closely with engineering.'
+  },
+  {
+    slug: 'gtm',
+    title: 'GTM Lead',
+    stages: [...DEFAULT_STAGES],
+    traits: [...DEFAULT_TRAITS],
+    description:
+      'Go-to-market lead to build the first repeatable sales motion. ' +
+      'Comfortable being technical with a product-led audience and owning ' +
+      'pipeline from first touch to close.'
+  }
 ];
 
 export const SEED_CANDIDATES: SeedCandidate[] = [
@@ -87,8 +118,16 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     starred: true,
     daysInStage: 3,
     feedback: [
-      { by: benChan, v: 3, note: 'Solid CS fundamentals, clean take-home.' },
-      { by: hengHongLee, v: 4, note: 'Excellent systems design — would move fast.' }
+      {
+        by: benChan,
+        note: 'Solid CS fundamentals, clean take-home.',
+        traits: { 'Technical depth': 3, 'Systems design': 3, Ownership: 4 }
+      },
+      {
+        by: hengHongLee,
+        note: 'Excellent systems design — would move fast.',
+        traits: { 'Systems design': 4, Velocity: 4, 'Technical depth': 4 }
+      }
     ]
   },
   {
@@ -115,8 +154,8 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     // 12 days in Interview — past the 7-day limit.
     daysInStage: 12,
     feedback: [
-      { by: benOng, v: 4, note: 'Sharp, great product instincts.' },
-      { by: benChan, v: 3, note: 'Strong, minor gaps in distributed systems.' }
+      { by: benOng, note: 'Sharp, great product instincts.' },
+      { by: benChan, note: 'Strong, minor gaps in distributed systems.' }
     ]
   },
   {
@@ -141,10 +180,23 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     // 9 days sitting on the Offer — past the 7-day limit; nudge to close.
     daysInStage: 9,
     feedback: [
-      { by: benOng, v: 4, note: 'Best onsite so far.' },
-      { by: hengHongLee, v: 4, note: 'Ship it — strong hire.' },
-      { by: benChan, v: 3, note: 'Yes, aligned on comp.' },
-      { by: marcus, v: 4, note: 'Aligned — sending the offer.' }
+      {
+        by: benOng,
+        note: 'Best onsite so far.',
+        traits: {
+          'Technical depth': 4,
+          'Systems design': 4,
+          Ownership: 4,
+          Velocity: 3
+        }
+      },
+      {
+        by: hengHongLee,
+        note: 'Ship it — strong hire.',
+        traits: { 'Systems design': 4, Velocity: 4 }
+      },
+      { by: benChan, note: 'Yes, aligned on comp.' },
+      { by: marcus, note: 'Aligned — sending the offer.' }
     ]
   },
   {
@@ -156,7 +208,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     yearsExperience: 2,
     status: 'rejected',
     feedback: [
-      { by: hengHongLee, v: 2, note: 'Experience did not match the role level.' }
+      { by: hengHongLee, note: 'Experience did not match the role level.' }
     ]
   },
   {
@@ -168,8 +220,8 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     yearsExperience: 8,
     status: 'hired',
     feedback: [
-      { by: benOng, v: 4, note: 'Accepted — starting next month.' },
-      { by: benChan, v: 4, note: 'Great addition.' }
+      { by: benOng, note: 'Accepted — starting next month.' },
+      { by: benChan, note: 'Great addition.' }
     ]
   },
   // Product Designer
@@ -192,7 +244,11 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     yearsExperience: 7,
     status: 'active',
     feedback: [
-      { by: hengHongLee, v: 3, note: 'Strong portfolio, thoughtful about systems.' }
+      {
+        by: hengHongLee,
+        note: 'Strong portfolio, thoughtful about systems.',
+        traits: { Craft: 4, 'Systems thinking': 3, 'Product sense': 3 }
+      }
     ]
   },
   {
@@ -204,7 +260,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     yearsExperience: null,
     status: 'onhold',
     feedback: [
-      { by: benOng, v: 3, note: 'Promising — paused while we align on level.' }
+      { by: benOng, note: 'Promising — paused while we align on level.' }
     ]
   },
   // GTM Lead
@@ -227,7 +283,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     yearsExperience: 10,
     status: 'active',
     feedback: [
-      { by: hengHongLee, v: 4, note: 'Rare combo of GTM + technical depth.' }
+      { by: hengHongLee, note: 'Rare combo of GTM + technical depth.' }
     ]
   }
 ];

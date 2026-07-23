@@ -2,14 +2,17 @@ import { test, expect } from '@playwright/test';
 import { loginToBoard, openCandidate } from './helpers';
 
 // Happy path: leave interview feedback on a candidate. The add-feedback form
-// (AddFeedbackForm) lives in the detail drawer: click a rating in the 4-point
-// picker (Strong No / No / Yes / Strong Yes), write a note, and submit.
-// Feedback is always authored by the signed-in user (derived server-side), so
-// there is no interviewer picker. Submitting appends the entry to the feedback
-// list (FeedbackList) optimistically and persists it (store.addFeedback).
+// (AddFeedbackForm) lives in the detail drawer: score one or more of the job's
+// traits on the 1-4 picker, write a note, and submit. Feedback is always
+// authored by the signed-in user (derived server-side), so there is no
+// interviewer picker; the signed-in user has one entry per candidate, edited in
+// place (upsert). Submitting adds/updates the entry in the feedback list
+// (FeedbackList) optimistically and persists it (store.saveFeedback). Entries
+// are collapsed by default — expand one to read its note.
 //
 // Uses seeded candidate "Tom Alvarez" (Founding Engineer) who has NO feedback
-// yet, so the signed-in user can still review. See lib/hiring/seed.ts.
+// yet. The Founding Engineer job tracks traits, so the trait score pickers are
+// shown. See lib/hiring/seed.ts.
 const CANDIDATE = 'Tom Alvarez';
 
 test.describe('add feedback to a candidate', () => {
@@ -17,34 +20,29 @@ test.describe('add feedback to a candidate', () => {
     await loginToBoard(page);
   });
 
-  test('submitting a rating + note adds it to the feedback list', async ({
+  test('scoring a trait + note adds it to the feedback list', async ({
     page
   }) => {
     await openCandidate(page, CANDIDATE);
     const drawer = page.locator('aside.drawer.open');
     const form = drawer.locator('.add-fb');
 
-    // If the signed-in user has already reviewed (e.g. a re-run against the same
-    // seed), the form collapses to an empty-state and there is nothing to add.
-    const emptyState = form.locator('.fb-empty');
-    if (await emptyState.count()) {
-      test.skip(true, 'The signed-in user has already reviewed this candidate.');
-    }
+    // Score the first tracked trait: click "4" and confirm it becomes active.
+    const firstTrait = form.locator('.trait-score-input').first();
+    const four = firstTrait.getByRole('button', { name: '4', exact: true });
+    await four.click();
+    await expect(four).toHaveAttribute('aria-pressed', 'true');
 
-    // Pick a rating from the 4-point picker and confirm it becomes active.
-    const strongYes = form.getByRole('button', { name: 'Strong Yes' });
-    await strongYes.click();
-    await expect(strongYes).toHaveAttribute('aria-pressed', 'true');
-
-    // Write a note and submit.
-    const note = `Great systems thinking — E2E ${Date.now()}`;
+    // Write a note and submit (button label is Add/Update feedback).
+    const note = `Great systems thinking - E2E ${Date.now()}`;
     await form.locator('textarea').fill(note);
-    await form.getByRole('button', { name: 'Add feedback' }).click();
+    await form.getByRole('button', { name: /feedback/i }).click();
 
-    // The new note shows up as an entry in the feedback list above the form.
-    // (Target the entry note, not `.feedback` — both the section wrapper and the
-    // entries list carry that class, so it is ambiguous once entries render.)
-    await expect(drawer.locator('.fb-note', { hasText: note })).toBeVisible();
+    // A collapsed entry appears in the list; expand it to read the note.
+    const entry = drawer.locator('.fb-entry').first();
+    await expect(entry).toBeVisible();
+    await entry.locator('.fb-head').click();
+    await expect(entry.locator('.fb-detail')).toContainText(note);
   });
 
   test('feedback persists across a reload', async ({ page }) => {
@@ -52,29 +50,29 @@ test.describe('add feedback to a candidate', () => {
     const drawer = page.locator('aside.drawer.open');
     const form = drawer.locator('.add-fb');
 
-    // If the signed-in user has already reviewed (e.g. a re-run against the same
-    // seed), the form collapses to an empty-state and there is nothing to add.
-    const emptyState = form.locator('.fb-empty');
-    if (await emptyState.count()) {
-      test.skip(true, 'The signed-in user has already reviewed this candidate.');
-    }
-
     const note = `Persisted note ${Date.now()}`;
-    await form.getByRole('button', { name: 'Yes', exact: true }).click();
+    await form
+      .locator('.trait-score-input')
+      .first()
+      .getByRole('button', { name: '3', exact: true })
+      .click();
     await form.locator('textarea').fill(note);
     // Persistence is optimistic; wait for the write (a POST to the route) so the
     // reload below reads back committed state rather than cancelling it.
     const persisted = page.waitForResponse(
       (r) => r.request().method() === 'POST'
     );
-    await form.getByRole('button', { name: 'Add feedback' }).click();
-    await expect(drawer.locator('.fb-note', { hasText: note })).toBeVisible();
+    await form.getByRole('button', { name: /feedback/i }).click();
+
+    const entry = drawer.locator('.fb-entry').first();
+    await entry.locator('.fb-head').click();
+    await expect(entry.locator('.fb-detail')).toContainText(note);
     await persisted;
 
     await page.reload();
     await openCandidate(page, CANDIDATE);
-    await expect(
-      page.locator('aside.drawer.open').locator('.fb-note', { hasText: note })
-    ).toBeVisible();
+    const reopened = page.locator('aside.drawer.open .fb-entry').first();
+    await reopened.locator('.fb-head').click();
+    await expect(reopened.locator('.fb-detail')).toContainText(note);
   });
 });

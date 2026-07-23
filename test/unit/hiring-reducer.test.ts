@@ -11,7 +11,7 @@ import { DEFAULT_STAGES } from '@/lib/hiring/config';
 import type { Candidate, Feedback, HiringState } from '@/lib/hiring/types';
 
 function feedback(over: Partial<Feedback> = {}): Feedback {
-  return { id: 1, byUser: 1, rating: 3, note: '', ...over };
+  return { id: 1, byUser: 1, traitScores: {}, note: '', stage: '', ...over };
 }
 
 function candidate(over: Partial<Candidate> = {}): Candidate {
@@ -36,7 +36,14 @@ function candidate(over: Partial<Candidate> = {}): Candidate {
 function makeState(over: Partial<HiringState> = {}): HiringState {
   return {
     jobs: [
-      { id: 1, title: 'Engineer', stages: [...DEFAULT_STAGES], starred: false }
+      {
+        id: 1,
+        title: 'Engineer',
+        stages: [...DEFAULT_STAGES],
+        traits: [],
+        description: null,
+        starred: false
+      }
     ],
     candidates: [candidate()],
     users: [],
@@ -47,15 +54,15 @@ function makeState(over: Partial<HiringState> = {}): HiringState {
   };
 }
 
-describe('addFeedback', () => {
-  it('appends an optimistic feedback row carrying the temp id', () => {
+describe('saveFeedback', () => {
+  it('appends an optimistic feedback row carrying the temp id + stage', () => {
     const state = makeState();
     const event: HiringEvent = {
-      type: 'addFeedback',
+      type: 'saveFeedback',
       id: 10,
       tempId: -3,
       byUser: 7,
-      rating: 4,
+      traitScores: { 'Technical depth': 4 },
       note: 'Strong'
     };
 
@@ -63,9 +70,45 @@ describe('addFeedback', () => {
     const fb = next.candidates[0].feedback;
 
     expect(fb).toHaveLength(1);
-    expect(fb[0]).toEqual({ id: -3, byUser: 7, rating: 4, note: 'Strong' });
+    // The new entry adopts the candidate's current stage ("Applied").
+    expect(fb[0]).toEqual({
+      id: -3,
+      byUser: 7,
+      traitScores: { 'Technical depth': 4 },
+      note: 'Strong',
+      stage: 'Applied'
+    });
     // Other candidates' state and the source array are untouched.
     expect(state.candidates[0].feedback).toHaveLength(0);
+  });
+
+  it('updates the existing entry in place when the same user re-saves', () => {
+    const state = makeState({
+      candidates: [
+        candidate({
+          feedback: [feedback({ id: 5, byUser: 7, note: 'old', stage: 'Screen' })]
+        })
+      ]
+    });
+
+    const next = hiringReducer(state, {
+      type: 'saveFeedback',
+      id: 10,
+      tempId: -1,
+      byUser: 7,
+      traitScores: { Ownership: 3 },
+      note: 'new'
+    });
+
+    const fb = next.candidates[0].feedback;
+    expect(fb).toHaveLength(1);
+    expect(fb[0]).toEqual({
+      id: 5,
+      byUser: 7,
+      traitScores: { Ownership: 3 },
+      note: 'new',
+      stage: 'Screen'
+    });
   });
 
   it('leaves other candidates untouched when appending', () => {
@@ -73,11 +116,11 @@ describe('addFeedback', () => {
     const state = makeState({ candidates: [candidate(), other] });
 
     const next = hiringReducer(state, {
-      type: 'addFeedback',
+      type: 'saveFeedback',
       id: 10,
       tempId: -1,
       byUser: 2,
-      rating: 2,
+      traitScores: {},
       note: ''
     });
 
@@ -160,7 +203,16 @@ describe('reconcileFeedbackId', () => {
 describe('reconcileJobId / reconcileCandidateId', () => {
   it('swaps a job temp id for the server id', () => {
     const state = makeState({
-      jobs: [{ id: -1, title: 'Designer', stages: [...DEFAULT_STAGES], starred: false }]
+      jobs: [
+        {
+          id: -1,
+          title: 'Designer',
+          stages: [...DEFAULT_STAGES],
+          traits: [],
+          description: null,
+          starred: false
+        }
+      ]
     });
 
     const next = hiringReducer(state, {

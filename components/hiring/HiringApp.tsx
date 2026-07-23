@@ -11,6 +11,7 @@
 // overlay state machine (lib/hiring/overlay.ts). The per-overlay render props
 // below are derived from that one union rather than kept in sync by hand.
 
+import { useState } from 'react';
 import {
   findUserIdByEmail,
   formatJobMeta,
@@ -28,6 +29,7 @@ import Board from './Board';
 import DetailDrawer from './DetailDrawer';
 import AddCandidateModal from './AddCandidateModal';
 import NewJobModal from './NewJobModal';
+import JobTraitsModal from './JobTraitsModal';
 import JobTabs from './JobTabs';
 import TopBar from './TopBar';
 import { ACCOUNT_LINKS } from './UserMenu';
@@ -41,16 +43,22 @@ import './hiring.css';
 export default function HiringApp({
   initial,
   userEmail,
-  notifications = []
+  notifications = [],
+  aiEnabled = false
 }: {
   initial: HiringState;
   userEmail?: string | null;
   notifications?: Notification[];
+  /** Whether the AI trait recommender is configured (server-derived). */
+  aiEnabled?: boolean;
 }) {
   const { state, actions } = useHiringStore(initial);
   const { activeJob, showRejected, overlay, actions: view } = useBoardView(
     state.jobs
   );
+  // The per-job Traits/JD editor is a small self-contained modal, kept as local
+  // state rather than folded into the board overlay machine.
+  const [editingTraits, setEditingTraits] = useState(false);
   // Shared clock for time-in-stage / overdue UI (null until mounted — see hook).
   const now = useNow();
 
@@ -121,7 +129,7 @@ export default function HiringApp({
 
       <div className="toolbar">
         <div>
-          <h1 className="jobtitle">{job?.title ?? '—'}</h1>
+          <h1 className="jobtitle">{job?.title ?? 'No jobs yet'}</h1>
           <div className="jobmeta">{meta}</div>
         </div>
         <CandidateSearch
@@ -133,7 +141,6 @@ export default function HiringApp({
           onSelect={view.openInJob}
         />
         <div className="spacer" />
-        <CsvMenu state={state} onImport={view.openImport} />
         <label className="toggle">
           <input
             type="checkbox"
@@ -142,6 +149,15 @@ export default function HiringApp({
           />{' '}
           Show rejected
         </label>
+        <CsvMenu state={state} onImport={view.openImport} />
+        <Button
+          variant="app"
+          onClick={() => setEditingTraits(true)}
+          disabled={!job}
+          title="Choose the important traits scored on this job"
+        >
+          ⚑ Traits{job ? ` · ${job.traits.length}` : ''}
+        </Button>
         <Button
           variant="appPrimary"
           onClick={view.openAddCandidate}
@@ -193,8 +209,26 @@ export default function HiringApp({
 
       {creatingJob && (
         <NewJobModal
+          aiEnabled={aiEnabled}
           onClose={view.close}
-          onCreate={(title) => actions.createJob(title, view.selectJob)}
+          onCreate={(title, description, traits) =>
+            actions.createJob(title, description, traits, view.selectJob)
+          }
+        />
+      )}
+
+      {editingTraits && job && (
+        <JobTraitsModal
+          jobTitle={job.title}
+          traits={job.traits}
+          description={job.description ?? ''}
+          aiEnabled={aiEnabled}
+          onChange={(next) => actions.setJobTraits(job.id, next)}
+          onReorder={(index, dir) => actions.reorderTrait(job.id, index, dir)}
+          onDescriptionChange={(desc) =>
+            actions.setJobDescription(job.id, desc)
+          }
+          onClose={() => setEditingTraits(false)}
         />
       )}
 

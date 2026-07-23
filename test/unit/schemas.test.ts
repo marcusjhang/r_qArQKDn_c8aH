@@ -256,15 +256,28 @@ describe('candidateInsertSchema', () => {
 });
 
 describe('feedbackInsertSchema', () => {
-  const valid = { byUser: 1, rating: RATING_VALUES[0], note: 'Solid signal' };
+  const valid = {
+    byUser: 1,
+    traitScores: { 'Technical depth': RATING_VALUES[0] },
+    note: 'Solid signal'
+  };
 
-  it('accepts a valid {byUser, rating, note}', () => {
+  it('accepts a valid {byUser, traitScores, note}', () => {
     expect(feedbackInsertSchema.safeParse(valid).success).toBe(true);
   });
 
-  it('rejects a bad rating', () => {
+  it('accepts an empty traitScores map (note-only feedback)', () => {
     expect(
-      feedbackInsertSchema.safeParse({ ...valid, rating: 0 }).success
+      feedbackInsertSchema.safeParse({ ...valid, traitScores: {} }).success
+    ).toBe(true);
+  });
+
+  it('rejects a bad trait score', () => {
+    expect(
+      feedbackInsertSchema.safeParse({
+        ...valid,
+        traitScores: { 'Technical depth': 0 }
+      }).success
     ).toBe(false);
   });
 

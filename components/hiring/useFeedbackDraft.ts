@@ -1,68 +1,96 @@
 'use client';
 
-// Add-feedback form orchestration for the candidate detail drawer: holds the
-// draft (rating / note), resets it whenever a different candidate opens, and
-// validates on submit. Extracted from DetailDrawer so the component stays
-// presentational and this flow can be reasoned about (and reused) on its own.
-//
-// The author is NOT part of the draft: feedback is always attributed to the
-// signed-in user, derived server-side. The draft only captures what the
-// reviewer actually enters — a rating and a note.
+// Add/edit-feedback form orchestration for the candidate detail drawer: holds
+// the draft (per-trait scores + note) for the SIGNED-IN user's single entry on
+// a candidate. Feedback is always authored by the signed-in user (derived
+// server-side), so there is no interviewer picker. If the user already has an
+// entry it is loaded for editing (upsert); otherwise the draft starts blank.
+// Extracted from the form so the component stays presentational.
 
-import { useEffect, useState } from 'react';
-import type { RatingValue } from '@/lib/hiring';
+import { useEffect, useRef, useState } from 'react';
+import type { Feedback, RatingValue, TraitScores } from '@/lib/hiring';
 
 export interface FeedbackEntry {
-  rating: RatingValue;
+  traitScores: TraitScores;
   note: string;
 }
 
 export interface FeedbackDraft {
-  rating: RatingValue | null;
-  /** Select a rating and clear any pending validation error. */
-  pickRating: (v: RatingValue) => void;
+  traitScores: TraitScores;
+  /** Set (or, if re-tapped, clear) one trait's score. */
+  setTrait: (trait: string, v: RatingValue) => void;
   note: string;
   setNote: (note: string) => void;
   error: string;
+  /** True when the signed-in user already has an entry (edit mode). */
+  editing: boolean;
   /** Validate + submit the draft; returns false (and sets an error) if invalid. */
   submit: () => boolean;
 }
 
 /**
- * @param resetKey  identity of the open candidate — the draft resets when it
- *                  changes (a new candidate, or the drawer closing).
- * @param onSubmit  persists a valid entry (typically the store's addFeedback).
+ * @param resetKey       identity of the open candidate — the draft resets when
+ *                       it changes.
+ * @param currentUserId  the signed-in user (the author); used to load their
+ *                       existing entry for editing.
+ * @param feedback       the candidate's current feedback (to prefill on edit).
+ * @param jobTraits      the job's trait list (scores are filtered against it).
+ * @param onSubmit       persists a valid entry (typically the store's saveFeedback).
  */
 export function useFeedbackDraft(
   resetKey: number | null,
+  currentUserId: number | null,
+  feedback: Feedback[],
+  jobTraits: string[],
   onSubmit: (entry: FeedbackEntry) => void
 ): FeedbackDraft {
-  const [rating, setRating] = useState<RatingValue | null>(null);
+  const [traitScores, setTraitScores] = useState<TraitScores>({});
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    setRating(null);
-    setNote('');
-    setError('');
-  }, [resetKey]);
+  // Read the latest feedback inside the effect without depending on it (it
+  // changes on every optimistic edit, which would clobber in-progress typing).
+  const feedbackRef = useRef<Feedback[]>(feedback);
+  feedbackRef.current = feedback;
 
-  function pickRating(v: RatingValue) {
-    setRating(v);
+  // On candidate change, load the signed-in user's existing entry (edit) or
+  // start blank.
+  useEffect(() => {
+    const existing =
+      currentUserId != null
+        ? feedbackRef.current.find((f) => f.byUser === currentUserId)
+        : undefined;
+    setTraitScores(existing ? { ...existing.traitScores } : {});
+    setNote(existing?.note ?? '');
     setError('');
+  }, [resetKey, currentUserId]);
+
+  function setTrait(trait: string, v: RatingValue) {
+    setTraitScores((d) => {
+      if (d[trait] === v) {
+        const { [trait]: _omit, ...rest } = d;
+        return rest;
+      }
+      return { ...d, [trait]: v };
+    });
   }
 
+  const editing =
+    currentUserId != null && feedback.some((f) => f.byUser === currentUserId);
+
   function submit(): boolean {
-    if (!rating) {
-      setError('Pick a rating first.');
+    const scoped: TraitScores = {};
+    for (const t of jobTraits) {
+      if (traitScores[t] != null) scoped[t] = traitScores[t];
+    }
+    if (jobTraits.length > 0 && Object.keys(scoped).length === 0) {
+      setError('Score at least one trait.');
       return false;
     }
-    onSubmit({ rating, note: note.trim() });
-    setRating(null);
-    setNote('');
+    onSubmit({ traitScores: scoped, note: note.trim() });
     setError('');
     return true;
   }
 
-  return { rating, pickRating, note, setNote, error, submit };
+  return { traitScores, setTrait, note, setNote, error, editing, submit };
 }
