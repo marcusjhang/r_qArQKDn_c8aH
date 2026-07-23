@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth';
 import { getSources } from '@/lib/sources';
 import { getSeniorityBands } from '@/lib/seniority';
-import { getStageSlas } from '@/lib/stageSlas';
+import { getStageSlas } from '@/lib/stage-slas';
 import { MAX_YEARS_EXPERIENCE, MAX_SLA_DAYS } from '@/lib/hiring/primitives';
 import { getProfile } from '@/lib/profile';
 import SettingsView from '@/components/settings/SettingsView';

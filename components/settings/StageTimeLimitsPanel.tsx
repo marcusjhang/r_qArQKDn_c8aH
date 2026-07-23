@@ -1,15 +1,18 @@
 'use client';
 
 // Manage the stage time-limits (the "warn after N days in a stage" mapping)
-// from /settings — add, edit (stage + days), and remove. Mirrors the Seniority
-// bands panel's styling and useTransition write flow. Limits are opt-in per
-// stage: a stage only warns on the board once it has a limit here. Server
-// actions return a result object so failures (duplicate stage) surface inline
-// instead of throwing.
+// from /settings: add, edit (stage + days), and remove. Mirrors the Seniority
+// bands panel; the add/edit/remove state machine and shell come from
+// useEditableList / EditableList. Limits are opt-in per stage: a stage only
+// warns on the board once it has a limit here. Server actions return a result
+// object so failures (duplicate stage) surface inline instead of throwing.
 
-import { useState, useTransition } from 'react';
+import EditableList from './EditableList';
+import { useEditableList } from './useEditableList';
+import { MAX_STAGE_NAME } from '@/lib/hiring/helpers/stages';
+import type { SettingsResult } from '@/lib/settings-types';
 
-type Result = { ok: true } | { ok: false; error: string };
+type Draft = { stage: string; days: string };
 
 export default function StageTimeLimitsPanel({
   stageSlas,
@@ -20,23 +23,14 @@ export default function StageTimeLimitsPanel({
 }: {
   stageSlas: { id: number; stage: string; maxDays: number }[];
   maxDays: number;
-  addStageSla: (stage: string, maxDays: number) => Promise<Result>;
+  addStageSla: (stage: string, maxDays: number) => Promise<SettingsResult>;
   updateStageSla: (
     id: number,
     stage: string,
     maxDays: number
-  ) => Promise<Result>;
-  removeStageSla: (id: number) => Promise<Result>;
+  ) => Promise<SettingsResult>;
+  removeStageSla: (id: number) => Promise<SettingsResult>;
 }) {
-  const [stage, setStage] = useState('');
-  const [days, setDays] = useState('');
-  const [error, setError] = useState('');
-  // Which row is being edited, plus its draft stage + threshold.
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [draftStage, setDraftStage] = useState('');
-  const [draftDays, setDraftDays] = useState('');
-  const [pending, startTransition] = useTransition();
-
   function parseDays(raw: string): number | null {
     const n = Number(raw.trim());
     if (raw.trim() === '' || !Number.isInteger(n) || n < 1 || n > maxDays) {
@@ -45,196 +39,157 @@ export default function StageTimeLimitsPanel({
     return n;
   }
 
-  function add(e: React.FormEvent) {
-    e.preventDefault();
-    const s = stage.trim();
-    const d = parseDays(days);
-    if (!s) {
-      setError('Enter a stage name.');
-      return;
-    }
-    if (d === null) {
-      setError(`Enter a limit of 1–${maxDays} days.`);
-      return;
-    }
-    if (stageSlas.some((x) => x.stage.toLowerCase() === s.toLowerCase())) {
-      setError('That stage already has a time limit.');
-      return;
-    }
-    startTransition(async () => {
-      const res = await addStageSla(s, d);
-      if (res.ok) {
-        setStage('');
-        setDays('');
-        setError('');
-      } else {
-        setError(res.error);
+  const list = useEditableList<Draft, Draft>({
+    emptyAdd: { stage: '', days: '' },
+    validateAdd: ({ stage, days }) => {
+      const s = stage.trim();
+      const d = parseDays(days);
+      if (!s) return 'Enter a stage name.';
+      if (d === null) return `Enter a limit of 1 to ${maxDays} days.`;
+      if (stageSlas.some((x) => x.stage.toLowerCase() === s.toLowerCase())) {
+        return 'That stage already has a time limit.';
       }
-    });
-  }
-
-  function startEdit(id: number, s: string, d: number) {
-    setEditingId(id);
-    setDraftStage(s);
-    setDraftDays(String(d));
-    setError('');
-  }
-
-  function saveEdit(id: number) {
-    const s = draftStage.trim();
-    const d = parseDays(draftDays);
-    if (!s) {
-      setError('Enter a stage name.');
-      return;
-    }
-    if (d === null) {
-      setError(`Enter a limit of 1–${maxDays} days.`);
-      return;
-    }
-    startTransition(async () => {
-      const res = await updateStageSla(id, s, d);
-      if (res.ok) {
-        setEditingId(null);
-        setError('');
-      } else {
-        setError(res.error);
+      return null;
+    },
+    onAdd: ({ stage, days }) => addStageSla(stage.trim(), parseDays(days)!),
+    validateEdit: ({ stage, days }) => {
+      if (!stage.trim()) return 'Enter a stage name.';
+      if (parseDays(days) === null) {
+        return `Enter a limit of 1 to ${maxDays} days.`;
       }
-    });
-  }
-
-  function remove(id: number) {
-    startTransition(async () => {
-      const res = await removeStageSla(id);
-      setError(res.ok ? '' : res.error);
-    });
-  }
+      return null;
+    },
+    onSave: (id, { stage, days }) =>
+      updateStageSla(id, stage.trim(), parseDays(days)!),
+    onRemove: removeStageSla
+  });
 
   return (
-    <section className="settings-panel">
-      <div>
-        <p className="settings-section-title">Pipeline</p>
-        <h1 className="settings-title">Stage time limits</h1>
-        <p className="settings-sub">
+    <EditableList
+      section="Pipeline"
+      title="Stage time limits"
+      description={
+        <>
           Warn on the board when an applicant has sat in a stage too long. Limits
-          are per stage name and apply across every job — a stage only warns once
+          are per stage name and apply across every job. A stage only warns once
           you set a limit for it.
-        </p>
-      </div>
-
-      <form className="settings-add" onSubmit={add}>
-        <div className="field" style={{ flex: '2 1 160px' }}>
-          <span className="label">Stage</span>
-          <input
-            type="text"
-            placeholder="e.g. Interview"
-            maxLength={48}
-            value={stage}
-            onChange={(e) => {
-              setStage(e.target.value);
-              setError('');
-            }}
-          />
-        </div>
-        <div className="field" style={{ flex: '0 0 140px' }}>
-          <span className="label">Warn after (days)</span>
-          <input
-            type="number"
-            min={1}
-            max={maxDays}
-            step={1}
-            placeholder="7"
-            value={days}
-            onChange={(e) => {
-              setDays(e.target.value);
-              setError('');
-            }}
-          />
-        </div>
-        <button className="btn primary" type="submit" disabled={pending}>
-          Add limit
-        </button>
-      </form>
-      {error && <div className="form-error">{error}</div>}
-
-      <ul className="email-list">
-        {stageSlas.length === 0 && (
-          <li className="email-empty">
-            No limits yet — add one to warn when applicants stall in a stage.
-          </li>
-        )}
-        {stageSlas.map((s) => (
-          <li className="email-row" key={s.id}>
-            {editingId === s.id ? (
-              <>
-                <input
-                  className="source-edit"
-                  type="text"
-                  maxLength={48}
-                  autoFocus
-                  value={draftStage}
-                  onChange={(e) => setDraftStage(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') saveEdit(s.id);
-                    if (e.key === 'Escape') setEditingId(null);
-                  }}
-                />
-                <input
-                  className="band-years-edit"
-                  type="number"
-                  min={1}
-                  max={maxDays}
-                  step={1}
-                  value={draftDays}
-                  onChange={(e) => setDraftDays(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') saveEdit(s.id);
-                    if (e.key === 'Escape') setEditingId(null);
-                  }}
-                />
-                <button
-                  className="btn primary"
-                  onClick={() => saveEdit(s.id)}
-                  disabled={pending}
-                >
-                  Save
-                </button>
-                <button
-                  className="btn"
-                  onClick={() => setEditingId(null)}
-                  disabled={pending}
-                >
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="email-addr">
-                  {s.stage}{' '}
-                  <span className="band-threshold">
-                    · warn after {s.maxDays} day{s.maxDays === 1 ? '' : 's'}
-                  </span>
-                </span>
-                <button
-                  className="btn"
-                  onClick={() => startEdit(s.id, s.stage, s.maxDays)}
-                  disabled={pending}
-                  aria-label={`Edit ${s.stage} limit`}
-                >
-                  Edit
-                </button>
-                <button
-                  className="btn"
-                  onClick={() => remove(s.id)}
-                  disabled={pending}
-                  aria-label={`Remove ${s.stage} limit`}
-                >
-                  Remove
-                </button>
-              </>
-            )}
-          </li>
-        ))}
-      </ul>
-    </section>
+        </>
+      }
+      addFields={
+        <>
+          <div className="field" style={{ flex: '2 1 160px' }}>
+            <label className="label" htmlFor="sla-stage">
+              Stage
+            </label>
+            <input
+              id="sla-stage"
+              type="text"
+              placeholder="e.g. Interview"
+              maxLength={MAX_STAGE_NAME}
+              value={list.addDraft.stage}
+              onChange={(e) => list.setAddDraft({ stage: e.target.value })}
+            />
+          </div>
+          <div className="field" style={{ flex: '0 0 140px' }}>
+            <label className="label" htmlFor="sla-days">
+              Warn after (days)
+            </label>
+            <input
+              id="sla-days"
+              type="number"
+              min={1}
+              max={maxDays}
+              step={1}
+              placeholder="7"
+              value={list.addDraft.days}
+              onChange={(e) => list.setAddDraft({ days: e.target.value })}
+            />
+          </div>
+        </>
+      }
+      addLabel="Add limit"
+      onAddSubmit={list.submitAdd}
+      pending={list.pending}
+      error={list.error}
+      items={stageSlas}
+      emptyText="No limits yet. Add one to warn when applicants stall in a stage."
+      renderRow={(s) =>
+        list.editingId === s.id ? (
+          <>
+            <input
+              className="source-edit"
+              type="text"
+              aria-label={`Stage for ${s.stage} limit`}
+              maxLength={MAX_STAGE_NAME}
+              autoFocus
+              value={list.editDraft.stage}
+              onChange={(e) => list.setEditDraft({ stage: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') list.saveEdit(s.id);
+                if (e.key === 'Escape') list.cancelEdit();
+              }}
+            />
+            <input
+              className="band-years-edit"
+              aria-label={`Warn after (days) for ${s.stage} limit`}
+              type="number"
+              min={1}
+              max={maxDays}
+              step={1}
+              value={list.editDraft.days}
+              onChange={(e) => list.setEditDraft({ days: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') list.saveEdit(s.id);
+                if (e.key === 'Escape') list.cancelEdit();
+              }}
+            />
+            <button
+              className="btn primary"
+              onClick={() => list.saveEdit(s.id)}
+              disabled={list.pending}
+            >
+              Save
+            </button>
+            <button
+              className="btn"
+              onClick={list.cancelEdit}
+              disabled={list.pending}
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <>
+            <span className="email-addr">
+              {s.stage}{' '}
+              <span className="band-threshold">
+                · warn after {s.maxDays} day{s.maxDays === 1 ? '' : 's'}
+              </span>
+            </span>
+            <button
+              className="btn"
+              onClick={() =>
+                list.startEdit(s.id, {
+                  stage: s.stage,
+                  days: String(s.maxDays)
+                })
+              }
+              disabled={list.pending}
+              aria-label={`Edit ${s.stage} limit`}
+            >
+              Edit
+            </button>
+            <button
+              className="btn"
+              onClick={() => list.remove(s.id)}
+              disabled={list.pending}
+              aria-label={`Remove ${s.stage} limit`}
+            >
+              Remove
+            </button>
+          </>
+        )
+      }
+    />
   );
 }

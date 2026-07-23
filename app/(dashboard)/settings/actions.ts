@@ -12,6 +12,7 @@ import { and, eq, ne, sql } from 'drizzle-orm';
 import { db, candidates, users } from '@/lib/db';
 import { sources, seniorityBands, stageSlas } from '@/lib/schema/hiring';
 import { MAX_YEARS_EXPERIENCE, MAX_SLA_DAYS } from '@/lib/hiring/primitives';
+import { MAX_STAGE_NAME } from '@/lib/hiring/helpers/stages';
 import { auth } from '@/lib/auth';
 import type { SettingsResult } from '@/lib/settings-types';
 
@@ -19,9 +20,9 @@ const zId = z.number().int().positive();
 const zSourceName = z.string().trim().min(1).max(40);
 const zBandLabel = z.string().trim().min(1).max(40);
 const zMinYears = z.number().int().min(0).max(MAX_YEARS_EXPERIENCE);
-// A stage limit's stage name (matches the board's MAX_STAGE_NAME bound) and its
-// day threshold (at least a day, at most MAX_SLA_DAYS).
-const zStageSlaName = z.string().trim().min(1).max(48);
+// A stage limit's stage name (bounded by the same MAX_STAGE_NAME as the board's
+// stage list) and its day threshold (at least a day, at most MAX_SLA_DAYS).
+const zStageSlaName = z.string().trim().min(1).max(MAX_STAGE_NAME);
 const zMaxDays = z.number().int().min(1).max(MAX_SLA_DAYS);
 // First/last are optional (some people go by one name); each capped to the
 // column width. Trimmed before storing.
@@ -41,6 +42,24 @@ export type { SettingsResult };
 async function signedInUserId(): Promise<number | null> {
   const session = await auth();
   return Number(session?.user?.id) || null;
+}
+
+/**
+ * A Postgres unique-violation (SQLSTATE 23505). The rename/update actions below
+ * pre-check for a name clash with a SELECT, but that read-then-write has a TOCTOU
+ * window: two concurrent renames to the same name both pass the SELECT, then the
+ * second UPDATE trips the case-insensitive unique index. Catching that lets the
+ * action return the same graceful "already exists" result instead of throwing an
+ * unhandled 500 — the DB stays the source of truth, the pre-check just improves
+ * the common-case message.
+ */
+function isUniqueViolation(e: unknown): boolean {
+  return (
+    typeof e === 'object' &&
+    e !== null &&
+    'code' in e &&
+    (e as { code?: unknown }).code === '23505'
+  );
 }
 
 /* ---------- Current account profile ---------- */
@@ -130,7 +149,14 @@ export async function renameSource(
   if (clash) {
     return { ok: false, error: 'That source already exists.' };
   }
-  await db.update(sources).set({ name }).where(eq(sources.id, id));
+  try {
+    await db.update(sources).set({ name }).where(eq(sources.id, id));
+  } catch (e) {
+    if (isUniqueViolation(e)) {
+      return { ok: false, error: 'That source already exists.' };
+    }
+    throw e;
+  }
   revalidatePath('/settings');
   return { ok: true };
 }
@@ -229,10 +255,17 @@ export async function updateBand(
   if (clash) {
     return { ok: false, error: 'A band with that threshold already exists.' };
   }
-  await db
-    .update(seniorityBands)
-    .set({ label, minYears })
-    .where(eq(seniorityBands.id, id));
+  try {
+    await db
+      .update(seniorityBands)
+      .set({ label, minYears })
+      .where(eq(seniorityBands.id, id));
+  } catch (e) {
+    if (isUniqueViolation(e)) {
+      return { ok: false, error: 'A band with that threshold already exists.' };
+    }
+    throw e;
+  }
   revalidatePath('/settings');
   return { ok: true };
 }
@@ -272,7 +305,7 @@ export async function addStageSla(
   } catch {
     return {
       ok: false,
-      error: `Enter a stage name (1–48 chars) and a limit of 1–${MAX_SLA_DAYS} days.`
+      error: `Enter a stage name (1–${MAX_STAGE_NAME} chars) and a limit of 1–${MAX_SLA_DAYS} days.`
     };
   }
   const inserted = await db
@@ -308,7 +341,7 @@ export async function updateStageSla(
   } catch {
     return {
       ok: false,
-      error: `Enter a stage name (1–48 chars) and a limit of 1–${MAX_SLA_DAYS} days.`
+      error: `Enter a stage name (1–${MAX_STAGE_NAME} chars) and a limit of 1–${MAX_SLA_DAYS} days.`
     };
   }
   const [clash] = await db
@@ -321,10 +354,17 @@ export async function updateStageSla(
   if (clash) {
     return { ok: false, error: 'That stage already has a time limit.' };
   }
-  await db
-    .update(stageSlas)
-    .set({ stage, maxDays })
-    .where(eq(stageSlas.id, id));
+  try {
+    await db
+      .update(stageSlas)
+      .set({ stage, maxDays })
+      .where(eq(stageSlas.id, id));
+  } catch (e) {
+    if (isUniqueViolation(e)) {
+      return { ok: false, error: 'That stage already has a time limit.' };
+    }
+    throw e;
+  }
   revalidatePath('/settings');
   return { ok: true };
 }

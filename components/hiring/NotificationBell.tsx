@@ -100,7 +100,7 @@ export default function NotificationBell({
       <Button
         variant="app"
         className="notif-btn"
-        aria-label={`Notifications${badgeCount ? ` (${badgeCount} unread)` : ''}`}
+        aria-label={`Notifications${badgeCount ? ` (${badgeCount} new)` : ''}`}
         {...menu.triggerProps}
       >
         <Bell size={16} aria-hidden />
