@@ -6,12 +6,14 @@ import 'server-only';
 // module (or the facade) does not construct the postgres client or require
 // DATABASE_URL — a unit test that injects a fake reader never touches Postgres.
 //
-// Each cacheable read is wrapped in `unstable_cache` under a per-entity tag, so
-// the board's jobs and candidates are served from the Data Cache instead of
-// hitting Postgres on every request. The matching server action revalidates only
-// the tag(s) it mutated (see ../actions), so a candidate edit never forces the
-// jobs list to be re-queried, and vice-versa. Only this production reader is
-// cached — a test-injected `BoardReader` runs uncached and untouched.
+// Every read is wrapped in `unstable_cache` under a per-entity tag, so the
+// board's data — jobs, candidates, and the users/sources/bands lookup lists — is
+// served from the Data Cache instead of hitting Postgres on every request. Each
+// write site revalidates only the tag(s) it mutated (board rows in ../actions;
+// lookups in the /settings actions and the registration route), so a candidate
+// edit never forces the jobs list to be re-queried, a source rename never
+// re-queries users, and so on. Only this production reader is cached — a
+// test-injected `BoardReader` runs uncached and untouched.
 
 import { unstable_cache } from 'next/cache';
 import { BOARD_TAGS } from '../cache';
@@ -58,33 +60,53 @@ export const drizzleReader: BoardReader = {
     ['board:candidates'],
     { tags: [BOARD_TAGS.candidates] }
   ),
-  // Users are read fresh (uncached): a brand-new sign-up must be selectable as
-  // an owner/interviewer on the very next board render, with no tag to
-  // invalidate from the registration path.
-  loadUsers: async (): Promise<User[]> => {
-    const { db } = await import('@/lib/db');
-    return db.query.users.findMany({
-      columns: { id: true, firstName: true, lastName: true, email: true },
-      orderBy: (u, { asc }) => [asc(u.firstName), asc(u.lastName), asc(u.email)]
-    });
-  },
-  // Sources are read fresh (uncached) too, so a newly seeded source is picker-
-  // ready on the next render — same rationale as loadUsers.
-  loadSources: async (): Promise<Source[]> => {
-    const { db } = await import('@/lib/db');
-    return db.query.sources.findMany({
-      columns: { id: true, name: true },
-      orderBy: (s, { asc }) => [asc(s.name)]
-    });
-  },
-  // Bands are read fresh (uncached) so an edit in /settings is reflected on the
-  // next board render. Ordered high-to-low so seniorityFor's first-match scan is
-  // correct without a client-side re-sort.
-  loadBands: async (): Promise<SeniorityBand[]> => {
-    const { db } = await import('@/lib/db');
-    return db.query.seniorityBands.findMany({
-      columns: { id: true, label: true, minYears: true },
-      orderBy: (b, { desc }) => [desc(b.minYears)]
-    });
-  }
+  // The owner/interviewer picklist. Cached under `board:users`: a brand-new
+  // sign-up (app/api/register) and a name edit (/settings updateProfile) each
+  // revalidate this tag, so a new/renamed account is selectable on the very next
+  // board render — the same guarantee the previous uncached read gave, now
+  // without a fresh query on every render.
+  loadUsers: unstable_cache(
+    async (): Promise<User[]> => {
+      const { db } = await import('@/lib/db');
+      return db.query.users.findMany({
+        columns: { id: true, firstName: true, lastName: true, email: true },
+        orderBy: (u, { asc }) => [
+          asc(u.firstName),
+          asc(u.lastName),
+          asc(u.email)
+        ]
+      });
+    },
+    ['board:users'],
+    { tags: [BOARD_TAGS.users] }
+  ),
+  // The candidate-source picklist. Cached under `board:sources`; the source
+  // mutations in /settings revalidate this tag, so an added/renamed/removed
+  // source is picker-ready on the next render.
+  loadSources: unstable_cache(
+    async (): Promise<Source[]> => {
+      const { db } = await import('@/lib/db');
+      return db.query.sources.findMany({
+        columns: { id: true, name: true },
+        orderBy: (s, { asc }) => [asc(s.name)]
+      });
+    },
+    ['board:sources'],
+    { tags: [BOARD_TAGS.sources] }
+  ),
+  // The seniority bands. Cached under `board:bands`; the band mutations in
+  // /settings revalidate this tag, so an edit is reflected on the next board
+  // render. Ordered high-to-low so seniorityFor's first-match scan is correct
+  // without a client-side re-sort.
+  loadBands: unstable_cache(
+    async (): Promise<SeniorityBand[]> => {
+      const { db } = await import('@/lib/db');
+      return db.query.seniorityBands.findMany({
+        columns: { id: true, label: true, minYears: true },
+        orderBy: (b, { desc }) => [desc(b.minYears)]
+      });
+    },
+    ['board:bands'],
+    { tags: [BOARD_TAGS.bands] }
+  )
 };

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { registerUser } from '@/lib/registration';
 import { normalizeEmail } from '@/lib/allowlist';
+import { BOARD_TAGS } from '@/lib/hiring/cache';
 import {
   clientIp,
   registerIpLimiter,
@@ -53,6 +55,18 @@ export async function POST(request: Request) {
         { error: result.error },
         { status: result.status }
       );
+    }
+
+    // A newly created account joins the board's owner/interviewer picklist,
+    // which is served from the Data Cache (lib/hiring/service/reader.ts
+    // `loadUsers`, tagged `board:users`). Invalidate it so the new user is
+    // selectable on the
+    // next board render. Gated on `created` so allowlist-miss / duplicate — which
+    // change nothing — don't needlessly bust the cache; this stays server-side
+    // and is never surfaced in the (uniform) response, so the enumeration
+    // guarantee below is unaffected.
+    if (result.created) {
+      revalidateTag(BOARD_TAGS.users);
     }
 
     // Uniform response across allowlist-miss / duplicate / success. Never echo
