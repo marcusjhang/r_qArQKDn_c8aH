@@ -1,8 +1,9 @@
-// Pure helpers for resolving and labelling users and sources. Names are stored
-// as discrete parts (see lib/schema/auth.ts); the combined display forms are
-// derived here, never persisted.
+// User / source lookups and the derived display forms (name, initials).
+//
+// Names are stored as discrete parts (see lib/schema/auth.ts); the combined
+// label, initials, and any id/email resolution are derived here, never stored.
 
-import type { Source, User } from '../model/types';
+import type { Source, User } from '../types';
 
 /** Find a user in the board's user list by id (owner / feedback author). */
 export function userById(users: User[], id: number): User | undefined {
@@ -12,6 +13,20 @@ export function userById(users: User[], id: number): User | undefined {
 /** Display name for a candidate's source id, falling back when unknown. */
 export function sourceName(sources: Source[], id: number): string {
   return sources.find((s) => s.id === id)?.name ?? 'Unknown';
+}
+
+/**
+ * Resolve a signed-in user's numeric id from their email against the board's
+ * user list, or null when unknown/absent. Used client-side to default the
+ * feedback author to whoever is actually leaving the review — the authoritative
+ * author is still derived server-side (see actions), never from this.
+ */
+export function findUserIdByEmail(
+  users: User[],
+  email: string | null | undefined
+): number | null {
+  if (!email) return null;
+  return users.find((u) => u.email === email)?.id ?? null;
 }
 
 /** The name fields display helpers read — a structural subset of `User`, so

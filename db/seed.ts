@@ -17,7 +17,7 @@ import {
   SEED_CANDIDATES,
   SEED_SOURCES,
   SEED_SENIORITY_BANDS
-} from '../lib/hiring/model/seed';
+} from '../lib/hiring/seed';
 
 const SEED_ALLOWED_EMAILS = [
   'benchan@lightsprint.ai',

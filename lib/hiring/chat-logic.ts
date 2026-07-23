@@ -12,14 +12,14 @@ import 'server-only';
 // logic free of the request-scoped session so tests can drive it directly.
 
 import { z } from 'zod';
-import { displayName, initials } from '../helpers';
-import { zId } from '../core/schemas';
+import { displayName, initials } from './helpers';
+import { zId } from './schemas';
 import {
   drizzleChatStore,
   type ChatStore,
   type MessageRow
-} from './store';
-import type { ChatMessage, Notification } from '../model/types';
+} from './chat-store';
+import type { ChatMessage, Notification } from './types';
 
 const zBody = z.string().trim().min(1).max(4000);
 const zMentionIds = z.array(z.number().int().positive()).max(50);

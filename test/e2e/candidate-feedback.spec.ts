@@ -9,7 +9,7 @@ import { loginToBoard, openCandidate } from './helpers';
 // list (FeedbackList) optimistically and persists it (store.addFeedback).
 //
 // Uses seeded candidate "Tom Alvarez" (Founding Engineer) who has NO feedback
-// yet, so the signed-in user can still review. See lib/hiring/model/seed.ts.
+// yet, so the signed-in user can still review. See lib/hiring/seed.ts.
 const CANDIDATE = 'Tom Alvarez';
 
 test.describe('add feedback to a candidate', () => {

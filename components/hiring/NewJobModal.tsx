@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { DEFAULT_STAGES } from '@/lib/hiring';
+import { Button } from '@/components/ui/button';
 import Modal from './Modal';
 
 export default function NewJobModal({
@@ -51,12 +52,12 @@ export default function NewJobModal({
         </p>
         {error && <div className="form-error">{error}</div>}
         <div className="modal-actions">
-          <button type="button" className="btn" onClick={onClose}>
+          <Button type="button" variant="app" onClick={onClose}>
             Cancel
-          </button>
-          <button type="submit" className="btn primary">
+          </Button>
+          <Button type="submit" variant="appPrimary">
             Create job
-          </button>
+          </Button>
         </div>
       </form>
     </Modal>

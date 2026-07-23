@@ -1,10 +1,9 @@
-// Pure text helpers for the chat feature: the @-mention autocomplete the
-// composer drives and the short timestamp shared by the chat and notification
-// UIs. Framework-free so they can be unit-tested without a DOM (see
-// chat-mentions.test.ts).
+// Chat @-mention text rules: detecting a mention token, driving the composer's
+// autocomplete, and building the highlight pattern the thread renders with.
+// Pure string/regex logic, kept out of the chat components so it stays testable.
 
 import { displayName } from './users';
-import type { User } from '../model/types';
+import type { User } from '../types';
 
 /** Short, locale-friendly timestamp shared by the chat and notification UIs. */
 export function formatMessageTime(iso: string): string {
@@ -16,17 +15,34 @@ export function formatMessageTime(iso: string): string {
   });
 }
 
+/** Escape a string for safe embedding in a RegExp. */
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /**
  * Whether an `@name` mention token for `name` appears in `text` as a whole
  * token — i.e. not immediately followed by another name character. This stops
  * a shorter name ("Ann") from matching inside a longer one's token ("@Anna").
  */
 export function mentionPresent(text: string, name: string): boolean {
-  const re = new RegExp(
-    '@' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\p{L}\\d])',
-    'u'
-  );
+  const re = new RegExp('@' + escapeRe(name) + '(?![\\p{L}\\d])', 'u');
   return re.test(text);
+}
+
+/**
+ * A global regex matching the `@name` tokens for any of `names`, longest name
+ * first so "@Ben Ong" wins over "@Ben"; the trailing boundary stops "@Ben"
+ * lighting up inside "@Bennett" or adjacent text. Returns null when there are
+ * no names to highlight. Used by the chat thread to wrap tagged mentions.
+ */
+export function mentionHighlightPattern(names: string[]): RegExp | null {
+  if (!names.length) return null;
+  const alternation = names
+    .map(escapeRe)
+    .sort((a, b) => b.length - a.length)
+    .join('|');
+  return new RegExp('@(' + alternation + ')(?![\\p{L}\\d])', 'gu');
 }
 
 /**

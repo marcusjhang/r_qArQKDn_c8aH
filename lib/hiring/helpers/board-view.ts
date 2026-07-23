@@ -1,32 +1,15 @@
-// Pure board-view derivations: functions that turn the raw board state into the
-// numbers, labels, orderings and affordances the UI renders — column contents,
-// per-job tallies, the job-switcher layout, and rating chips. Kept here (rather
-// than inline in the components) so the derivations are unit-testable on their
-// own, the same reason the stage/placement rules were centralized in `stages`.
+// Board view derivations.
+//
+// Pure functions that turn the raw board state into the numbers, labels and
+// orderings the UI renders — column contents, per-job tallies, the rating chip,
+// drawer navigation, and the job-tab layout. Kept here (rather than inline in
+// the components) so the derivations are unit-testable on their own.
 
-import type { Candidate, Job, RatingValue } from '../model/types';
+import { agg, isHiddenByDefault, isTerminal } from './candidate-status';
+import type { Candidate, Job, RatingValue } from '../types';
 
 /** At most this many jobs can be favorited (pinned as inline tabs). */
 export const MAX_FAVORITES = 3;
-
-/** Rejected and Hired are terminal — they're not part of the active pipeline. */
-export function isTerminal(c: Candidate): boolean {
-  return c.status === 'rejected' || c.status === 'hired';
-}
-
-/**
- * Only rejected candidates are hidden from the board by default. Hired
- * candidates stay visible in the Hired column (that's what it's for).
- */
-export function isHiddenByDefault(c: Candidate): boolean {
-  return c.status === 'rejected';
-}
-
-/** Aggregate rating for a candidate, or null when there is no feedback yet. */
-export function agg(c: Candidate): number | null {
-  if (!c.feedback.length) return null;
-  return c.feedback.reduce((a, f) => a + f.rating, 0) / c.feedback.length;
-}
 
 /**
  * The candidates rendered in one column: this stage's candidates, hiding

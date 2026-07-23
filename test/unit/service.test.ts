@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { getBoard, hiringService, type BoardReader } from '@/lib/hiring/core/service';
+import { getBoard, hiringService, type BoardReader } from '@/lib/hiring/service';
 import type {
   Candidate,
   Job,
   User,
   Source,
   SeniorityBand
-} from '@/lib/hiring/model/types';
+} from '@/lib/hiring/types';
 
 // Because getBoard reads through an injected BoardReader (rather than the db
 // singleton), it can be exercised with in-memory rows — no database, no

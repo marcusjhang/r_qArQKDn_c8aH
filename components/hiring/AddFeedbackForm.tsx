@@ -9,6 +9,7 @@
 // component is the presentational shell around that hook.
 
 import { RATINGS, type RatingValue } from '@/lib/hiring';
+import { Button } from '@/components/ui/button';
 import { useFeedbackDraft, type FeedbackEntry } from './useFeedbackDraft';
 
 const RATING_ORDER: RatingValue[] = [1, 2, 3, 4];
@@ -64,9 +65,9 @@ export default function AddFeedbackForm({
         />
       </div>
       {fb.error && <div className="form-error">{fb.error}</div>}
-      <button className="btn primary" onClick={() => fb.submit()}>
+      <Button variant="appPrimary" onClick={() => fb.submit()}>
         Add feedback
-      </button>
+      </Button>
     </div>
   );
 }

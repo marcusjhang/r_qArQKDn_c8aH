@@ -7,7 +7,7 @@ import { loginToBoard, openCandidate } from './helpers';
 // candidate so the thread "follows the applicant". We also exercise the
 // @-mention autocomplete, which tags a teammate.
 //
-// Uses seeded candidate "Ava Chen" (Founding Engineer). See lib/hiring/model/seed.ts.
+// Uses seeded candidate "Ava Chen" (Founding Engineer). See lib/hiring/seed.ts.
 const CANDIDATE = 'Ava Chen';
 
 test.describe('candidate discussion chat', () => {

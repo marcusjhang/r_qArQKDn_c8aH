@@ -1,76 +1,10 @@
-// Pure helpers for the candidate add/edit draft: profile-URL and years-of-
-// experience normalization, the shared draft shape, its validation and
-// dirty-check, and the seniority-band lookup derived from years. Shared by the
-// add-candidate modal and the detail/edit form so the two can't drift, and by
-// the server action's mirror rules.
+// The editable-candidate draft: the raw form shape shared by the add-candidate
+// modal and the edit/detail form, plus the validation and dirty-check the two
+// share so their rules (and error copy) can't drift.
 
-import { MAX_YEARS_EXPERIENCE } from '../model/primitives';
-import type { Candidate, SeniorityBand, Source, User } from '../model/types';
-
-/** Max length of a profile URL (kept in sync with the zProfileUrl bound). */
-export const MAX_PROFILE_URL = 500;
-
-/** Placeholder hints for the optional profile-link inputs, shared by the add-
- * and edit-candidate forms so the two can't drift. */
-export const LINKEDIN_URL_PLACEHOLDER = 'https://www.linkedin.com/in/…';
-export const GITHUB_URL_PLACEHOLDER = 'https://github.com/…';
-
-/**
- * Client-side mirror of the server's zProfileUrl rule: a blank/whitespace value
- * is a valid "no link" (→ null); anything else must be an http(s) URL of at
- * most MAX_PROFILE_URL characters. Shared by the add- and edit-candidate forms
- * so their validation can't drift from the server action.
- */
-export function normalizeProfileUrl(raw: string): {
-  ok: boolean;
-  value: string | null;
-} {
-  const trimmed = raw.trim();
-  if (!trimmed) return { ok: true, value: null };
-  if (trimmed.length > MAX_PROFILE_URL || !/^https?:\/\//i.test(trimmed)) {
-    return { ok: false, value: null };
-  }
-  try {
-    new URL(trimmed);
-    return { ok: true, value: trimmed };
-  } catch {
-    return { ok: false, value: null };
-  }
-}
-
-/**
- * Seniority band label for a candidate's years of experience against the
- * configurable `bands` (from board state / DB), or null when experience is
- * unspecified or no band's threshold is met. Bands are scanned high-to-low so
- * the highest threshold the value meets wins, regardless of input order.
- */
-export function seniorityFor(
-  bands: SeniorityBand[],
-  years: number | null | undefined
-): string | null {
-  if (years == null) return null;
-  return [...bands]
-    .sort((a, b) => b.minYears - a.minYears)
-    .find((b) => years >= b.minYears)?.label ?? null;
-}
-
-/**
- * Parse a years-of-experience text input into the value we persist. Empty =
- * unspecified (null). Shared by the add-candidate modal and the detail drawer
- * so both enforce the same rule (whole number, 0…MAX_YEARS_EXPERIENCE).
- */
-export function parseYearsInput(raw: string): {
-  value: number | null;
-  ok: boolean;
-} {
-  const trimmed = raw.trim();
-  if (trimmed === '') return { value: null, ok: true };
-  const n = Number(trimmed);
-  if (!Number.isInteger(n) || n < 0 || n > MAX_YEARS_EXPERIENCE) {
-    return { value: null, ok: false };
-  }
-  return { value: n, ok: true };
-}
+import { normalizeProfileUrl } from './profile-urls';
+import { parseYearsInput, yearsToText, MAX_YEARS_EXPERIENCE } from './seniority';
+import type { Candidate, Source, User } from '../types';
 
 /**
  * The editable candidate fields, as raw form strings/ids. Shared by the add-
@@ -85,11 +19,6 @@ export interface CandidateDraft {
   linkedin: string;
   github: string;
   years: string;
-}
-
-/** Canonical text form of a stored years value (null → empty string). */
-export function yearsToText(years: number | null | undefined): string {
-  return years == null ? '' : String(years);
 }
 
 /**

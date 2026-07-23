@@ -1,23 +1,17 @@
-// Barrel for the pure, framework-free hiring helpers, split by concern so each
-// module stays small and focused:
-//   - users       : user / source lookup and display name / initials
-//   - mentions    : @-mention autocomplete + the shared message timestamp
-//   - candidate   : candidate-draft normalization / validation + seniority
-//   - stages      : stage-list rules and the coupled (stage, status) placement
-//   - board-view  : board derivations (column contents, tallies, tabs, ratings)
+// Barrel for the pure, framework-free hiring helpers.
 //
-// Re-exported here so consumers keep importing from `@/lib/hiring/helpers`
-// (and, transitively, from the `@/lib/hiring` barrel) with no knowledge of the
-// split. When adding a new pure rule, put it in the module it belongs to — not
-// inline in `actions.ts`, `store.ts`, or a component — so it stays testable and
-// shared across layers.
+// The helpers were split by concern into the sibling modules below (users,
+// profile URLs, chat mentions, seniority, candidate drafts, candidate status,
+// stage mutations, board-view derivations). This barrel preserves the single
+// `@/lib/hiring/helpers` import path — and the re-export through `@/lib/hiring`
+// — so consumers never reach into an individual module and the grouping can be
+// re-shaped without a churn of import rewrites.
 
 export * from './users';
+export * from './profile-urls';
 export * from './mentions';
-export * from './candidate';
+export * from './seniority';
+export * from './candidate-draft';
+export * from './candidate-status';
 export * from './stages';
 export * from './board-view';
-
-// Re-exported from primitives (the single source) so components importing from
-// the `@/lib/hiring` barrel get the bound alongside the seniority helpers.
-export { MAX_YEARS_EXPERIENCE } from '../model/primitives';

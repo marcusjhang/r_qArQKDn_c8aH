@@ -16,7 +16,7 @@ export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   // The account's name, stored as discrete parts and editable from /settings.
   // The display name and avatar initials are derived from these (never stored):
-  // see lib/hiring/helpers `displayName` / `initials`.
+  // see lib/hiring/helpers.ts `displayName` / `initials`.
   firstName: varchar('first_name', { length: 50 }),
   lastName: varchar('last_name', { length: 50 }),
   email: varchar('email', { length: 255 }).notNull().unique(),

@@ -2,7 +2,7 @@
 // settings top bars so they stay consistent. Plain (non-client) component —
 // just markup — safe to render inside the client shells.
 
-import { APP_NAME } from '@/lib/hiring/model/config';
+import { APP_NAME } from '@/lib/hiring/config';
 
 export default function Brand({ subtitle }: { subtitle: string }) {
   return (

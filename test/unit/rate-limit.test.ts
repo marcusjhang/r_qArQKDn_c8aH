@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   RateLimiter,
   InMemoryRateLimitStore,
@@ -110,33 +110,31 @@ describe('PostgresRateLimitStore', () => {
 });
 
 describe('createDefaultStore', () => {
-  const original = { ...process.env };
-  afterEach(() => {
-    process.env = { ...original };
-  });
-
+  // The environment is passed as a structured override object, so these cases
+  // never read or mutate the global process.env (which would leak across tests).
   it('honors RATE_LIMIT_STORE=memory even when DATABASE_URL is set', () => {
-    process.env.RATE_LIMIT_STORE = 'memory';
-    process.env.DATABASE_URL = 'postgres://x';
-    expect(createDefaultStore()).toBeInstanceOf(InMemoryRateLimitStore);
+    expect(
+      createDefaultStore({
+        RATE_LIMIT_STORE: 'memory',
+        DATABASE_URL: 'postgres://x'
+      })
+    ).toBeInstanceOf(InMemoryRateLimitStore);
   });
 
   it('honors RATE_LIMIT_STORE=postgres', () => {
-    process.env.RATE_LIMIT_STORE = 'postgres';
-    delete process.env.DATABASE_URL;
-    expect(createDefaultStore()).toBeInstanceOf(PostgresRateLimitStore);
+    expect(
+      createDefaultStore({ RATE_LIMIT_STORE: 'postgres' })
+    ).toBeInstanceOf(PostgresRateLimitStore);
   });
 
   it('uses Postgres when DATABASE_URL is set and no override', () => {
-    delete process.env.RATE_LIMIT_STORE;
-    process.env.DATABASE_URL = 'postgres://x';
-    expect(createDefaultStore()).toBeInstanceOf(PostgresRateLimitStore);
+    expect(
+      createDefaultStore({ DATABASE_URL: 'postgres://x' })
+    ).toBeInstanceOf(PostgresRateLimitStore);
   });
 
   it('falls back to in-memory with no DATABASE_URL and no override', () => {
-    delete process.env.RATE_LIMIT_STORE;
-    delete process.env.DATABASE_URL;
-    expect(createDefaultStore()).toBeInstanceOf(InMemoryRateLimitStore);
+    expect(createDefaultStore({})).toBeInstanceOf(InMemoryRateLimitStore);
   });
 });
 

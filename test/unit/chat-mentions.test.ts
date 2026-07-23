@@ -2,9 +2,10 @@ import { describe, it, expect } from 'vitest';
 import {
   activeMention,
   mentionSuggestions,
-  mentionPresent
+  mentionPresent,
+  mentionHighlightPattern
 } from '@/lib/hiring/helpers';
-import type { User } from '@/lib/hiring/model/types';
+import type { User } from '@/lib/hiring/types';
 
 const users: User[] = [
   { id: 1, firstName: 'Ben', lastName: 'Ong', email: 'benong@x.io' },
@@ -74,5 +75,30 @@ describe('mentionPresent', () => {
 
   it('does not match a shorter name inside a longer token', () => {
     expect(mentionPresent('hey @Bennett', 'Ben')).toBe(false);
+  });
+});
+
+describe('mentionHighlightPattern', () => {
+  it('returns null when there are no names to highlight', () => {
+    expect(mentionHighlightPattern([])).toBeNull();
+  });
+
+  it('matches the longest name first (@Ben Ong over @Ben)', () => {
+    const re = mentionHighlightPattern(['Ben', 'Ben Ong']);
+    const m = 'ping @Ben Ong now'.match(re!);
+    expect(m?.[0]).toBe('@Ben Ong');
+  });
+
+  it('does not light up a name inside a longer token', () => {
+    const re = mentionHighlightPattern(['Ben']);
+    expect(re!.test('@Bennett shipped it')).toBe(false);
+  });
+
+  it('escapes regex metacharacters in names', () => {
+    const re = mentionHighlightPattern(['a.b']);
+    expect(re!.test('@a.b')).toBe(true);
+    // The '.' must be literal, not a wildcard.
+    re!.lastIndex = 0;
+    expect(re!.test('@axb')).toBe(false);
   });
 });

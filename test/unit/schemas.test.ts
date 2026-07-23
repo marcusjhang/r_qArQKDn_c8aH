@@ -14,12 +14,12 @@ import {
   candidateInsertSchema,
   candidateEditSchema,
   feedbackInsertSchema
-} from '@/lib/hiring/core/schemas';
+} from '@/lib/hiring/schemas';
 import {
   STATUSES,
   RATING_VALUES,
   MAX_YEARS_EXPERIENCE
-} from '@/lib/hiring/model/primitives';
+} from '@/lib/hiring/primitives';
 
 describe('zId', () => {
   it('accepts positive integers, including large ones', () => {

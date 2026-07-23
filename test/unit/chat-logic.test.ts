@@ -7,9 +7,9 @@ import {
   markAllNotificationsReadWith,
   markNotificationReadWith,
   postMessageWith
-} from '@/lib/hiring/chat/logic';
-import type { ChatStore, MessageRow } from '@/lib/hiring/chat/store';
-import type { Notification } from '@/lib/hiring/model/types';
+} from '@/lib/hiring/chat-logic';
+import type { ChatStore, MessageRow } from '@/lib/hiring/chat-store';
+import type { Notification } from '@/lib/hiring/types';
 
 // The chat logic reads and writes through an injectable ChatStore (rather than
 // the db singleton), so it can be exercised against an in-memory fake — no

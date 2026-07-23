@@ -6,7 +6,7 @@ into `drizzle/` from `lib/schema/` — do not author schema here.
 - `migrate.ts` — applies pending migrations from `drizzle/`.
 - `seed.ts` — seeds demo data (the login user + hiring board). Keep it in sync
   with schema/column changes; hiring seed content is shared with
-  `lib/hiring/model/seed.ts`.
+  `lib/hiring/seed.ts`.
 
 Run via bun (scripts use `tsx`):
 

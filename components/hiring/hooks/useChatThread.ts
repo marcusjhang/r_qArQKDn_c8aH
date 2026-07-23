@@ -1,12 +1,19 @@
 'use client';
 
 // The per-applicant discussion thread's state + behaviour, extracted from
-// ChatPanel so the component stays presentational. Owns: loading/holding the
-// message list for the open candidate (with a token that ignores a slow fetch
-// resolving after a candidate switch), the compose draft + optimistic send with
-// rollback, and the @-mention autocomplete state (active token, tagged-account
-// set, caret restoration after an insertion). The component supplies the refs'
-// attachment points and renders what the hook exposes.
+// ChatPanel so the component stays presentational.
+//
+// The message list is a TanStack Query cache keyed by candidate id: switching
+// candidates switches the key, so a slow fetch resolving after the user moved
+// on is ignored automatically (no manual request token), and the loading flag
+// is the query's own. Sending a message is a `useMutation` with the standard
+// optimistic lifecycle — append a temp row in `onMutate`, swap it for the
+// server row in `onSuccess`, roll back and restore the draft in `onError` (a
+// null result, meaning the server rejected the post, is treated as a failure).
+//
+// The compose draft (`body`), the picked @-mention set (`tagged`), the
+// autocomplete menu, and caret restoration are pure local UI state and stay in
+// component state.
 
 import {
   useCallback,
@@ -15,7 +22,9 @@ import {
   useRef,
   useState
 } from 'react';
-import { loadThread, postMessage } from '@/lib/hiring/chat/actions';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { loadThread, postMessage } from '@/lib/hiring/chat-actions';
+import { hiringKeys } from '@/lib/hiring/query-keys';
 import {
   activeMention,
   displayName,
@@ -23,7 +32,16 @@ import {
   mentionPresent,
   mentionSuggestions
 } from '@/lib/hiring/helpers';
-import type { ChatMessage, User } from '@/lib/hiring/model/types';
+import type { ChatMessage, User } from '@/lib/hiring/types';
+
+/** Variables for an optimistic send. */
+interface SendVars {
+  candidateId: number;
+  text: string;
+  mentionIds: number[];
+  optimistic: ChatMessage;
+  temp: number;
+}
 
 export function useChatThread({
   candidateId,
@@ -38,15 +56,13 @@ export function useChatThread({
   users: User[];
   focusMessageId?: number | null;
 }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
   const [body, setBody] = useState('');
   // Accounts the author has picked from the @-autocomplete for this draft.
   const [tagged, setTagged] = useState<Set<number>>(new Set());
   const [menu, setMenu] = useState<{ start: number; query: string } | null>(
     null
   );
-  const [sending, setSending] = useState(false);
 
   const taRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -57,28 +73,24 @@ export function useChatThread({
   // the scroll position on later renders (e.g. after sending a new message).
   const handledFocus = useRef<number | null>(null);
 
-  // Load the thread whenever a different candidate opens. A token guards
-  // against a slow fetch resolving after the user switched candidates.
-  const loadToken = useRef(0);
+  // The thread for the open candidate. Keyed by candidate id, so switching
+  // candidates switches the cache slice — a fetch that resolves after the user
+  // moved on lands on a key nobody is reading, and cannot clobber the new view.
+  const { data: messages = [], isLoading } = useQuery({
+    queryKey: hiringKeys.chat(candidateId ?? 0),
+    queryFn: () => loadThread(candidateId as number),
+    enabled: candidateId != null,
+    staleTime: Infinity
+  });
+  const loading = candidateId != null && isLoading;
+
+  // Reset the compose draft when a different candidate opens (the message list
+  // itself is per-candidate via the query key).
   useEffect(() => {
-    if (candidateId == null) return;
-    const token = ++loadToken.current;
-    setLoading(true);
-    setMessages([]);
     setBody('');
     setTagged(new Set());
     setMenu(null);
     handledFocus.current = null;
-    loadThread(candidateId)
-      .then((rows) => {
-        if (loadToken.current === token) setMessages(rows);
-      })
-      .catch(() => {
-        /* leave empty; a resend or reopen will retry */
-      })
-      .finally(() => {
-        if (loadToken.current === token) setLoading(false);
-      });
   }, [candidateId]);
 
   // Scroll behaviour: when opened from a notification, scroll the tagged
@@ -142,6 +154,43 @@ export function useChatThread({
     ? mentionSuggestions(users, menu.query, currentUserId)
     : [];
 
+  // Optimistic send. onMutate appends the temp row; onSuccess swaps in the saved
+  // row (or rolls back + restores the draft if the server rejected the post);
+  // onError rolls back + restores the draft. Failure keeps the transcript
+  // truthful and never silently loses the author's text.
+  const { mutate: sendMessage, isPending: sending } = useMutation({
+    mutationFn: ({ candidateId, text, mentionIds }: SendVars) =>
+      postMessage(candidateId, text, mentionIds),
+    onMutate: async ({ candidateId, optimistic }: SendVars) => {
+      const key = hiringKeys.chat(candidateId);
+      await queryClient.cancelQueries({ queryKey: key });
+      const prev = queryClient.getQueryData<ChatMessage[]>(key);
+      queryClient.setQueryData<ChatMessage[]>(key, (m = []) => [
+        ...m,
+        optimistic
+      ]);
+      return { prev };
+    },
+    onSuccess: (saved, vars, ctx) => {
+      const key = hiringKeys.chat(vars.candidateId);
+      if (saved) {
+        queryClient.setQueryData<ChatMessage[]>(key, (m = []) =>
+          m.map((x) => (x.id === vars.temp ? saved : x))
+        );
+      } else {
+        queryClient.setQueryData<ChatMessage[]>(key, ctx?.prev ?? []);
+        setBody(vars.text);
+      }
+    },
+    onError: (_err, vars, ctx) => {
+      queryClient.setQueryData<ChatMessage[]>(
+        hiringKeys.chat(vars.candidateId),
+        ctx?.prev ?? []
+      );
+      setBody(vars.text);
+    }
+  });
+
   const send = useCallback(() => {
     const text = body.trim();
     if (!text || candidateId == null || currentUser == null || sending) return;
@@ -168,30 +217,11 @@ export function useChatThread({
       createdAt: new Date().toISOString(),
       mentions: mentionNames
     };
-    setMessages((m) => [...m, optimistic]);
     setBody('');
     setTagged(new Set());
     setMenu(null);
-    setSending(true);
-    const fail = () => {
-      // Drop the optimistic row and restore the draft so the transcript stays
-      // truthful and the user doesn't silently lose their message.
-      setMessages((m) => m.filter((x) => x.id !== temp));
-      setBody(text);
-    };
-    postMessage(candidateId, text, mentionIds)
-      .then((saved) => {
-        // A null result means the server rejected the post (e.g. the session
-        // could not be resolved) — treat it as a failure, not a no-op.
-        if (saved) {
-          setMessages((m) => m.map((x) => (x.id === temp ? saved : x)));
-        } else {
-          fail();
-        }
-      })
-      .catch(fail)
-      .finally(() => setSending(false));
-  }, [body, candidateId, currentUser, sending, tagged, users]);
+    sendMessage({ candidateId, text, mentionIds, optimistic, temp });
+  }, [body, candidateId, currentUser, sending, tagged, users, sendMessage]);
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {

@@ -1,10 +1,9 @@
-// Pure rules for a job's ordered stage list and the coupled (stage, status)
-// placement. These are the single source of truth shared by the board UI, the
-// optimistic client store, and the server actions, so all three layers compute
-// the same next-stages array and the same auto-hire coupling from one place and
-// can't disagree.
+// Stage-array rules for a job's pipeline: validation, add/rename/reorder/delete
+// mutations, and the coupled (stage, status) placement. Shared verbatim by the
+// board UI, the optimistic store, and the server actions so the three layers
+// compute the same next array from the same code and can't disagree.
 
-import type { Status } from '../model/types';
+import type { Status } from '../types';
 
 /** Max length of a stage name (kept in sync with the DB/zod bound). */
 export const MAX_STAGE_NAME = 48;
