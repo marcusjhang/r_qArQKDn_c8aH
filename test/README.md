@@ -77,10 +77,14 @@ test database and provides two isolation strategies:
   harness merely fell back to.
 
 When no database is reachable, the suites `describe.skipIf(!hasTestDatabase)`
-themselves, so the layer is safe to run anywhere (and in CI without a database).
-Current specs cover the harness's own isolation guarantee, the `allowed_emails`
-unique constraint, and the atomic `rate_limit_hit()` SQL limiter behind
-`PostgresRateLimitStore` (the production rate-limiting path — see `SECURITY.md`).
+themselves, so the layer is safe to run anywhere (e.g. a local checkout with no
+`.env`). In CI the `integration` job in `.github/workflows/ci.yml` provisions a
+throwaway Postgres service and sets `TEST_DATABASE_URL` to it, so the suite runs
+for real (and, with a dedicated test database, the destructive `resetTables`
+path is exercised too) and a failure blocks the merge. Current specs cover the
+harness's own isolation guarantee, the `allowed_emails` unique constraint, and
+the atomic `rate_limit_hit()` SQL limiter behind `PostgresRateLimitStore` (the
+production rate-limiting path — see `SECURITY.md`).
 
 ## End-to-end tests — Playwright (`test/e2e/`)
 
@@ -92,10 +96,21 @@ Browser-level tests covering the core happy paths:
 - `candidate-chat.spec.ts` — the per-applicant discussion thread + @-mentions.
 - `settings.spec.ts` — a settings edit (add a source; add/rename a stage).
 
-The happy-path specs sign in first via the shared `login` / `loginToBoard`
-helpers in `test/e2e/helpers.ts`, using the seeded accounts from `db/seed.ts`
-(override with `E2E_EMAIL` / `E2E_PASSWORD`). These need a running app
-(and therefore a seeded database) plus a one-time browser install:
+Authentication happens **once** in the Playwright `setup` project
+(`test/e2e/global.setup.ts`): it signs in with a seeded account, completes the
+forced first-login password change (`mustChangePassword`), and saves the
+signed-in cookies. The authenticated `chromium` project reuses them via
+`storageState`, so the happy-path specs start already signed in (the `login` /
+`loginToBoard` helpers in `test/e2e/helpers.ts` just confirm the session) and
+never re-drive the login form — which keeps a parallel run from tripping the
+per-IP login rate limiter (`lib/rate-limit.ts`). The `auth.spec.ts` gate tests
+run as an unauthenticated `guest` project instead. Credentials come from the
+seeded accounts in `db/seed.ts` (override with `E2E_EMAIL` / `E2E_PASSWORD`).
+Specs run serially within a file (`fullyParallel: false`) because each file
+drives one shared seeded candidate; files still parallelize across workers.
+
+These need a running app (and therefore a seeded database) plus a one-time
+browser install:
 
 ```bash
 bunx playwright install    # once, to fetch browser binaries
@@ -105,7 +120,13 @@ bun run test:e2e           # boots the app via playwright.config.ts and runs spe
 Set `PLAYWRIGHT_BASE_URL` to point at an already-running instance and Playwright
 will skip the managed web server. When Playwright boots the server itself and
 `TEST_DATABASE_URL` is set, the managed app is pointed at that dedicated database
-(via `webServer.env`) so e2e runs never mutate development data.
+(via `webServer.env`) so e2e runs never mutate development data. Because the
+managed server runs a production build, `webServer.env` also sets
+`AUTH_TRUST_HOST` so Auth.js trusts the localhost e2e origin.
+
+In CI the `e2e` job in `.github/workflows/ci.yml` provisions a throwaway Postgres
+service, migrates + seeds it, installs the Chromium browser, and runs the suite
+against a fresh production build — so e2e regressions block the merge.
 
 ## Adding tests
 

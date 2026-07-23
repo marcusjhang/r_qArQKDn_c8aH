@@ -1,40 +1,28 @@
 import { expect, type Page } from '@playwright/test';
 
 // Shared e2e helpers. The whole app is behind the auth gate (see lib/auth.ts /
-// middleware.ts), so every happy-path spec has to sign in first. Credentials
-// match the seeded login accounts in db/seed.ts (all seeded users share
-// SEED_PASSWORD, default 'password'); override via E2E_EMAIL / E2E_PASSWORD to
-// point the suite at a differently-seeded environment.
-const E2E_EMAIL = process.env.E2E_EMAIL ?? 'marcusajh0802@gmail.com';
-const E2E_PASSWORD = process.env.E2E_PASSWORD ?? 'password';
+// middleware.ts). Rather than sign in through the login form in every spec —
+// which would hammer the per-IP login rate limiter (lib/rate-limit.ts: 10
+// attempts / 5 min) and flake a parallel run — authentication happens ONCE in
+// the `setup` project (test/e2e/global.setup.ts), which signs in, clears the
+// seeded account's forced first-login password change, and saves the cookies.
+// The authenticated `chromium` project loads them via `storageState`, so specs
+// start already signed in and these helpers just confirm the session.
 
 /**
- * Sign in through the real login form (mirrors app/login/page.tsx +
- * useLoginForm) and wait for the board to render. The login form has no test
- * ids, so we target the placeholders it renders and the "Sign In" submit
- * button. On success useLoginForm pushes to '/', so we assert we've left
- * /login.
+ * Confirm the shared authenticated session (loaded from storageState) is live:
+ * visiting a gated route must not bounce us to /login.
  */
-export async function login(
-  page: Page,
-  email: string = E2E_EMAIL,
-  password: string = E2E_PASSWORD
-): Promise<void> {
-  await page.goto('/login');
-  await page.getByPlaceholder('Email').fill(email);
-  await page.getByPlaceholder('Password').fill(password);
-  await page.getByRole('button', { name: 'Sign In' }).click();
-
-  // useLoginForm redirects to '/' on success; wait until we're off /login.
+export async function login(page: Page): Promise<void> {
+  await page.goto('/');
   await expect(page).not.toHaveURL(/\/login/);
 }
 
 /**
- * Sign in and land on the board (the dashboard home at '/'). Returns once the
- * board's toolbar (job title + "Add candidate") is visible.
+ * Land on the board (the dashboard home at '/'). Returns once the board's
+ * toolbar (job title + "Add candidate") is visible.
  */
 export async function loginToBoard(page: Page): Promise<void> {
-  await login(page);
   await page.goto('/');
   await expect(
     page.getByRole('button', { name: /Add candidate/ })
