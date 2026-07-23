@@ -8,11 +8,15 @@
 // consistent without a cache-wide `revalidatePath('/')`. Mirrors the store's
 // mutation surface one-to-one so the client can call them optimistically. A
 // parse failure throws → the store's resync() reverts the optimistic change.
-// (The whole app is gated by the auth middleware, so a caller here is already
-// an authenticated user.)
+//
+// The middleware only gates *page* routes; Server Actions dispatch by action id
+// and can be POSTed to the public /login route, so the page gate never protects
+// them. Every action therefore calls requireUser() first, which throws (→ store
+// rollback) when the caller is not signed in.
 
 import { and, eq, sql } from 'drizzle-orm';
 import { revalidateTag } from 'next/cache';
+import { requireUser } from '@/lib/auth';
 import { db, jobs, candidates, feedback } from '@/lib/db';
 import { BOARD_TAGS } from './cache';
 import {
@@ -47,11 +51,35 @@ async function loadJobStages(jobId: number): Promise<string[] | null> {
   return j?.stages ?? null;
 }
 
+// The transaction handle Drizzle passes to `db.transaction(cb)`, derived so we
+// don't have to import the ORM's transaction types.
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Read a job's stages inside a transaction with `SELECT … FOR UPDATE`, taking a
+ * row lock so a concurrent stage edit blocks until this transaction commits.
+ * The stage mutations below (add/rename/reorder/delete) all read-modify-write
+ * the whole `stages` array, so without this lock two concurrent edits both read
+ * the same array and the second write silently clobbers the first — and a stale
+ * write can drop a stage a rename just re-pointed candidates into, orphaning
+ * them. Locking the job row serializes those edits per job.
+ */
+async function lockJobStages(tx: Tx, jobId: number): Promise<string[] | null> {
+  const [j] = await tx
+    .select({ stages: jobs.stages })
+    .from(jobs)
+    .where(eq(jobs.id, jobId))
+    .for('update')
+    .limit(1);
+  return j?.stages ?? null;
+}
+
 /**
  * Create a new job with the compulsory default stages. Returns the new id so
  * the client can reconcile its optimistic job and switch the board to it.
  */
 export async function createJob(titleRaw: string): Promise<number | null> {
+  await requireUser();
   const title = zJobTitle.parse(titleRaw);
   const [{ maxPos }] = await db
     .select({ maxPos: sql<number>`coalesce(max(${jobs.position}), -1)` })
@@ -78,6 +106,7 @@ export async function addCandidate(
   githubUrlRaw: string | null = null,
   yearsExperienceRaw: number | null = null
 ): Promise<number | null> {
+  await requireUser();
   const jobId = zId.parse(jobIdRaw);
   const { name, source, owner, linkedinUrl, githubUrl, yearsExperience } =
     candidateInsertSchema.parse({
@@ -121,6 +150,7 @@ export async function editCandidate(
   githubUrlRaw: string | null,
   yearsExperienceRaw: number | null
 ) {
+  await requireUser();
   const id = zId.parse(idRaw);
   const { name, source, owner, linkedinUrl, githubUrl, yearsExperience } =
     candidateEditSchema.parse({
@@ -139,6 +169,7 @@ export async function editCandidate(
 }
 
 export async function setJobStarred(jobIdRaw: number, starred: boolean) {
+  await requireUser();
   const jobId = zId.parse(jobIdRaw);
   if (starred) {
     // Enforce the favorites cap atomically: a single conditional UPDATE that
@@ -168,6 +199,7 @@ export async function setJobStarred(jobIdRaw: number, starred: boolean) {
  * float to the top of their column), so there's no favorites cap like jobs.
  */
 export async function setCandidateStarred(idRaw: number, starred: boolean) {
+  await requireUser();
   const id = zId.parse(idRaw);
   await db
     .update(candidates)
@@ -178,6 +210,7 @@ export async function setCandidateStarred(idRaw: number, starred: boolean) {
 
 /** Delete a job; its candidates and feedback cascade via the FKs. */
 export async function deleteJob(jobIdRaw: number) {
+  await requireUser();
   const jobId = zId.parse(jobIdRaw);
   await db.delete(jobs).where(eq(jobs.id, jobId));
   // Candidates (and their feedback) cascade-delete with the job, so both the
@@ -187,6 +220,7 @@ export async function deleteJob(jobIdRaw: number) {
 }
 
 export async function moveStage(idRaw: number, stageRaw: string) {
+  await requireUser();
   const id = zId.parse(idRaw);
   const stage = zStageName.parse(stageRaw);
   const [c] = await db
@@ -203,6 +237,7 @@ export async function moveStage(idRaw: number, stageRaw: string) {
 }
 
 export async function setStatus(idRaw: number, statusRaw: Status) {
+  await requireUser();
   const id = zId.parse(idRaw);
   const status = zStatus.parse(statusRaw);
   const [c] = await db
@@ -224,6 +259,7 @@ export async function addFeedback(
   ratingRaw: number,
   noteRaw: string
 ) {
+  await requireUser();
   const id = zId.parse(idRaw);
   const { byUser, rating, note } = feedbackInsertSchema.parse({
     byUser: byUserRaw,
@@ -238,16 +274,17 @@ export async function addFeedback(
 }
 
 export async function addStage(jobIdRaw: number, nameRaw: string) {
+  await requireUser();
   const jobId = zId.parse(jobIdRaw);
-  const stages = await loadJobStages(jobId);
-  if (!stages) return;
-  const result = addStageToPipeline(stages, nameRaw);
-  if (!result.ok) return;
-  await db
-    .update(jobs)
-    .set({ stages: result.stages })
-    .where(eq(jobs.id, jobId));
-  revalidateTag(BOARD_TAGS.jobs);
+  const changed = await db.transaction(async (tx) => {
+    const stages = await lockJobStages(tx, jobId);
+    if (!stages) return false;
+    const result = addStageToPipeline(stages, nameRaw);
+    if (!result.ok) return false;
+    await tx.update(jobs).set({ stages: result.stages }).where(eq(jobs.id, jobId));
+    return true;
+  });
+  if (changed) revalidateTag(BOARD_TAGS.jobs);
 }
 
 export async function renameStage(
@@ -255,28 +292,35 @@ export async function renameStage(
   indexRaw: number,
   nameRaw: string
 ) {
+  await requireUser();
   const jobId = zId.parse(jobIdRaw);
   const index = zIndex.parse(indexRaw);
-  const stages = await loadJobStages(jobId);
-  if (!stages) return;
-  const old = stages[index];
-  const name = nameRaw.trim();
-  if (old === undefined || name === old) return;
-  if (!validateStageName(stages, nameRaw, index).ok) return;
-  const next = [...stages];
-  next[index] = name;
-  // Re-point candidates in the renamed column, atomically with the array update.
-  await db.transaction(async (tx) => {
+  // Lock the job row, then rename the stage and re-point its candidates in one
+  // transaction. The lock serializes this against the other stage-array edits,
+  // so a concurrent add/reorder can't clobber the renamed array and leave the
+  // re-pointed candidates referencing a stage no longer in it.
+  const changed = await db.transaction(async (tx) => {
+    const stages = await lockJobStages(tx, jobId);
+    if (!stages) return false;
+    const old = stages[index];
+    const name = nameRaw.trim();
+    if (old === undefined || name === old) return false;
+    if (!validateStageName(stages, nameRaw, index).ok) return false;
+    const next = [...stages];
+    next[index] = name;
     await tx.update(jobs).set({ stages: next }).where(eq(jobs.id, jobId));
     await tx
       .update(candidates)
       .set({ stage: name })
       .where(and(eq(candidates.jobId, jobId), eq(candidates.stage, old)));
+    return true;
   });
   // The transaction renames the stage on the job and re-points every candidate
   // in the old column, so both reads are stale.
-  revalidateTag(BOARD_TAGS.jobs);
-  revalidateTag(BOARD_TAGS.candidates);
+  if (changed) {
+    revalidateTag(BOARD_TAGS.jobs);
+    revalidateTag(BOARD_TAGS.candidates);
+  }
 }
 
 export async function reorderStage(
@@ -284,37 +328,41 @@ export async function reorderStage(
   indexRaw: number,
   dirRaw: 1 | -1
 ) {
+  await requireUser();
   const jobId = zId.parse(jobIdRaw);
   const index = zIndex.parse(indexRaw);
   const dir = zDir.parse(dirRaw);
-  const stages = await loadJobStages(jobId);
-  if (!stages) return;
-  const result = reorderStages(stages, index, dir);
-  if (!result.ok) return;
-  await db
-    .update(jobs)
-    .set({ stages: result.stages })
-    .where(eq(jobs.id, jobId));
-  revalidateTag(BOARD_TAGS.jobs);
+  const changed = await db.transaction(async (tx) => {
+    const stages = await lockJobStages(tx, jobId);
+    if (!stages) return false;
+    const result = reorderStages(stages, index, dir);
+    if (!result.ok) return false;
+    await tx.update(jobs).set({ stages: result.stages }).where(eq(jobs.id, jobId));
+    return true;
+  });
+  if (changed) revalidateTag(BOARD_TAGS.jobs);
 }
 
 export async function deleteStage(jobIdRaw: number, indexRaw: number) {
+  await requireUser();
   const jobId = zId.parse(jobIdRaw);
   const index = zIndex.parse(indexRaw);
-  const stages = await loadJobStages(jobId);
-  if (!stages) return;
-  const stage = stages[index];
-  if (stage === undefined) return;
-  const [{ n }] = await db
-    .select({ n: sql<number>`count(*)` })
-    .from(candidates)
-    .where(and(eq(candidates.jobId, jobId), eq(candidates.stage, stage)));
-  const result = removeStage(stages, index, Number(n) > 0);
-  if (!result.ok) return;
-  // removeStage only succeeds on an empty column, so no candidate rows change.
-  await db
-    .update(jobs)
-    .set({ stages: result.stages })
-    .where(eq(jobs.id, jobId));
-  revalidateTag(BOARD_TAGS.jobs);
+  const changed = await db.transaction(async (tx) => {
+    const stages = await lockJobStages(tx, jobId);
+    if (!stages) return false;
+    const stage = stages[index];
+    if (stage === undefined) return false;
+    // Count occupants under the same lock so the emptiness check and the array
+    // write can't straddle a concurrent stage edit.
+    const [{ n }] = await tx
+      .select({ n: sql<number>`count(*)` })
+      .from(candidates)
+      .where(and(eq(candidates.jobId, jobId), eq(candidates.stage, stage)));
+    const result = removeStage(stages, index, Number(n) > 0);
+    if (!result.ok) return false;
+    // removeStage only succeeds on an empty column, so no candidate rows change.
+    await tx.update(jobs).set({ stages: result.stages }).where(eq(jobs.id, jobId));
+    return true;
+  });
+  if (changed) revalidateTag(BOARD_TAGS.jobs);
 }

@@ -91,3 +91,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }
   }
 });
+
+/**
+ * Auth guard for Server Actions. Returns the signed-in user's numeric id, or
+ * throws `Unauthorized` when there is no session.
+ *
+ * The `authorized` callback above only gates *page* routes: Server Actions
+ * dispatch by action id (via the `Next-Action` header), and that request can be
+ * POSTed to the public `/login` route, which the page gate lets through. So the
+ * middleware never protects an action — every action must confirm the session
+ * itself. Throwing (rather than silently no-op'ing) aborts before any DB write
+ * and, for the optimistic board actions, triggers the client store's rollback.
+ *
+ * Uses the numeric id set on the session (see the `session` callback) as the
+ * "signed in" signal, matching how `lib/profile.ts` and the settings actions
+ * already read it.
+ */
+export async function requireUser(): Promise<number> {
+  const session = await auth();
+  const id = Number(session?.user?.id);
+  if (!id) throw new Error('Unauthorized');
+  return id;
+}

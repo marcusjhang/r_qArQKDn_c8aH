@@ -54,14 +54,18 @@ accounts' passwords after seeding). Do not deploy with the default in place.
   routes, Next internals, and static assets from the gate. The `api/` exclusion
   is anchored so a page route that merely starts with `api` is not accidentally
   left public.
-- **Mutations are not gated by the middleware directly.** Writes go through the
-  `'use server'` server actions in [`lib/hiring/actions.ts`](./lib/hiring/actions.ts),
-  which are the board's single write path. They are protected by being behind
-  the login gate (the pages that invoke them are unreachable without a session)
-  and by validating every input at runtime with a zod schema
-  (`lib/hiring/schemas.ts`) before touching the database. The actions
-  themselves do not independently re-check the session — they rely on the login
-  gate for authentication.
+- **Mutations are not gated by the middleware.** Writes go through the
+  `'use server'` server actions in [`lib/hiring/actions.ts`](./lib/hiring/actions.ts)
+  (the board's single write path), plus the settings and members actions. The
+  middleware gates *page* routes only: Server Actions dispatch by action id (the
+  `Next-Action` header) and can be POSTed to the public `/login` route, which the
+  gate lets through — so the page gate never runs for them, and being "behind" a
+  gated page does **not** protect them. Every write action therefore confirms the
+  session itself before touching the database — the board and members actions
+  call `requireUser()` (`lib/auth.ts`, throws `Unauthorized` when not signed in)
+  and the settings actions call the local `signedInUserId()` guard — in addition
+  to validating every input at runtime with a zod schema (`lib/hiring/schemas.ts`).
+  Add the same guard to any new action; do not rely on the middleware.
 - Signups are restricted to an allowlist (`lib/allowlist.ts`), enforced in
   `POST /api/register` and managed from `/members`.
 - Passwords are hashed with bcrypt (cost 12) and never logged or returned.
@@ -84,6 +88,7 @@ app is served at `*.lightsprint.ai` but forwarded with an `x-forwarded-host` of
   convenience; when it is unset in production nothing is trusted (fail-closed).
 - The dev-server cross-origin allowance (`allowedDevOrigins`) is likewise scoped
   to the exact host when `PREVIEW_ORIGIN` is set.
+
 ### Registration enumeration
 
 `POST /api/register` must not reveal whether an email is allowlisted or already
