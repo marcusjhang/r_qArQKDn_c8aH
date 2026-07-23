@@ -18,7 +18,6 @@ import {
   resolveImportRows,
   newJobTitles,
   newSourceNames,
-  seniorityFor,
   STATUS,
   type HiringState,
   type ImportRow

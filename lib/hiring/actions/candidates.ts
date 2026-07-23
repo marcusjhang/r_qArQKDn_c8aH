@@ -6,10 +6,8 @@
 // optimistic store and the server compute the same coupled (stage, status).
 
 import { eq, inArray, sql } from 'drizzle-orm';
-import { revalidateTag } from 'next/cache';
 import { requireUser } from '@/lib/auth';
 import { db, jobs, candidates, sources } from '@/lib/db';
-import { BOARD_TAGS } from '../cache';
 import { placeInStage, placeWithStatus, terminalStage } from '../helpers';
 import { DEFAULT_STAGES } from '../config';
 import type { Status } from '../types';
@@ -64,7 +62,6 @@ export async function addCandidate(
       status: 'active'
     })
     .returning({ id: candidates.id });
-  revalidateTag(BOARD_TAGS.candidates);
   return row?.id ?? null;
 }
 
@@ -96,7 +93,6 @@ export async function editCandidate(
     .update(candidates)
     .set({ name, source, owner, linkedinUrl, githubUrl, yearsExperience })
     .where(eq(candidates.id, id));
-  revalidateTag(BOARD_TAGS.candidates);
 }
 
 /**
@@ -110,7 +106,6 @@ export async function setCandidateStarred(idRaw: number, starred: boolean) {
     .update(candidates)
     .set({ starred: !!starred })
     .where(eq(candidates.id, id));
-  revalidateTag(BOARD_TAGS.candidates);
 }
 
 export async function moveStage(idRaw: number, stageRaw: string) {
@@ -140,7 +135,6 @@ export async function moveStage(idRaw: number, stageRaw: string) {
   if (!stages.includes(stage)) return;
   const placement = placeInStage(stage, c, stages);
   await db.update(candidates).set(placement).where(eq(candidates.id, id));
-  revalidateTag(BOARD_TAGS.candidates);
 }
 
 export async function setStatus(idRaw: number, statusRaw: Status) {
@@ -163,7 +157,6 @@ export async function setStatus(idRaw: number, statusRaw: Status) {
   const stages = status === 'hired' ? await loadJobStages(c.jobId) : null;
   const placement = placeWithStatus(status, c, stages ?? []);
   await db.update(candidates).set(placement).where(eq(candidates.id, id));
-  revalidateTag(BOARD_TAGS.candidates);
 }
 
 /**
@@ -286,10 +279,7 @@ export async function importCandidates(
     }
   });
 
-  if (inserted > 0) {
-    // New jobs and candidates both possible, so invalidate both reads.
-    revalidateTag(BOARD_TAGS.jobs);
-    revalidateTag(BOARD_TAGS.candidates);
-  }
+  // No server-cache invalidation: the board is uncached and TanStack Query is
+  // the client's only cache, so the store resyncs itself after the import.
   return { inserted };
 }
