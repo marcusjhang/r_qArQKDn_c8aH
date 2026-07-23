@@ -158,8 +158,11 @@ export const messages = pgTable('messages', {
 });
 
 // One row per (message, tagged account). Drives the notification inbox:
-// `readAt` is null until the tagged user opens the notification. Cascades with
-// its message (and therefore with the candidate).
+// `readAt` is null until the tagged user opens the notification, and
+// `dismissedAt` is null until they clear it from the inbox. Both are soft flags
+// (never a delete) so the row still records who was tagged, which drives the
+// @-mention highlighting on the message itself. Cascades with its message (and
+// therefore with the candidate).
 export const mentions = pgTable('mentions', {
   id: serial('id').primaryKey(),
   messageId: integer('message_id')
@@ -170,6 +173,10 @@ export const mentions = pgTable('mentions', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   readAt: timestamp('read_at'),
+  // Set when the tagged user clears the notification from their inbox; dismissed
+  // mentions drop out of `notificationsFor` but the row (and its highlight)
+  // stays.
+  dismissedAt: timestamp('dismissed_at'),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 

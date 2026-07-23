@@ -16,6 +16,8 @@
 
 import { auth } from '@/lib/auth';
 import {
+  dismissAllNotificationsWith,
+  dismissNotificationWith,
   drizzleChatStore,
   loadThreadWith,
   markAllNotificationsReadWith,
@@ -67,8 +69,24 @@ export async function markNotificationRead(mentionIdRaw: number) {
   // dynamic page and re-read notifications — no board cache to invalidate here.
 }
 
-/** Mark every unread mention for the caller as read (clear the inbox). */
+/** Mark every unread mention for the caller as read. */
 export async function markAllNotificationsRead() {
   await markAllNotificationsReadWith(drizzleChatStore, await callerEmail());
+  // NotificationBell calls router.refresh() to re-read notifications.
+}
+
+/** Clear (dismiss) one of the caller's mention notifications from the inbox. */
+export async function dismissNotification(mentionIdRaw: number) {
+  await dismissNotificationWith(
+    drizzleChatStore,
+    await callerEmail(),
+    mentionIdRaw
+  );
+  // NotificationBell calls router.refresh() to re-read notifications.
+}
+
+/** Clear (dismiss) every one of the caller's mention notifications. */
+export async function dismissAllNotifications() {
+  await dismissAllNotificationsWith(drizzleChatStore, await callerEmail());
   // NotificationBell calls router.refresh() to re-read notifications.
 }
