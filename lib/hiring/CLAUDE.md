@@ -39,8 +39,9 @@ which side each module lives on.
   arrays; `config.ts` = `FOUNDERS`, `SOURCES`, and other static config. zod
   schemas and DTOs are built from these single sources — extend the source, not
   a duplicate list.
-- `cache.ts` = `BOARD_TAGS` used by `service.ts` (`unstable_cache`) and the
-  `revalidate*` calls in `actions.ts`. `seed.ts` = demo data.
+- `seed.ts` = demo data. The board's reads are deliberately uncached (no
+  server-side Data Cache / `unstable_cache`): TanStack Query is the single
+  caching layer, so actions mutate Postgres and never `revalidateTag`.
 - Chat logic is split by concern behind the `chat-logic.ts` barrel:
   `chat-messages.ts` (the per-candidate thread — `loadThreadWith`,
   `postMessageWith`), `chat-notifications.ts` (the mention inbox read/writes),
