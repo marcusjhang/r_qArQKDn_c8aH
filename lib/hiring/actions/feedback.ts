@@ -3,10 +3,14 @@
 // Feedback write action. Part of the board's single write path — see ./index
 // for the boundary contract. The author is derived server-side from the session
 // (never the client), so a caller cannot attribute feedback to a colleague.
+//
+// Thin wrapper over addFeedbackCore in ../core, the actor-scoped write shared
+// with the MCP tools (app/api/mcp/route.ts): the web path attributes the entry
+// to the signed-in user resolved by email (currentUserId), the MCP path to the
+// token's owner. The core does the zod-parse + DB write and does not revalidate.
 
 import { requireUser } from '@/lib/auth';
-import { db, feedback } from '@/lib/db';
-import { zId, feedbackInsertSchema } from '../schemas';
+import { addFeedbackCore } from '../core';
 import { currentUserId } from './support';
 
 /**
@@ -22,15 +26,5 @@ export async function addFeedback(
   await requireUser();
   const byUser = await currentUserId();
   if (byUser == null) return null;
-  const id = zId.parse(idRaw);
-  const { rating, note } = feedbackInsertSchema.parse({
-    byUser,
-    rating: ratingRaw,
-    note: noteRaw ?? ''
-  });
-  const [row] = await db
-    .insert(feedback)
-    .values({ candidateId: id, byUser, rating, note })
-    .returning({ id: feedback.id });
-  return row?.id ?? null;
+  return addFeedbackCore(byUser, idRaw, ratingRaw, noteRaw);
 }

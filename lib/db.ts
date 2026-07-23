@@ -5,7 +5,7 @@ import postgres from 'postgres';
 import type { Options as PostgresOptions } from 'postgres';
 import * as schema from './schema';
 
-export { users, allowedEmails } from './schema';
+export { users, allowedEmails, apiTokens } from './schema';
 export { rateLimitHits } from './schema';
 export { jobs, candidates, feedback, messages, mentions } from './schema';
 
