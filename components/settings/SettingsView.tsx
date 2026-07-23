@@ -13,7 +13,9 @@ import ThemeToggle from './ThemeToggle';
 import SourcesPanel from './SourcesPanel';
 import SeniorityBandsPanel from './SeniorityBandsPanel';
 import ProfilePanel from './ProfilePanel';
-import type { SettingsResult } from '@/lib/settings-types';
+import ApiTokensPanel from './ApiTokensPanel';
+import type { SettingsResult, CreateTokenResult } from '@/lib/settings-types';
+import type { ApiTokenSummary } from '@/lib/tokens';
 import '@/components/hiring/hiring.css';
 
 export default function SettingsView({
@@ -21,6 +23,7 @@ export default function SettingsView({
   bands,
   maxYears,
   profile,
+  tokens,
   userEmail,
   updateProfile,
   addSource,
@@ -28,12 +31,15 @@ export default function SettingsView({
   removeSource,
   addBand,
   updateBand,
-  removeBand
+  removeBand,
+  createToken,
+  revokeToken
 }: {
   sources: { id: number; name: string }[];
   bands: { id: number; label: string; minYears: number }[];
   maxYears: number;
   profile: { firstName: string; lastName: string };
+  tokens: ApiTokenSummary[];
   userEmail?: string | null;
   updateProfile: (
     firstName: string,
@@ -49,6 +55,11 @@ export default function SettingsView({
     minYears: number
   ) => Promise<SettingsResult>;
   removeBand: (id: number) => Promise<SettingsResult>;
+  createToken: (
+    name: string,
+    expiresInDays: number
+  ) => Promise<CreateTokenResult>;
+  revokeToken: (id: number) => Promise<SettingsResult>;
 }) {
   return (
     <div className="ht-root ht-settings">
@@ -97,6 +108,12 @@ export default function SettingsView({
             addBand={addBand}
             updateBand={updateBand}
             removeBand={removeBand}
+          />
+
+          <ApiTokensPanel
+            tokens={tokens}
+            createToken={createToken}
+            revokeToken={revokeToken}
           />
         </div>
       </div>

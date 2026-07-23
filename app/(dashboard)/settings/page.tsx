@@ -3,6 +3,7 @@ import { getSources } from '@/lib/sources';
 import { getSeniorityBands } from '@/lib/seniority';
 import { MAX_YEARS_EXPERIENCE } from '@/lib/hiring/primitives';
 import { getProfile } from '@/lib/profile';
+import { getApiTokens } from '@/lib/tokens';
 import SettingsView from '@/components/settings/SettingsView';
 import {
   updateProfile,
@@ -11,16 +12,19 @@ import {
   removeSource,
   addBand,
   updateBand,
-  removeBand
+  removeBand,
+  createApiToken,
+  revokeApiToken
 } from './actions';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage() {
-  const [sources, bands, profile, session] = await Promise.all([
+  const [sources, bands, profile, tokens, session] = await Promise.all([
     getSources(),
     getSeniorityBands(),
     getProfile(),
+    getApiTokens(),
     auth()
   ]);
   return (
@@ -29,6 +33,7 @@ export default async function SettingsPage() {
       bands={bands}
       maxYears={MAX_YEARS_EXPERIENCE}
       profile={profile}
+      tokens={tokens}
       userEmail={session?.user?.email ?? null}
       updateProfile={updateProfile}
       addSource={addSource}
@@ -37,6 +42,8 @@ export default async function SettingsPage() {
       addBand={addBand}
       updateBand={updateBand}
       removeBand={removeBand}
+      createToken={createApiToken}
+      revokeToken={revokeApiToken}
     />
   );
 }
