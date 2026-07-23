@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { validateStageName, MAX_STAGE_NAME, type Job } from '@/lib/hiring';
 import { Button } from '@/components/ui/button';
+import { FormError } from '@/components/ui/form-error';
 
 export default function AddStageForm({
   job,
@@ -67,7 +68,7 @@ export default function AddStageForm({
           }
         }}
       />
-      {error && <div className="form-error">{error}</div>}
+      <FormError message={error} />
       <div className="add-stage-actions">
         <Button type="button" variant="app" onClick={reset}>
           Cancel

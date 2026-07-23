@@ -24,7 +24,11 @@ which side each module lives on.
   optimistic updates by running the pure `reducer.ts` events straight into the
   cache (`setQueryData`), with temp-id reconciliation for creates; a failed write
   resyncs by invalidating the board query (refetch via the `fetchBoard` action in
-  `board-query.ts`). Query keys are centralized in `query-keys.ts`. Client code
+  `board-query.ts`). The optimistic-sync mechanics — temp-id counter, the
+  reconcile queue (`whenReconciled`/`flushPending`), the single persist
+  `useMutation`, and `resync` — are factored out of the store into `sync.ts`
+  (`useOptimisticSync`), so `store.ts` stays the cache wiring plus the action
+  definitions. Query keys are centralized in `query-keys.ts`. Client code
   imports from the `index.ts` barrel (`@/lib/hiring`), never from
   `service.ts`/`schemas.ts`. The chat thread (`useChatThread`) and the
   notification bell use `useQuery`/`useMutation` the same way.
@@ -45,14 +49,36 @@ which side each module lives on.
 - `seed.ts` = demo data. The board's reads are deliberately uncached (no
   server-side Data Cache / `unstable_cache`): TanStack Query is the single
   caching layer, so actions mutate Postgres and never `revalidateTag`.
-- Chat logic is split by concern behind the `chat-logic.ts` barrel:
-  `chat-messages.ts` (the per-candidate thread — `loadThreadWith`,
-  `postMessageWith`), `chat-notifications.ts` (the mention inbox read/writes),
-  and `chat-shaping.ts` (the shared `toChatMessage` shaper, `currentUserId`, and
-  the body/mention validators). All are `server-only` and expressed against the
-  injectable `ChatStore` seam (`chat-store.ts`); the `'use server'` adapters live
-  in `chat-actions.ts` and the server read in `chat-queries.ts`. Callers import
-  from `@/lib/hiring/chat-logic`, unchanged by the split.
+
+## Chat sub-module (`chat/`)
+
+The per-applicant discussion thread and its mention-notification inbox live
+together under `chat/` — the one cohesive cluster in this domain, split by
+concern behind a barrel:
+
+- `chat/logic.ts` (`server-only`) — the barrel: re-exports the thread and
+  notification surface (and the default `drizzleChatStore`) so callers import
+  one module and the internal split stays invisible.
+- `chat/messages.ts` (`server-only`) — the per-candidate thread
+  (`loadThreadWith`, `postMessageWith`).
+- `chat/notifications.ts` (`server-only`) — the mention-inbox read/writes
+  (mark/dismiss/`getNotificationsWith`).
+- `chat/shaping.ts` (`server-only`) — the shared `toChatMessage` shaper,
+  `currentUserId` identity resolution, and the body/mention validators.
+- `chat/store.ts` (`server-only`) — the injectable `ChatStore` data seam
+  (mirrors `service.ts`'s `BoardReader`); `db` is imported lazily per method so
+  the logic stays unit-testable without a database. Default export is the
+  Drizzle-backed `drizzleChatStore`.
+- `chat/actions.ts` (`'use server'`) — thin adapters that resolve the caller's
+  email from the session and delegate to the logic with the production store.
+- `chat/queries.ts` (`server-only`) — the server-component read for the inbox.
+
+The logic never imports `@/lib/auth`: identity is passed in as an `email`, so
+the seam stays unit-testable. There is **no** `chat/index.ts` barrel: the folder
+mixes `server-only` (logic/messages/notifications/shaping/store/queries) and
+`'use server'` (actions) modules, so — like the top-level `index.ts` — those
+must not be funnelled through one entry point. Import the specific module
+(`@/lib/hiring/chat/logic`, `.../chat/actions`, `.../chat/queries`).
 
 ## Barrel (`index.ts`)
 

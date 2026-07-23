@@ -10,6 +10,7 @@
 // The thread's state + behaviour (load/optimistic-send/mention autocomplete)
 // lives in useChatThread; this component renders it.
 
+import { Avatar } from '@/components/ui/avatar';
 import {
   displayName,
   formatMessageTime,
@@ -104,9 +105,7 @@ export default function ChatPanel({
                 key={m.id}
                 data-mid={m.id}
               >
-                <span className="avatar" title={m.authorName}>
-                  {m.authorInitials}
-                </span>
+                <Avatar title={m.authorName}>{m.authorInitials}</Avatar>
                 <div className="chat-bubble">
                   <div className="chat-meta">
                     <span className="chat-author">{m.authorName}</span>
@@ -154,7 +153,7 @@ export default function ChatPanel({
                         pick(u);
                       }}
                     >
-                      <span className="avatar">{initials(u)}</span>
+                      <Avatar>{initials(u)}</Avatar>
                       <span className="mention-name">{displayName(u)}</span>
                       <span className="mention-email">{u.email}</span>
                     </button>

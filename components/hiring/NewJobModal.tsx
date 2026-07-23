@@ -11,6 +11,7 @@ import { DEFAULT_STAGES, mergeTraitSuggestions, MAX_JOB_DESCRIPTION } from '@/li
 // excludes actions/, so it is imported from that module directly.
 import { recommendTraits } from '@/lib/hiring/actions';
 import { Button } from '@/components/ui/button';
+import { FormError } from '@/components/ui/form-error';
 import Modal from './Modal';
 
 export default function NewJobModal({
@@ -145,7 +146,7 @@ export default function NewJobModal({
         <p className="settings-sub">
           Starts with the default stages: {DEFAULT_STAGES.join(' → ')}.
         </p>
-        {error && <div className="form-error">{error}</div>}
+        <FormError message={error} />
         <div className="modal-actions">
           <Button type="button" variant="app" onClick={onClose}>
             Cancel

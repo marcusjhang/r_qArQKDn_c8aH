@@ -6,26 +6,23 @@
 // the server component's props via `initialData` so first paint is instant and
 // no fetch fires on mount. Every mutation is applied optimistically by running
 // the SAME pure event through the hiring reducer straight into the cache
-// (`setQueryData`), then persisted through a server action wrapped in a single
-// `useMutation`. On a failed write the mutation's `onError` resyncs — it
-// invalidates the board query, which refetches the authoritative rows and
-// replaces the optimistic cache (rolling the failed change back). The server
-// stays authoritative; the client is only ever optimistic between a write and
-// its acknowledgement.
+// (`setQueryData`), then persisted through the sync engine's single write
+// mutation. On a failed write the engine resyncs — it invalidates the board
+// query, which refetches the authoritative rows and replaces the optimistic
+// cache (rolling the failed change back). The server stays authoritative; the
+// client is only ever optimistic between a write and its acknowledgement.
 //
-// This hook is the thin imperative shell: it owns the temp-id counter, gates
-// each mutation with the shared pure helpers (so a doomed change never hits the
-// server), writes the optimistic projection, and wires the mutation + resync.
-// Every state transition itself lives in ./reducer, consuming the same helpers
-// as the server actions, so the optimistic projection can't drift from the
-// server's.
+// This hook is the thin imperative shell: it holds the board cache wiring and,
+// for each mutation, gates on the shared pure helpers (so a doomed change never
+// hits the server), writes the optimistic projection, and hands the write to
+// the sync engine. The optimistic-sync mechanics themselves — the temp-id
+// counter, the temp-id reconciliation queue, the persist mutation, and resync —
+// live in ./sync (`useOptimisticSync`). Every state transition lives in
+// ./reducer, consuming the same helpers as the server actions, so the
+// optimistic projection can't drift from the server's.
 
 import { useCallback, useRef } from 'react';
-import {
-  useMutation,
-  useQuery,
-  useQueryClient
-} from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   stageDeletable,
   validateStageName,
@@ -35,6 +32,7 @@ import {
   MAX_FAVORITES
 } from './helpers';
 import { hiringReducer, type HiringEvent } from './reducer';
+import { useOptimisticSync } from './sync';
 import * as api from './actions';
 import { fetchBoard } from './board-query';
 import { hiringKeys } from './query-keys';
@@ -107,12 +105,6 @@ export interface HiringActions {
   deleteStage: (jobId: number, index: number) => void;
 }
 
-/** The persistence unit: a server-action thunk plus an optional id reconciler. */
-interface PersistArgs {
-  run: () => Promise<unknown>;
-  onResult?: (result: unknown) => void;
-}
-
 export function useHiringStore(initial: HiringState): {
   state: HiringState;
   actions: HiringActions;
@@ -132,19 +124,23 @@ export function useHiringStore(initial: HiringState): {
   });
   const state = data ?? initial;
 
-  // Negative ids for optimistic rows until the server hands back a real one.
-  const tempId = useRef(-1);
   // First server snapshot, kept as the reducer's fallback base. Never reassigned
   // so the callbacks below stay referentially stable across `initial` changes.
   const initialRef = useRef(initial);
-  // Server mutations targeting a row whose optimistic temp id hasn't reconciled
-  // yet, queued by temp id. An id-targeting action fires immediately once the
-  // row has a real (non-negative) id; while it's still a negative temp id the
-  // mutation is deferred here and flushed with the real id when createJob /
-  // addCandidate reconciliation lands. Without this, acting on a freshly
-  // created row would POST a negative id, which the server's positive-int guard
-  // rejects — throwing, resyncing, and dropping the just-created row.
-  const pending = useRef(new Map<number, Array<(realId: number) => void>>());
+
+  // Refetch the authoritative board — the resync target the sync engine calls on
+  // a failed write. Stable across renders (queryClient is stable), so `resync`
+  // and the persist mutation stay stable too.
+  const invalidate = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: hiringKeys.board }),
+    [queryClient]
+  );
+
+  // The optimistic server-state-sync engine: temp-id counter, temp-id
+  // reconciliation queue, the single persist mutation, and resync. Extracted so
+  // this hook is just the cache wiring plus the action definitions.
+  const { nextTempId, persist, whenReconciled, flushPending, resync } =
+    useOptimisticSync(invalidate);
 
   // Always-current authoritative snapshot for handlers that read before writing.
   const snapshot = useCallback(
@@ -164,48 +160,6 @@ export function useHiringStore(initial: HiringState): {
     [queryClient]
   );
 
-  // Error recovery: drop anything queued against a temp id and refetch the
-  // authoritative board, which replaces the optimistic cache (rolling back the
-  // failed write). Replaces the old router.refresh() + wantResync effect.
-  const resync = useCallback(() => {
-    pending.current.clear();
-    queryClient.invalidateQueries({ queryKey: hiringKeys.board });
-  }, [queryClient]);
-
-  // Run `fn` with the row's real id: immediately when `id` is already a real
-  // (non-negative) id, or deferred until the temp id reconciles otherwise.
-  const whenReconciled = useCallback(
-    (id: number, fn: (realId: number) => void) => {
-      if (id >= 0) {
-        fn(id);
-        return;
-      }
-      const queue = pending.current.get(id) ?? [];
-      queue.push(fn);
-      pending.current.set(id, queue);
-    },
-    []
-  );
-
-  // Drain the mutations queued against a temp id, replaying them with the real
-  // id the server assigned. Called from createJob / addCandidate reconciliation.
-  const flushPending = useCallback((temp: number, realId: number) => {
-    const queue = pending.current.get(temp);
-    if (!queue) return;
-    pending.current.delete(temp);
-    for (const fn of queue) fn(realId);
-  }, []);
-
-  // Every write goes through this one mutation: it runs the server action, hands
-  // a create's returned id to `onResult` for reconciliation, and resyncs on
-  // failure (which rolls the optimistic change back). `mutate` is referentially
-  // stable, so it's safe in the callback deps below.
-  const { mutate: persist } = useMutation({
-    mutationFn: ({ run }: PersistArgs) => run(),
-    onSuccess: (result, { onResult }) => onResult?.(result),
-    onError: () => resync()
-  });
-
   const createJob = useCallback(
     (
       title: string,
@@ -216,7 +170,7 @@ export function useHiringStore(initial: HiringState): {
       const trimmed = title.trim();
       if (!trimmed) return;
       const cleanTraits = traits.map((t) => t.trim()).filter(Boolean);
-      const temp = tempId.current--;
+      const temp = nextTempId();
       dispatch({
         type: 'createJob',
         tempId: temp,
@@ -237,7 +191,7 @@ export function useHiringStore(initial: HiringState): {
         }
       });
     },
-    [dispatch, persist, flushPending]
+    [dispatch, persist, flushPending, nextTempId]
   );
 
   const setJobDescription = useCallback(
@@ -310,7 +264,7 @@ export function useHiringStore(initial: HiringState): {
       githubUrl: string | null,
       yearsExperience: number | null
     ) => {
-      const temp = tempId.current--;
+      const temp = nextTempId();
       dispatch({
         type: 'addCandidate',
         tempId: temp,
@@ -342,7 +296,7 @@ export function useHiringStore(initial: HiringState): {
         }
       });
     },
-    [dispatch, persist, flushPending]
+    [dispatch, persist, flushPending, nextTempId]
   );
 
   const editCandidate = useCallback(
@@ -435,7 +389,7 @@ export function useHiringStore(initial: HiringState): {
     ) => {
       // `byUser` populates the optimistic display row only — the server derives
       // the author from the session and never trusts a client-supplied one.
-      const temp = tempId.current--;
+      const temp = nextTempId();
       dispatch({ type: 'saveFeedback', id, tempId: temp, ...entry });
       whenReconciled(id, (realId) =>
         persist({
@@ -461,7 +415,7 @@ export function useHiringStore(initial: HiringState): {
         })
       );
     },
-    [dispatch, persist, whenReconciled, resync]
+    [dispatch, persist, whenReconciled, nextTempId, resync]
   );
 
   const renameStage = useCallback(

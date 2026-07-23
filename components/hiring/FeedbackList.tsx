@@ -21,6 +21,7 @@ import {
   type RatingValue,
   type User
 } from '@/lib/hiring';
+import { Avatar } from '@/components/ui/avatar';
 
 /** A numeric score chip coloured by its rounded value, or a muted placeholder. */
 function ScoreChip({
@@ -61,7 +62,7 @@ function FeedbackEntryRow({
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
-        <span className="avatar">{initials(author)}</span>
+        <Avatar>{initials(author)}</Avatar>
         <span className="fb-who">{displayName(author)}</span>
         {entry.stage && <span className="stage-badge">{entry.stage}</span>}
         <span className="fb-avg">
