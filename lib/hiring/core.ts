@@ -35,6 +35,7 @@ import {
   candidateEditSchema,
   feedbackInsertSchema
 } from './schemas';
+import { lockJobStages } from './actions/support';
 
 async function loadJobStages(jobId: number): Promise<string[] | null> {
   const [j] = await db
@@ -79,23 +80,30 @@ export async function addCandidateCore(
       githubUrl: input.githubUrl ?? null,
       yearsExperience: input.yearsExperience ?? null
     });
-  const stages = await loadJobStages(jobId);
-  if (!stages) return null;
-  const [row] = await db
-    .insert(candidates)
-    .values({
-      jobId,
-      name,
-      stage: stages[0],
-      owner,
-      source,
-      linkedinUrl,
-      githubUrl,
-      yearsExperience,
-      status: 'active'
-    })
-    .returning({ id: candidates.id });
-  return row?.id ?? null;
+  // Read the job's stages and insert into the first one inside a single
+  // transaction that row-locks the job (the same lock the stage mutations take),
+  // so a concurrent rename/reorder/delete of the first stage can't slip between
+  // the read and the insert and strand the candidate in a stage the job no
+  // longer has.
+  return db.transaction(async (tx) => {
+    const stages = await lockJobStages(tx, jobId);
+    if (!stages) return null;
+    const [row] = await tx
+      .insert(candidates)
+      .values({
+        jobId,
+        name,
+        stage: stages[0],
+        owner,
+        source,
+        linkedinUrl,
+        githubUrl,
+        yearsExperience,
+        status: 'active'
+      })
+      .returning({ id: candidates.id });
+    return row?.id ?? null;
+  });
 }
 
 /**
