@@ -67,14 +67,14 @@ export async function markNotificationRead(mentionIdRaw: number) {
     await callerEmail(),
     mentionIdRaw
   );
-  // The caller (NotificationBell) calls router.refresh() to re-render the
-  // dynamic page and re-read notifications — no board cache to invalidate here.
+  // The NotificationBell invalidates its notifications query on success to
+  // re-read the inbox; there is no server-side cache to invalidate here.
 }
 
 /** Mark every unread mention for the caller as read. */
 export async function markAllNotificationsRead() {
   await markAllNotificationsReadWith(drizzleChatStore, await callerEmail());
-  // NotificationBell calls router.refresh() to re-read notifications.
+  // The NotificationBell invalidates its notifications query to re-read the inbox.
 }
 
 /** Clear (dismiss) one of the caller's mention notifications from the inbox. */
@@ -84,11 +84,11 @@ export async function dismissNotification(mentionIdRaw: number) {
     await callerEmail(),
     mentionIdRaw
   );
-  // NotificationBell calls router.refresh() to re-read notifications.
+  // The NotificationBell invalidates its notifications query to re-read the inbox.
 }
 
 /** Clear (dismiss) every one of the caller's mention notifications. */
 export async function dismissAllNotifications() {
   await dismissAllNotificationsWith(drizzleChatStore, await callerEmail());
-  // NotificationBell calls router.refresh() to re-read notifications.
+  // The NotificationBell invalidates its notifications query to re-read the inbox.
 }

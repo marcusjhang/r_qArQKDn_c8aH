@@ -88,7 +88,7 @@ accounts' passwords after seeding). Do not deploy with the default in place.
   is anchored so a page route that merely starts with `api` is not accidentally
   left public.
 - **Mutations are not gated by the middleware.** Writes go through the
-  `'use server'` server actions in [`lib/hiring/actions.ts`](./lib/hiring/actions.ts)
+  `'use server'` server actions in [`lib/hiring/actions/`](./lib/hiring/actions/)
   (the board's single write path), plus the settings and members actions. The
   middleware gates *page* routes only: Server Actions dispatch by action id (the
   `Next-Action` header) and can be POSTed to the public `/login` route, which the

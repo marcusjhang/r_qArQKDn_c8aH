@@ -21,9 +21,9 @@ Set `TEST_DATABASE_URL` for any run that must not touch development data.
 ## Unit tests — Vitest (`test/unit/`)
 
 Fast, pure-function tests with no database or browser. They target the
-framework-free hiring business logic in `lib/hiring/helpers.ts` (status/stage
+framework-free hiring business logic in `lib/hiring/helpers/` (status/stage
 placement, stage-array edits, name validation, board filtering + sorting) and
-the dependency-injected `getBoard` reader in `lib/hiring/service.ts`.
+the dependency-injected `getBoard` reader in `lib/hiring/service/`.
 
 Security policy is unit-tested here too, via the framework-free
 [`lib/auth-policy.ts`](../lib/auth-policy.ts) (the auth decisions were extracted
@@ -130,7 +130,7 @@ against a fresh production build — so e2e regressions block the merge.
 
 ## Adding tests
 
-- Unit: prefer testing pure functions in `lib/hiring/helpers.ts`. When adding
+- Unit: prefer testing pure functions in `lib/hiring/helpers/`. When adding
   new business rules, put the decision logic there (not inline in `actions.ts` /
   `store.ts` / components) so it stays testable and shared across layers.
 - Injecting data: follow the `BoardReader` pattern in `service.ts` — accept the
