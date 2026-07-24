@@ -21,6 +21,7 @@ import {
   type User
 } from '@/lib/hiring';
 import { Avatar } from '@/components/ui/avatar';
+import InfoHint from './InfoHint';
 
 /** Render a 1-4 average as a fixed-decimal number, or a muted placeholder. */
 function score(value: number | null, empty = 'Not scored') {
@@ -119,33 +120,62 @@ export default function FeedbackList({
   const traits = job?.traits ?? [];
   const overall = view ? overallScore(traits, view) : null;
   const feedback = view?.feedback ?? [];
+  const [scoresOpen, setScoresOpen] = useState(false);
 
   return (
     <>
       {traits.length > 0 && (
         <div className="flex flex-col gap-3">
-          <div className="flex items-baseline gap-2">
+          <div className="flex items-center gap-1.5">
             <span className="text-xs font-bold uppercase tracking-[0.03em] text-muted-foreground">
-              Scores
+              Score
             </span>
+            <InfoHint
+              label="How the score is calculated"
+              title="Formula"
+            >
+              <p>
+                Each trait&rsquo;s score is the average of its 1 to 4 ratings
+                across all feedback.
+              </p>
+              <p className="font-mono text-[11.5px] text-muted-foreground">
+                overall = sum(weight &times; trait average) / sum(weights)
+              </p>
+              <p>A trait at rank #k of N has weight N + 1 - k.</p>
+            </InfoHint>
             {overall == null ? (
               <span className="ml-auto text-xs font-medium text-muted-foreground">
                 No scores yet
               </span>
             ) : (
-              <span className="ml-auto text-[15px] font-bold tabular-nums text-foreground">
-                {overall.toFixed(1)}
-              </span>
+              <button
+                type="button"
+                className="ml-auto flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0"
+                aria-expanded={scoresOpen}
+                title={scoresOpen ? 'Hide the per-trait breakdown' : 'Show the per-trait breakdown'}
+                onClick={() => setScoresOpen((o) => !o)}
+              >
+                <span className="text-[15px] font-bold tabular-nums text-foreground">
+                  {overall.toFixed(1)}
+                </span>
+                <ChevronRight
+                  size={14}
+                  aria-hidden
+                  className={`text-muted-foreground transition-transform duration-150 ${scoresOpen ? 'rotate-90' : ''}`}
+                />
+              </button>
             )}
           </div>
-          <div className="flex flex-col gap-1">
-            {traits.map((t) => (
-              <div className="flex items-baseline gap-2 text-[13px]" key={t}>
-                <span className="min-w-0 flex-1 text-foreground">{t}</span>
-                {score(view ? traitAgg(view, t) : null)}
-              </div>
-            ))}
-          </div>
+          {scoresOpen && overall != null && (
+            <div className="flex flex-col gap-1">
+              {traits.map((t) => (
+                <div className="flex items-baseline gap-2 text-[13px]" key={t}>
+                  <span className="min-w-0 flex-1 text-foreground">{t}</span>
+                  {score(view ? traitAgg(view, t) : null)}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

@@ -292,11 +292,12 @@ export async function addFeedbackCore(
   const [row] = await db
     .insert(feedback)
     .values({ candidateId, byUser, traitScores: scoped, note, stage: c.stage })
-    // One entry per (candidate, user): re-saving edits it. `stage` is not in the
-    // update set, so it keeps the stage it was first created at.
+    // One entry per (candidate, user): re-saving edits it. `stage` is updated to
+    // the candidate's CURRENT stage so the entry reflects the latest round the
+    // interviewer scored them in, not the round it was first created.
     .onConflictDoUpdate({
       target: [feedback.candidateId, feedback.byUser],
-      set: { traitScores: scoped, note }
+      set: { traitScores: scoped, note, stage: c.stage }
     })
     .returning({ id: feedback.id });
   return row?.id ?? null;

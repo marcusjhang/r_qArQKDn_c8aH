@@ -292,12 +292,19 @@ export function hiringReducer(
       return mapCandidate(state, event.id, (c) => {
         const existing = c.feedback.find((f) => f.byUser === event.byUser);
         if (existing) {
-          // One entry per user: update in place, preserving its stage + id.
+          // One entry per user: update in place (keeping its id) and re-stamp the
+          // stage to the candidate's current one, so the entry shows the latest
+          // round it was scored in — mirroring the server's onConflict update.
           return {
             ...c,
             feedback: c.feedback.map((f) =>
               f.byUser === event.byUser
-                ? { ...f, traitScores: event.traitScores, note: event.note }
+                ? {
+                    ...f,
+                    traitScores: event.traitScores,
+                    note: event.note,
+                    stage: c.stage
+                  }
                 : f
             )
           };

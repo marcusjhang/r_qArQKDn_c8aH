@@ -104,7 +104,7 @@ export default function ChatPanel({
           </div>
         ) : messages.length === 0 ? (
           <div className="text-[12.5px] italic text-muted-foreground">
-            No messages yet. Type <b>@</b> to tag a teammate.
+            No messages yet.
           </div>
         ) : (
           messages.map((m) => {
