@@ -74,6 +74,8 @@ export default function ChatPanel({
     body,
     menu,
     suggestions,
+    active,
+    setActive,
     sending,
     taRef,
     listRef,
@@ -159,6 +161,15 @@ export default function ChatPanel({
               <textarea
                 ref={taRef}
                 aria-label="Message"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={menu != null && suggestions.length > 0}
+                aria-controls="mention-listbox"
+                aria-activedescendant={
+                  menu && suggestions.length > 0
+                    ? `mention-option-${Math.min(active, suggestions.length - 1)}`
+                    : undefined
+                }
                 className="min-h-[60px] w-full resize-y rounded-md border border-border-strong bg-surface px-2.5 py-2 text-[13px] text-foreground focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary-weak focus:ring-offset-0"
                 value={body}
                 onChange={onChange}
@@ -168,15 +179,22 @@ export default function ChatPanel({
               />
               {menu && suggestions.length > 0 && (
                 <div
+                  id="mention-listbox"
+                  role="listbox"
+                  aria-label="Mention a teammate"
                   className="absolute bottom-[calc(100%_+_4px)] left-0 right-0 z-[22] flex max-h-[220px] flex-col overflow-y-auto rounded-md border border-border bg-surface p-1 shadow-ds"
                   data-testid="mention-menu"
                 >
-                  {suggestions.map((u) => (
+                  {suggestions.map((u, i) => (
                     <button
                       key={u.id}
+                      id={`mention-option-${i}`}
                       type="button"
+                      role="option"
+                      aria-selected={i === Math.min(active, suggestions.length - 1)}
                       data-testid="mention-item"
-                      className="flex items-center gap-2 rounded-sm border-0 bg-transparent px-2 py-1.5 text-left text-[12.5px] text-foreground hover:bg-surface-2"
+                      className={`flex items-center gap-2 rounded-sm border-0 px-2 py-1.5 text-left text-[12.5px] text-foreground ${i === active ? 'bg-surface-2' : 'bg-transparent hover:bg-surface-2'}`}
+                      onMouseEnter={() => setActive(i)}
                       onMouseDown={(e) => {
                         e.preventDefault();
                         pick(u);

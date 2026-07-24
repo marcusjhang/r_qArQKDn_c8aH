@@ -58,11 +58,11 @@ export function useChatThread({
 }) {
   const queryClient = useQueryClient();
   const [body, setBody] = useState('');
-  // Accounts the author has picked from the @-autocomplete for this draft.
-  const [tagged, setTagged] = useState<Set<number>>(new Set());
   const [menu, setMenu] = useState<{ start: number; query: string } | null>(
     null
   );
+  // Highlighted row in the @-autocomplete, for keyboard navigation.
+  const [active, setActive] = useState(0);
 
   const taRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -88,10 +88,15 @@ export function useChatThread({
   // itself is per-candidate via the query key).
   useEffect(() => {
     setBody('');
-    setTagged(new Set());
     setMenu(null);
     handledFocus.current = null;
   }, [candidateId]);
+
+  // Reset the highlighted autocomplete row whenever the mention query changes
+  // (a new `@…` token), so keyboard nav always starts at the top of the list.
+  useEffect(() => {
+    setActive(0);
+  }, [menu?.start, menu?.query]);
 
   // Scroll behaviour: when opened from a notification, scroll the tagged
   // message into view and flash it once; otherwise keep the transcript pinned
@@ -146,7 +151,6 @@ export function useChatThread({
     const next = before + insert + after;
     pendingCaret.current = (before + insert).length;
     setBody(next);
-    setTagged((prev) => new Set(prev).add(user.id));
     setMenu(null);
   }
 
@@ -194,12 +198,12 @@ export function useChatThread({
   const send = useCallback(() => {
     const text = body.trim();
     if (!text || candidateId == null || currentUser == null || sending) return;
-    // Only tag users whose `@name` token still survives in the final text,
-    // matched at a token boundary so a shorter name can't ride along inside a
-    // longer one's token.
-    const tagList = users.filter(
-      (u) => tagged.has(u.id) && mentionPresent(text, displayName(u))
-    );
+    // Tag every user whose `@name` token appears in the final text, matched at a
+    // token boundary so a shorter name can't ride along inside a longer one's
+    // token. Deriving the tag set from the text (rather than from what the mouse
+    // picked) means a mention typed by keyboard is tagged too — the autocomplete
+    // is a convenience, not the only way to mention someone.
+    const tagList = users.filter((u) => mentionPresent(text, displayName(u)));
     const mentionIds = tagList.map((u) => u.id);
     const mentionNames = tagList.map((u) => ({
       userId: u.id,
@@ -218,12 +222,36 @@ export function useChatThread({
       mentions: mentionNames
     };
     setBody('');
-    setTagged(new Set());
     setMenu(null);
     sendMessage({ candidateId, text, mentionIds, optimistic, temp });
-  }, [body, candidateId, currentUser, sending, tagged, users, sendMessage]);
+  }, [body, candidateId, currentUser, sending, users, sendMessage]);
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    // When the @-autocomplete is open, the arrow keys drive it and Enter/Tab
+    // accept the highlighted row (Escape dismisses) — so a keyboard user can
+    // complete a mention without a mouse.
+    if (menu && suggestions.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setActive((i) => (i + 1) % suggestions.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setActive((i) => (i - 1 + suggestions.length) % suggestions.length);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        pick(suggestions[Math.min(active, suggestions.length - 1)]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setMenu(null);
+        return;
+      }
+    }
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       send();
@@ -236,6 +264,8 @@ export function useChatThread({
     body,
     menu,
     suggestions,
+    active,
+    setActive,
     sending,
     taRef,
     listRef,
