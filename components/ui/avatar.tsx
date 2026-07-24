@@ -4,16 +4,22 @@ import { cn } from '@/lib/utils';
 
 /**
  * The initials "avatar" circle shared across the board card, chat thread,
- * feedback list, members list and the profile preview. Renders the app's
- * `.avatar` visual (styled in `components/hiring/hiring.css`, scoped to
- * `.ht-root`) — pass the initials as children and forward any span attributes
- * (`title`, `aria-hidden`, …) the call site needs.
+ * feedback list, members list and the profile preview. A 22px primary-weak
+ * circle with bold primary-tinted initials — pass the initials as children and
+ * forward any span attributes (`title`, `aria-hidden`, …) the call site needs.
  */
 export const Avatar = React.forwardRef<
   HTMLSpanElement,
   React.HTMLAttributes<HTMLSpanElement>
 >(({ className, children, ...props }, ref) => (
-  <span ref={ref} className={cn('avatar', className)} {...props}>
+  <span
+    ref={ref}
+    className={cn(
+      'flex-none inline-flex items-center justify-center w-[22px] h-[22px] rounded-full bg-primary-weak text-primary text-[9.5px] font-bold',
+      className
+    )}
+    {...props}
+  >
     {children}
   </span>
 ));

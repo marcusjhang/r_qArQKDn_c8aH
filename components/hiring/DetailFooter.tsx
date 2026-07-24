@@ -5,6 +5,7 @@
 // back controls. Stage position drives which buttons exist (no dead-end
 // buttons), and moving returns to the board so the change is visible.
 
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import {
   stageNavigation,
   isTerminal,
@@ -40,23 +41,27 @@ export default function DetailFooter({
     view && now != null ? stageAgeLabel(view.stageEnteredAt, now) : '';
 
   return (
-    <div className="drawer-foot">
-      <div className="stage-now">
-        Stage: <b>{view?.stage ?? '—'}</b>
+    <div className="mt-auto flex flex-wrap items-center gap-3 border-t border-border bg-surface p-4">
+      <div className="min-w-0 flex-1 text-xs text-muted-foreground">
+        Stage: <b className="text-foreground">{view?.stage ?? '—'}</b>
         {showAge && (
-          <span className={`stage-age${overdue ? ' overdue' : ''}`}>
+          <span
+            className={`mt-1 block text-[11.5px] ${overdue ? 'font-semibold text-sno' : 'text-muted-foreground'}`}
+          >
             In this stage {ageLabel}
           </span>
         )}
       </div>
       {canMoveBack && (
         <Button variant="app" onClick={() => onMove(-1)}>
-          ← Move back
+          <ArrowLeft size={14} />
+          Move back
         </Button>
       )}
       {canAdvance && (
         <Button variant="appPrimary" onClick={() => onMove(1)}>
-          Advance stage →
+          Advance stage
+          <ArrowRight size={14} />
         </Button>
       )}
     </div>

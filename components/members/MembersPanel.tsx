@@ -8,7 +8,13 @@
 // stays scannable — click the row to expand it.
 
 import { useState } from 'react';
-import { MessageSquare, PartyPopper, Star } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  MessageSquare,
+  PartyPopper,
+  Star
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { formatMessageTime } from '@/lib/hiring';
 import { Avatar } from '@/components/ui/avatar';
@@ -23,18 +29,22 @@ const KIND_ICON: Record<MemberActivityKind, LucideIcon> = {
 
 export default function MembersPanel({ members }: { members: Member[] }) {
   return (
-    <section className="settings-panel">
+    <section className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
       <div>
-        <p className="settings-section-title">Members</p>
-        <h1 className="settings-title">Team members</h1>
-        <p className="settings-sub">
+        <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground">
+          Members
+        </p>
+        <h1 className="mb-1 text-[17px] font-bold">Team members</h1>
+        <p className="text-[12.5px] text-muted-foreground">
           Everyone with an account. Click a member to see their activity.
         </p>
       </div>
 
-      <ul className="member-list">
+      <ul className="m-0 flex list-none flex-col gap-3 p-0">
         {members.length === 0 && (
-          <li className="email-empty">No members yet.</li>
+          <li className="text-[12.5px] italic text-muted-foreground">
+            No members yet.
+          </li>
         )}
         {members.map((m) => (
           <MemberCard key={m.id} member={m} />
@@ -50,23 +60,27 @@ function MemberCard({ member }: { member: Member }) {
   const panelId = `member-activity-${member.id}`;
 
   return (
-    <li className="member-card">
+    <li className="flex flex-col gap-3 rounded-md border border-border bg-surface p-3">
       <button
         type="button"
-        className="member-head"
+        className="flex w-full cursor-pointer items-center gap-3 border-none bg-transparent p-0 text-left text-inherit"
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((o) => !o)}
       >
-        <span className="member-caret" aria-hidden>
-          {open ? '▾' : '▸'}
+        <span className="flex-none text-muted-foreground" aria-hidden>
+          {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </span>
         <Avatar aria-hidden>{member.initials}</Avatar>
-        <div className="member-id">
-          <span className="member-name">{member.name}</span>
-          <span className="member-email">{member.email}</span>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-[13.5px] font-semibold">
+            {member.name}
+          </span>
+          <span className="truncate text-[12px] text-muted-foreground">
+            {member.email}
+          </span>
         </div>
-        <div className="member-stats">
+        <div className="flex flex-none gap-3 text-[12px] text-muted-foreground">
           <span title="Feedback left">
             <Star size={13} aria-hidden /> {member.feedbackCount}
           </span>
@@ -77,34 +91,47 @@ function MemberCard({ member }: { member: Member }) {
       </button>
 
       {open && (
-        <ol className="activity-list" id={panelId}>
+        <ol
+          className="m-0 flex list-none flex-col gap-0.5 border-t border-border pt-2"
+          id={panelId}
+        >
           {activityCount === 0 && (
-            <li className="activity-more">No activity yet.</li>
+            <li className="pt-0.5 text-[11.5px] italic text-muted-foreground">
+              No activity yet.
+            </li>
           )}
           {member.activity.map((a) => {
             const Icon = KIND_ICON[a.kind];
             return (
-            <li className="activity-row" key={a.id}>
-              <span className="activity-icon" aria-hidden>
+            <li
+              className="flex items-baseline gap-2 py-[3px] text-[12.5px]"
+              key={a.id}
+            >
+              <span className="flex-none text-[12px]" aria-hidden>
                 <Icon size={14} />
               </span>
-              <span className="activity-text">
+              <span className="min-w-0 flex-1 truncate">
                 {a.summary}
                 {a.candidateName && (
-                  <span className="activity-target">
+                  <span className="text-muted-foreground">
                     {' · '}
                     {a.candidateName}
                   </span>
                 )}
               </span>
-              <time className="activity-time" dateTime={a.at}>
+              <time
+                className="flex-none text-[11.5px] text-muted-foreground"
+                dateTime={a.at}
+              >
                 {formatMessageTime(a.at)}
               </time>
             </li>
             );
           })}
           {member.activityTruncated && (
-            <li className="activity-more">Older activity hidden</li>
+            <li className="pt-0.5 text-[11.5px] italic text-muted-foreground">
+              Older activity hidden
+            </li>
           )}
         </ol>
       )}

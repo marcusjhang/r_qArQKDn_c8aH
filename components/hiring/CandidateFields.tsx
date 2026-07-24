@@ -54,8 +54,8 @@ export default function CandidateFields({
 
   return (
     <>
-      <div className="field">
-        <label className="label" htmlFor={`${uid}-name`}>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor={`${uid}-name`}>
           Name
         </label>
         <input
@@ -67,11 +67,12 @@ export default function CandidateFields({
           disabled={disabled}
           onChange={(e) => onField('name', e.target.value)}
           placeholder="Full name"
+          className={CONTROL}
         />
       </div>
-      <div className="field-row">
-        <div className="field">
-          <label className="label" htmlFor={`${uid}-source`}>
+      <div className="flex flex-wrap gap-3">
+        <div className={`${FIELD} min-w-0 flex-[1_1_140px]`}>
+          <label className={LABEL} htmlFor={`${uid}-source`}>
             Source
           </label>
           <select
@@ -79,6 +80,7 @@ export default function CandidateFields({
             value={draft.source}
             disabled={disabled}
             onChange={(e) => onField('source', Number(e.target.value))}
+            className={CONTROL}
           >
             {sources.map((s) => (
               <option key={s.id} value={s.id}>
@@ -87,8 +89,8 @@ export default function CandidateFields({
             ))}
           </select>
         </div>
-        <div className="field">
-          <label className="label" htmlFor={`${uid}-owner`}>
+        <div className={`${FIELD} min-w-0 flex-[1_1_140px]`}>
+          <label className={LABEL} htmlFor={`${uid}-owner`}>
             Owner
           </label>
           <select
@@ -96,6 +98,7 @@ export default function CandidateFields({
             value={draft.owner}
             disabled={disabled}
             onChange={(e) => onField('owner', Number(e.target.value))}
+            className={CONTROL}
           >
             {users.map((u) => (
               <option key={u.id} value={u.id}>
@@ -105,14 +108,14 @@ export default function CandidateFields({
           </select>
         </div>
       </div>
-      <div className="field">
-        <label className="label" htmlFor={`${uid}-years`}>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor={`${uid}-years`}>
           Years of experience
         </label>
-        <div className="years-row">
+        <div className="flex items-center gap-2">
           <input
             id={`${uid}-years`}
-            className="years-input"
+            className={`${CONTROL} w-24 flex-none`}
             type="number"
             min={0}
             max={MAX_YEARS_EXPERIENCE}
@@ -122,11 +125,15 @@ export default function CandidateFields({
             onChange={(e) => onField('years', e.target.value)}
             placeholder={yearsPlaceholder}
           />
-          {seniority && <span className="exp-tag">{seniority}</span>}
+          {seniority && (
+            <span className="rounded-sm border border-primary-border bg-primary-weak px-[7px] py-0.5 text-[10px] font-semibold text-primary">
+              {seniority}
+            </span>
+          )}
         </div>
       </div>
-      <div className="field">
-        <label className="label" htmlFor={`${uid}-linkedin`}>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor={`${uid}-linkedin`}>
           LinkedIn URL (optional)
         </label>
         <input
@@ -137,10 +144,11 @@ export default function CandidateFields({
           disabled={disabled}
           onChange={(e) => onField('linkedin', e.target.value)}
           placeholder={LINKEDIN_URL_PLACEHOLDER}
+          className={CONTROL}
         />
       </div>
-      <div className="field">
-        <label className="label" htmlFor={`${uid}-github`}>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor={`${uid}-github`}>
           GitHub URL (optional)
         </label>
         <input
@@ -151,8 +159,16 @@ export default function CandidateFields({
           disabled={disabled}
           onChange={(e) => onField('github', e.target.value)}
           placeholder={GITHUB_URL_PLACEHOLDER}
+          className={CONTROL}
         />
       </div>
     </>
   );
 }
+
+// Shared field styling (former `.field` / `.label` / input rules).
+const FIELD = 'flex flex-col gap-1.5';
+const LABEL =
+  'text-[11px] font-bold uppercase tracking-[0.03em] text-muted-foreground';
+const CONTROL =
+  'w-full rounded-md border border-border-strong bg-surface px-2.5 py-2 text-[13px] text-foreground focus:border-primary focus:outline-none focus:shadow-[0_0_0_3px_var(--primary-weak)] disabled:cursor-default disabled:bg-surface-2 disabled:text-foreground';

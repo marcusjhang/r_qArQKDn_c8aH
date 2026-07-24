@@ -35,7 +35,10 @@ function renderBody(body: string, mentionNames: string[]) {
   while ((m = re.exec(body)) !== null) {
     if (m.index > last) out.push(body.slice(last, m.index));
     out.push(
-      <span className="mention" key={key++}>
+      <span
+        className="rounded-[4px] bg-primary-weak px-[3px] font-semibold text-primary"
+        key={key++}
+      >
         {m[0]}
       </span>
     );
@@ -86,14 +89,21 @@ export default function ChatPanel({
   });
 
   return (
-    <div className="chat">
-      <div className="section-title">Discussion</div>
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.03em] text-muted-foreground">
+        Discussion
+      </div>
 
-      <div className="chat-msgs" ref={listRef}>
+      <div
+        className="flex max-h-[320px] flex-col gap-3 overflow-y-auto pr-0.5"
+        ref={listRef}
+      >
         {loading ? (
-          <div className="chat-empty">Loading discussion…</div>
+          <div className="text-[12.5px] italic text-muted-foreground">
+            Loading discussion…
+          </div>
         ) : messages.length === 0 ? (
-          <div className="chat-empty">
+          <div className="text-[12.5px] italic text-muted-foreground">
             No messages yet. Type <b>@</b> to tag a teammate.
           </div>
         ) : (
@@ -101,19 +111,23 @@ export default function ChatPanel({
             const mine = currentUser != null && m.authorId === currentUser.id;
             return (
               <div
-                className={`chat-msg${mine ? ' mine' : ''}`}
+                className="flex items-start gap-2"
                 key={m.id}
                 data-mid={m.id}
               >
                 <Avatar title={m.authorName}>{m.authorInitials}</Avatar>
-                <div className="chat-bubble">
-                  <div className="chat-meta">
-                    <span className="chat-author">{m.authorName}</span>
-                    <span className="chat-time">
+                <div
+                  className={`flex min-w-0 flex-1 flex-col gap-1 rounded-md border px-2.5 py-2 ${mine ? 'border-primary-border bg-primary-weak' : 'border-border bg-surface'}`}
+                >
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-[12.5px] font-semibold">
+                      {m.authorName}
+                    </span>
+                    <span className="ml-auto text-[11px] text-muted-foreground">
                       {formatMessageTime(m.createdAt)}
                     </span>
                   </div>
-                  <div className="chat-body">
+                  <div className="whitespace-pre-wrap break-words text-[12.5px] text-foreground">
                     {renderBody(
                       m.body,
                       m.mentions.map((x) => x.name)
@@ -126,15 +140,18 @@ export default function ChatPanel({
         )}
       </div>
 
-      <div className="chat-compose">
+      <div className="flex flex-col gap-2">
         {currentUser == null ? (
-          <div className="chat-empty">Sign in to join the discussion.</div>
+          <div className="text-[12.5px] italic text-muted-foreground">
+            Sign in to join the discussion.
+          </div>
         ) : (
           <>
-            <div className="chat-input-wrap">
+            <div className="relative">
               <textarea
                 ref={taRef}
                 aria-label="Message"
+                className="min-h-[60px] w-full resize-y rounded-md border border-border-strong bg-surface px-2.5 py-2 text-[13px] text-foreground focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary-weak focus:ring-offset-0"
                 value={body}
                 onChange={onChange}
                 onKeyDown={onKeyDown}
@@ -142,29 +159,34 @@ export default function ChatPanel({
                 placeholder="Write a message… use @ to tag a teammate"
               />
               {menu && suggestions.length > 0 && (
-                <div className="mention-menu">
+                <div className="absolute bottom-[calc(100%_+_4px)] left-0 right-0 z-[22] flex max-h-[220px] flex-col overflow-y-auto rounded-md border border-border bg-surface p-1 shadow-ds">
                   {suggestions.map((u) => (
                     <button
                       key={u.id}
                       type="button"
-                      className="mention-item"
+                      className="flex items-center gap-2 rounded-sm border-0 bg-transparent px-2 py-1.5 text-left text-[12.5px] text-foreground hover:bg-surface-2"
                       onMouseDown={(e) => {
                         e.preventDefault();
                         pick(u);
                       }}
                     >
                       <Avatar>{initials(u)}</Avatar>
-                      <span className="mention-name">{displayName(u)}</span>
-                      <span className="mention-email">{u.email}</span>
+                      <span className="font-semibold">{displayName(u)}</span>
+                      <span className="ml-auto max-w-[45%] truncate text-[11px] text-muted-foreground">
+                        {u.email}
+                      </span>
                     </button>
                   ))}
                 </div>
               )}
             </div>
-            <div className="chat-compose-foot">
-              <span className="chat-hint">⌘/Ctrl + Enter to send</span>
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] text-muted-foreground">
+                ⌘/Ctrl + Enter to send
+              </span>
               <Button
                 variant="appPrimary"
+                className="ml-auto"
                 onClick={send}
                 disabled={sending || !body.trim()}
               >

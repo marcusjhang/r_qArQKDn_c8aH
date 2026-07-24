@@ -7,8 +7,18 @@
 // used, and optional expiry are listed afterwards. Revoking deletes the token.
 
 import { useState, useTransition } from 'react';
+import { Check } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { FormError } from '@/components/ui/form-error';
 import type { ApiTokenSummary } from '@/lib/tokens';
 import type { CreateTokenResult, SettingsResult } from '@/lib/settings-types';
+
+const LABEL_CLASS =
+  'text-[11px] font-bold uppercase tracking-[0.03em] text-muted-foreground';
+const INPUT_CLASS =
+  'w-full rounded-md border border-border-strong bg-surface px-2.5 py-2 text-[13px] text-foreground focus:border-primary focus:shadow-[0_0_0_3px_var(--primary-weak)] focus:outline-none';
+const TOKEN_CMD_CLASS =
+  'block break-all rounded-md border border-syes bg-surface p-[9px] font-mono text-[12px] leading-[1.5] text-foreground';
 
 const EXPIRY_OPTIONS: { label: string; days: number }[] = [
   { label: 'No expiry', days: 0 },
@@ -102,16 +112,19 @@ export default function ApiTokensPanel({
   }
 
   return (
-    <section className="settings-panel">
+    <section className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
       <div>
-        <p className="settings-section-title">MCP</p>
-        <h1 className="settings-title">API Tokens</h1>
+        <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground">
+          MCP
+        </p>
+        <h1 className="mb-1 text-[17px] font-bold">API Tokens</h1>
       </div>
 
-      <form className="settings-add" onSubmit={create}>
-        <div className="field" style={{ flex: '1 1 200px' }}>
-          <span className="label">Token name</span>
+      <form className="flex flex-wrap items-end gap-3" onSubmit={create}>
+        <div className="flex flex-col gap-1.5" style={{ flex: '1 1 200px' }}>
+          <span className={LABEL_CLASS}>Token name</span>
           <input
+            className={INPUT_CLASS}
             type="text"
             placeholder="e.g. my-laptop"
             maxLength={40}
@@ -122,10 +135,10 @@ export default function ApiTokensPanel({
             }}
           />
         </div>
-        <div className="field">
-          <span className="label">Expiry</span>
+        <div className="flex flex-col gap-1.5">
+          <span className={LABEL_CLASS}>Expiry</span>
           <select
-            className="token-expiry-select"
+            className="w-full rounded-md border border-border-strong bg-surface px-2.5 py-2 text-[13px] text-foreground focus:border-primary focus:shadow-[0_0_0_3px_var(--primary-weak)] focus:outline-none"
             value={expiryDays}
             onChange={(e) => setExpiryDays(Number(e.target.value))}
           >
@@ -136,78 +149,108 @@ export default function ApiTokensPanel({
             ))}
           </select>
         </div>
-        <button className="btn primary" type="submit" disabled={pending}>
+        <Button variant="appPrimary" type="submit" disabled={pending}>
           Create token
-        </button>
+        </Button>
       </form>
-      {error && <div className="form-error">{error}</div>}
+      <FormError message={error} />
 
       {minted && (
-        <div className="token-reveal" role="status">
-          <div className="token-reveal-head">
-            <span>✓ Copy it now. You won&apos;t see it again.</span>
-            <button
+        <div
+          className="flex flex-col gap-2 rounded-md border border-syes bg-syes-bg p-3"
+          role="status"
+        >
+          <div className="flex items-center justify-between gap-3 text-[12.5px] font-bold text-syes">
+            <span className="inline-flex items-center gap-1.5">
+              <Check size={14} /> Copy it now. You won&apos;t see it again.
+            </span>
+            <Button
               type="button"
-              className="btn"
+              variant="app"
               onClick={() => setMinted(null)}
               aria-label="Dismiss token"
             >
               Done
-            </button>
+            </Button>
           </div>
-          <code className="token-cmd">{minted.token}</code>
-          <div className="token-reveal-foot">
-            <button
+          <code className={TOKEN_CMD_CLASS}>{minted.token}</code>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
               type="button"
-              className="btn primary"
+              variant="appPrimary"
               onClick={() => copy(minted.token, 'token')}
             >
-              {copiedField === 'token' ? 'Copied ✓' : 'Copy token'}
-            </button>
+              {copiedField === 'token' ? (
+                <>
+                  Copied<Check size={14} />
+                </>
+              ) : (
+                'Copy token'
+              )}
+            </Button>
           </div>
-          <code className="token-cmd">mcp: {minted.command}</code>
-          <div className="token-reveal-foot">
-            <button
+          <code className={TOKEN_CMD_CLASS}>mcp: {minted.command}</code>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
               type="button"
-              className="btn primary"
+              variant="appPrimary"
               onClick={() => copy(minted.command, 'command')}
             >
-              {copiedField === 'command' ? 'Copied ✓' : 'Copy command'}
-            </button>
+              {copiedField === 'command' ? (
+                <>
+                  Copied<Check size={14} />
+                </>
+              ) : (
+                'Copy command'
+              )}
+            </Button>
           </div>
         </div>
       )}
 
-      <ul className="email-list">
+      <ul className="m-0 flex list-none flex-col gap-2 p-0">
         {tokens.length === 0 && (
-          <li className="email-empty">
-            No tokens yet. Create one to connect Claude Code.
+          <li className="text-[12.5px] italic text-muted-foreground">
+            No tokens yet.
           </li>
         )}
         {tokens.map((t) => {
           const expiry = expiryLabel(t.expiresAt);
           const expired = expiry === 'expired';
           return (
-            <li className="email-row" key={t.id}>
-              <span className="token-ident">
-                <span className="token-name">{t.name}</span>
-                <span className="token-prefix">{t.prefix}…</span>
+            <li
+              className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2"
+              key={t.id}
+            >
+              <span className="flex min-w-0 flex-1 items-baseline gap-2 overflow-hidden">
+                <span className="whitespace-nowrap text-[13px] font-semibold">
+                  {t.name}
+                </span>
+                <span className="font-mono text-[12px] text-muted-foreground">
+                  {t.prefix}…
+                </span>
               </span>
-              <span className="token-meta">
+              <span className="flex flex-wrap items-center gap-3 text-[12px] text-muted-foreground">
                 {expiry && (
-                  <span className={expired ? 'token-badge expired' : 'token-badge'}>
+                  <span
+                    className={
+                      expired
+                        ? 'rounded-full bg-rej-bg px-2 py-px text-[11px] font-semibold text-rej'
+                        : 'rounded-full bg-no-bg px-2 py-px text-[11px] font-semibold text-no'
+                    }
+                  >
                     {expiry}
                   </span>
                 )}
-                <span className="token-used">{usedLabel(t.lastUsedAt)}</span>
-                <button
-                  className="btn"
+                <span>{usedLabel(t.lastUsedAt)}</span>
+                <Button
+                  variant="app"
                   onClick={() => revoke(t.id)}
                   disabled={pending}
                   aria-label={`Revoke ${t.name}`}
                 >
                   Revoke
-                </button>
+                </Button>
               </span>
             </li>
           );

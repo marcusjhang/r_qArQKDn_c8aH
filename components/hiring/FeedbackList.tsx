@@ -7,6 +7,7 @@
 // coloured pills, so the drawer stays calm; the board card keeps the colour cue.
 
 import { useState } from 'react';
+import { ChevronRight } from 'lucide-react';
 import {
   overallScore,
   traitAgg,
@@ -24,9 +25,11 @@ import { Avatar } from '@/components/ui/avatar';
 /** Render a 1-4 average as a fixed-decimal number, or a muted placeholder. */
 function score(value: number | null, empty = 'Not scored') {
   return value == null ? (
-    <span className="score-val none">{empty}</span>
+    <span className="text-xs font-normal text-muted-foreground">{empty}</span>
   ) : (
-    <span className="score-val">{value.toFixed(1)}</span>
+    <span className="font-semibold tabular-nums text-foreground">
+      {value.toFixed(1)}
+    </span>
   );
 }
 
@@ -45,38 +48,59 @@ function FeedbackEntryRow({
   const scored = traits.filter((t) => entry.traitScores?.[t] != null);
   const avg = entryTraitAvg(entry);
   return (
-    <div className="fb-entry">
+    <div className="flex flex-col gap-1.5 rounded-md border border-border bg-surface p-2.5">
       <button
         type="button"
-        className="fb-head"
+        className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-left"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
         <Avatar>{initials(author)}</Avatar>
-        <span className="fb-who">{displayName(author)}</span>
-        {entry.stage && <span className="stage-badge">{entry.stage}</span>}
-        <span className="fb-right">
-          {avg != null && <span className="fb-avg">{avg.toFixed(1)}</span>}
-          <span className={`chev${open ? ' open' : ''}`}>▸</span>
+        <span className="text-[12.5px] font-semibold">{displayName(author)}</span>
+        {entry.stage && (
+          <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+            {entry.stage}
+          </span>
+        )}
+        <span className="ml-auto flex items-center gap-2">
+          {avg != null && (
+            <span className="text-[12.5px] font-bold tabular-nums text-foreground">
+              {avg.toFixed(1)}
+            </span>
+          )}
+          <ChevronRight
+            size={14}
+            aria-hidden
+            className={`text-muted-foreground transition-transform duration-150 ${open ? 'rotate-90' : ''}`}
+          />
         </span>
       </button>
       {open && (
-        <div className="fb-detail">
+        <div className="mt-2 flex flex-col gap-1.5">
           {scored.length > 0 ? (
-            <div className="fb-traits">
+            <div className="flex flex-wrap gap-1.5">
               {scored.map((t) => (
-                <span className="trait-tag" key={t}>
+                <span
+                  className="inline-flex items-baseline gap-1.5 rounded-full bg-surface-2 px-2.5 py-[3px] text-[11px] font-medium text-muted-foreground"
+                  key={t}
+                >
                   {t}
-                  <span className="trait-tag-score">
+                  <span className="text-[11px] font-bold tabular-nums text-foreground">
                     {entry.traitScores[t]}
                   </span>
                 </span>
               ))}
             </div>
           ) : (
-            <div className="fb-empty">No trait scores.</div>
+            <div className="text-[12.5px] italic text-muted-foreground">
+              No trait scores.
+            </div>
           )}
-          {entry.note && <div className="fb-note">{entry.note}</div>}
+          {entry.note && (
+            <div className="whitespace-pre-wrap text-[12.5px] text-foreground">
+              {entry.note}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -99,19 +123,25 @@ export default function FeedbackList({
   return (
     <>
       {traits.length > 0 && (
-        <div className="scores">
-          <div className="scores-head">
-            <span className="section-title-text">Scores</span>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-baseline gap-2">
+            <span className="text-xs font-bold uppercase tracking-[0.03em] text-muted-foreground">
+              Scores
+            </span>
             {overall == null ? (
-              <span className="score-overall none">No scores yet</span>
+              <span className="ml-auto text-xs font-medium text-muted-foreground">
+                No scores yet
+              </span>
             ) : (
-              <span className="score-overall">{overall.toFixed(1)}</span>
+              <span className="ml-auto text-[15px] font-bold tabular-nums text-foreground">
+                {overall.toFixed(1)}
+              </span>
             )}
           </div>
-          <div className="score-rows">
+          <div className="flex flex-col gap-1">
             {traits.map((t) => (
-              <div className="score-row" key={t}>
-                <span className="score-trait">{t}</span>
+              <div className="flex items-baseline gap-2 text-[13px]" key={t}>
+                <span className="min-w-0 flex-1 text-foreground">{t}</span>
                 {score(view ? traitAgg(view, t) : null)}
               </div>
             ))}
@@ -119,17 +149,21 @@ export default function FeedbackList({
         </div>
       )}
 
-      <div className="section-title">
+      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.03em] text-muted-foreground">
         Feedback
-        {feedback.length > 0 && <span className="agg">{feedback.length}</span>}
+        {feedback.length > 0 && (
+          <span className="ml-auto normal-case tracking-normal">
+            {feedback.length}
+          </span>
+        )}
       </div>
       <div>
         {feedback.length === 0 ? (
-          <div className="fb-empty">
+          <div className="text-[12.5px] italic text-muted-foreground">
             No feedback yet. Add the first review below.
           </div>
         ) : (
-          <div className="feedback">
+          <div className="flex flex-col gap-3">
             {feedback.map((f) => (
               <FeedbackEntryRow
                 key={f.id}

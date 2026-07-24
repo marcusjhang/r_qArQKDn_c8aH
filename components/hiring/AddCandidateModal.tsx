@@ -63,7 +63,7 @@ export default function AddCandidateModal({
 
   return (
     <Modal title={`Add candidate to ${jobTitle}`} onClose={onClose}>
-      <form className="modal-form" onSubmit={submit}>
+      <form className="flex flex-col gap-4" onSubmit={submit}>
         <CandidateFields
           draft={draft}
           onField={setField}
@@ -74,7 +74,7 @@ export default function AddCandidateModal({
           yearsPlaceholder="Optional"
         />
         <FormError message={error} />
-        <div className="modal-actions">
+        <div className="flex justify-end gap-2">
           <Button type="button" variant="app" onClick={onClose}>
             Cancel
           </Button>

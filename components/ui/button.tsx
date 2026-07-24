@@ -37,16 +37,15 @@ const buttonVariants = cva(
   }
 );
 
-// App-native button vocabulary for the hiring shell (rendered inside
-// `.ht-root`). These map to the `.ht-root .btn` / `.btn.primary` rules in
-// components/hiring/hiring.css, so the existing visual design is preserved
-// exactly — this centralizes the `btn` / `btn primary` class strings that were
-// otherwise copy-pasted across the hiring, members and settings components.
-// They deliberately emit ONLY the shell classes (no design-system base), so the
-// shell CSS owns their look and geometry.
+// App-native button vocabulary for the hiring UI: `app` is the neutral bordered
+// button, `appPrimary` the filled primary. Their look is the former `.btn` /
+// `.btn.primary` design, now expressed directly in Tailwind utilities against
+// the shared theme tokens so the whole app is a single Tailwind design system.
+const APP_BUTTON_BASE =
+  'inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-[7px] text-[13px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
 const appButtonVariants = {
-  app: 'btn',
-  appPrimary: 'btn primary'
+  app: `${APP_BUTTON_BASE} border border-border-strong bg-surface text-foreground hover:bg-surface-2`,
+  appPrimary: `${APP_BUTTON_BASE} border border-primary bg-primary text-primary-foreground hover:brightness-105`
 } as const;
 
 type DesignVariant = NonNullable<VariantProps<typeof buttonVariants>['variant']>;

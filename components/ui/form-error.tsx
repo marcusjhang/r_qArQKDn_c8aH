@@ -16,5 +16,7 @@ export interface FormErrorProps {
  */
 export function FormError({ message, className }: FormErrorProps) {
   if (!message) return null;
-  return <div className={cn('form-error', className)}>{message}</div>;
+  return (
+    <div className={cn('text-xs text-sno', className)}>{message}</div>
+  );
 }

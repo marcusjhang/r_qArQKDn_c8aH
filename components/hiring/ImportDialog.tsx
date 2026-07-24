@@ -20,6 +20,7 @@ import {
   type HiringState,
   type ImportRow
 } from '@/lib/hiring';
+import { Button } from '@/components/ui/button';
 import Modal from './Modal';
 import { downloadCsv } from './csvDownload';
 
@@ -89,16 +90,20 @@ export default function ImportDialog({
 
   return (
     <Modal title="Import candidates" onClose={onClose}>
-      <div className="import-body">
-        <div className="field">
-          <span className="label">CSV file</span>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[11px] font-bold uppercase tracking-[0.03em] text-muted-foreground">
+            CSV file
+          </span>
           <input type="file" accept=".csv,text/csv" onChange={onFile} />
         </div>
 
-        <div className="field">
-          <span className="label">Paste CSV</span>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[11px] font-bold uppercase tracking-[0.03em] text-muted-foreground">
+            Paste CSV
+          </span>
           <textarea
-            className="import-textarea"
+            className="w-full resize-y rounded-md border border-border-strong bg-surface px-2.5 py-2 font-mono text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             rows={5}
             value={text}
             placeholder="Job,Candidate,Stage,Status,Owner,Source,Years experience,LinkedIn URL,GitHub URL"
@@ -111,30 +116,37 @@ export default function ImportDialog({
           />
         </div>
 
-        {summary && <div className="import-summary">{summary}</div>}
+        {summary && (
+          <div className="rounded-md bg-hired-bg px-3 py-2 text-[13px] text-hired">
+            {summary}
+          </div>
+        )}
         {error && (
-          <div className="import-error" role="alert">
+          <div
+            className="rounded-md bg-rej-bg px-3 py-2 text-[13px] text-rej"
+            role="alert"
+          >
             {error}
           </div>
         )}
 
         {text.trim() && !summary && (
-          <div className="import-preview">
-            <div className="import-preview-head">
+          <div className="flex flex-col gap-2 rounded-md border border-border px-3 py-2.5 text-[13px]">
+            <div className="text-foreground">
               <strong>{rows.length}</strong> row{rows.length === 1 ? '' : 's'} ready
               {errors.length > 0 && (
                 <>
                   {' · '}
-                  <span className="import-preview-errcount">
-                    {errors.length} skipped
-                  </span>
+                  <span className="text-sno">{errors.length} skipped</span>
                 </>
               )}
-              {fileName && <span className="import-filename"> · {fileName}</span>}
+              {fileName && (
+                <span className="text-xs text-muted-foreground"> · {fileName}</span>
+              )}
             </div>
 
             {(jobsToCreate.length > 0 || sourcesToCreate.length > 0) && (
-              <div className="import-creates">
+              <div className="text-xs text-muted-foreground">
                 {jobsToCreate.length > 0 && (
                   <div>Will create job(s): {jobsToCreate.join(', ')}</div>
                 )}
@@ -145,10 +157,12 @@ export default function ImportDialog({
             )}
 
             {errors.length > 0 && (
-              <ul className="import-errors">
+              <ul className="m-0 flex max-h-[160px] flex-col gap-[3px] overflow-y-auto pl-4 text-xs text-foreground">
                 {errors.map((err, i) => (
                   <li key={i}>
-                    <span className="import-err-line">Line {err.line}:</span>{' '}
+                    <span className="font-semibold text-sno">
+                      Line {err.line}:
+                    </span>{' '}
                     {err.message}
                   </li>
                 ))}
@@ -157,10 +171,10 @@ export default function ImportDialog({
           </div>
         )}
 
-        <div className="import-ref-row">
+        <div className="border-t border-border pt-2.5 text-xs">
           <button
             type="button"
-            className="linklike"
+            className="cursor-pointer border-0 bg-transparent p-0 text-xs text-primary underline"
             onClick={() =>
               downloadCsv(
                 csvFilename('hiring-template', new Date()),
@@ -172,20 +186,20 @@ export default function ImportDialog({
           </button>
         </div>
 
-        <div className="modal-actions">
-          <button type="button" className="btn" onClick={onClose}>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="app" onClick={onClose}>
             {summary ? 'Close' : 'Cancel'}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="btn primary"
+            variant="appPrimary"
             onClick={submit}
             disabled={rows.length === 0 || busy}
           >
             {busy
               ? 'Importing…'
               : `Import ${rows.length} candidate${rows.length === 1 ? '' : 's'}`}
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>

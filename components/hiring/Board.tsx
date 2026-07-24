@@ -40,8 +40,8 @@ export default function Board({
   const jobCandidates = state.candidates.filter((c) => c.jobId === job.id);
 
   return (
-    <div className="board-scroll">
-      <div className="board">
+    <div className="flex-auto min-h-0 overflow-auto px-4 pt-2 pb-6">
+      <div className="flex items-start gap-3 min-h-[60px] pr-4">
         {job.stages.map((stage, index) => (
           <StageColumn
             // Stage names are unique within a job (validateStageName), so keying

@@ -14,6 +14,15 @@ import { useFeedbackDraft, type FeedbackEntry } from './useFeedbackDraft';
 
 const RATING_ORDER: RatingValue[] = [1, 2, 3, 4];
 
+// Selected-state colours per rating verdict, matching the former
+// `.sp[aria-pressed='true'].<cls>` rules. Keyed by RATINGS[v].cls.
+const SP_TONE: Record<string, string> = {
+  syes: 'aria-pressed:border-syes aria-pressed:bg-syes-bg aria-pressed:text-syes',
+  yes: 'aria-pressed:border-yes aria-pressed:bg-yes-bg aria-pressed:text-yes',
+  no: 'aria-pressed:border-no aria-pressed:bg-no-bg aria-pressed:text-no',
+  sno: 'aria-pressed:border-sno aria-pressed:bg-sno-bg aria-pressed:text-sno'
+};
+
 export default function AddFeedbackForm({
   resetKey,
   currentUserId,
@@ -35,29 +44,36 @@ export default function AddFeedbackForm({
   // The whole app is auth-gated, so this is a defensive fallback only.
   if (currentUserId == null) {
     return (
-      <div className="add-fb">
-        <div className="fb-empty">Sign in to leave feedback.</div>
+      <div className="flex flex-col gap-2.5 rounded-md border border-dashed border-border-strong bg-surface-2 p-3">
+        <div className="text-[12.5px] italic text-muted-foreground">
+          Sign in to leave feedback.
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="add-fb">
+    <div className="flex flex-col gap-2.5 rounded-md border border-dashed border-border-strong bg-surface-2 p-3">
       {traits.length > 0 && (
-        <div className="field">
-          <span className="label">Trait scores</span>
-          <div className="trait-score-inputs">
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[11px] font-bold uppercase tracking-[0.03em] text-muted-foreground">
+            Trait scores
+          </span>
+          <div className="flex flex-col gap-2">
             {traits.map((t, i) => (
-              <div className="trait-score-input" key={t}>
-                <span className="trait-score-input-name">
-                  <span className="trait-rank">#{i + 1}</span> {t}
+              <div className="flex items-center gap-2" key={t}>
+                <span className="min-w-0 flex-1 text-[12.5px] text-foreground">
+                  <span className="min-w-[22px] text-[11px] font-bold text-muted-foreground">
+                    #{i + 1}
+                  </span>{' '}
+                  {t}
                 </span>
-                <div className="score-picker">
+                <div className="flex flex-none gap-1">
                   {RATING_ORDER.map((v) => (
                     <button
                       key={v}
                       type="button"
-                      className={`sp ${RATINGS[v].cls}`}
+                      className={`inline-flex h-[26px] w-[26px] items-center justify-center rounded-md border border-border-strong bg-surface text-xs font-bold text-muted-foreground ${SP_TONE[RATINGS[v].cls]}`}
                       aria-pressed={fb.traitScores[t] === v}
                       onClick={() => fb.setTrait(t, v)}
                     >
@@ -71,12 +87,16 @@ export default function AddFeedbackForm({
         </div>
       )}
 
-      <div className="field">
-        <label className="label" htmlFor="feedback-note">
+      <div className="flex flex-col gap-1.5">
+        <label
+          className="text-[11px] font-bold uppercase tracking-[0.03em] text-muted-foreground"
+          htmlFor="feedback-note"
+        >
           Note
         </label>
         <textarea
           id="feedback-note"
+          className="min-h-[60px] w-full resize-y rounded-md border border-border-strong bg-surface px-2.5 py-2 text-[13px] text-foreground focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary-weak focus:ring-offset-0"
           value={fb.note}
           maxLength={2000}
           onChange={(e) => fb.setNote(e.target.value)}
