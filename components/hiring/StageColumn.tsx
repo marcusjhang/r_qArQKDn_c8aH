@@ -65,6 +65,9 @@ export default function StageColumn({
           contentEditable
           suppressContentEditableWarning
           spellCheck={false}
+          role="textbox"
+          aria-label={`Rename ${stage} stage`}
+          tabIndex={0}
           title="Click to rename this stage"
           onBlur={rename.onBlur}
           onKeyDown={rename.onKeyDown}
@@ -88,7 +91,7 @@ export default function StageColumn({
               index={index}
               stagesLen={job.stages.length}
               canDelete={del.ok}
-              deleteReason={del.reason}
+              deleteReason={del.ok ? undefined : del.reason}
               onRename={() => {
                 menu.close();
                 rename.start();

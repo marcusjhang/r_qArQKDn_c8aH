@@ -29,7 +29,8 @@ import {
   addStageToPipeline,
   reorderStages,
   removeStage,
-  MAX_FAVORITES
+  MAX_FAVORITES,
+  type StageGuard
 } from './helpers';
 import { hiringReducer, type HiringEvent } from './reducer';
 import { useOptimisticSync } from './sync';
@@ -44,9 +45,9 @@ export function canDeleteStage(
   state: HiringState,
   jobId: number,
   index: number
-): { ok: boolean; reason?: string } {
+): StageGuard {
   const job = state.jobs.find((j) => j.id === jobId);
-  if (!job) return { ok: false };
+  if (!job) return { ok: false, reason: 'That job no longer exists.' };
   const stage = job.stages[index];
   const hasCandidates = state.candidates.some(
     (c) => c.jobId === jobId && c.stage === stage

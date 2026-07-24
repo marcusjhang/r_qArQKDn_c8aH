@@ -83,7 +83,7 @@ export default function ImportDialog({
         // The write failed (network, server rejection, …); leave the busy
         // state so the user can fix and retry rather than seeing it hang.
         setBusy(false);
-        setError('Import failed — nothing was saved. Please try again.');
+        setError('Import failed. Nothing was saved; please try again.');
       }
     );
   }

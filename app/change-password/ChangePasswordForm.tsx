@@ -96,6 +96,7 @@ export default function ChangePasswordForm({
           <CardContent className="space-y-4">
             <Input
               type="password"
+              aria-label="New password"
               placeholder="New password"
               value={password}
               onChange={(e) => {
@@ -108,6 +109,7 @@ export default function ChangePasswordForm({
             />
             <Input
               type="password"
+              aria-label="Confirm new password"
               placeholder="Confirm new password"
               value={confirmPassword}
               onChange={(e) => {
@@ -121,7 +123,11 @@ export default function ChangePasswordForm({
             <p className="text-sm text-muted-foreground">
               Must be at least {minLength} characters.
             </p>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && (
+              <p className="text-sm text-destructive" role="alert">
+                {error}
+              </p>
+            )}
           </CardContent>
           <CardFooter>
             <Button type="submit" className="w-full" disabled={loading}>
