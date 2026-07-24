@@ -37,6 +37,7 @@ function renderBody(body: string, mentionNames: string[]) {
     out.push(
       <span
         className="rounded-[4px] bg-primary-weak px-[3px] font-semibold text-primary"
+        data-testid="chat-mention"
         key={key++}
       >
         {m[0]}
@@ -89,21 +90,28 @@ export default function ChatPanel({
   });
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3" data-testid="chat">
       <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.03em] text-muted-foreground">
         Discussion
       </div>
 
       <div
         className="flex max-h-[320px] flex-col gap-3 overflow-y-auto pr-0.5"
+        data-testid="chat-messages"
         ref={listRef}
       >
         {loading ? (
-          <div className="text-[12.5px] italic text-muted-foreground">
+          <div
+            className="text-[12.5px] italic text-muted-foreground"
+            data-testid="chat-empty"
+          >
             Loading discussion…
           </div>
         ) : messages.length === 0 ? (
-          <div className="text-[12.5px] italic text-muted-foreground">
+          <div
+            className="text-[12.5px] italic text-muted-foreground"
+            data-testid="chat-empty"
+          >
             No messages yet.
           </div>
         ) : (
@@ -159,11 +167,15 @@ export default function ChatPanel({
                 placeholder="Write a message… use @ to tag a teammate"
               />
               {menu && suggestions.length > 0 && (
-                <div className="absolute bottom-[calc(100%_+_4px)] left-0 right-0 z-[22] flex max-h-[220px] flex-col overflow-y-auto rounded-md border border-border bg-surface p-1 shadow-ds">
+                <div
+                  className="absolute bottom-[calc(100%_+_4px)] left-0 right-0 z-[22] flex max-h-[220px] flex-col overflow-y-auto rounded-md border border-border bg-surface p-1 shadow-ds"
+                  data-testid="mention-menu"
+                >
                   {suggestions.map((u) => (
                     <button
                       key={u.id}
                       type="button"
+                      data-testid="mention-item"
                       className="flex items-center gap-2 rounded-sm border-0 bg-transparent px-2 py-1.5 text-left text-[12.5px] text-foreground hover:bg-surface-2"
                       onMouseDown={(e) => {
                         e.preventDefault();
@@ -171,7 +183,9 @@ export default function ChatPanel({
                       }}
                     >
                       <Avatar>{initials(u)}</Avatar>
-                      <span className="font-semibold">{displayName(u)}</span>
+                      <span className="font-semibold" data-testid="mention-name">
+                        {displayName(u)}
+                      </span>
                       <span className="ml-auto max-w-[45%] truncate text-[11px] text-muted-foreground">
                         {u.email}
                       </span>

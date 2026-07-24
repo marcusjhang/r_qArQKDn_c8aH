@@ -15,25 +15,25 @@ test.describe('time-in-stage', () => {
     await loginToBoard(page);
 
     // Every active card carries a time-in-stage tag; at least one is overdue.
-    await expect(page.locator('.card .time-tag').first()).toBeVisible();
-    await expect(page.locator('.card .time-tag.overdue').first()).toBeVisible();
+    await expect(page.locator('[data-testid="time-tag"]').first()).toBeVisible();
+    await expect(page.locator('[data-testid="time-tag"][data-overdue="true"]').first()).toBeVisible();
 
     // A backdated candidate is flagged overdue with a day-count label. Uses Sofia
     // Kim (9d, Offer) rather than Marcus Webb: candidate-move.spec advances
     // Marcus Webb in a parallel worker, which resets his stage clock, so reading
     // him here would race that file's writes. Sofia Kim is read-only across the
     // suite.
-    const overdueCard = page.locator('.card', { hasText: 'Sofia Kim' });
-    await expect(overdueCard.locator('.time-tag.overdue')).toHaveText(/^\d+d$/);
+    const overdueCard = page.locator('[data-testid="candidate-card"]', { hasText: 'Sofia Kim' });
+    await expect(overdueCard.locator('[data-testid="time-tag"][data-overdue="true"]')).toHaveText(/^\d+d$/);
 
     // A fresh candidate (Ava Chen, 3d in Screen, under the 5-day threshold)
     // shows a plain, non-overdue tag.
     const freshTag = page
-      .locator('.card', { hasText: 'Ava Chen' })
-      .locator('.time-tag');
+      .locator('[data-testid="candidate-card"]', { hasText: 'Ava Chen' })
+      .locator('[data-testid="time-tag"]');
     await expect(freshTag).toBeVisible();
     await expect(freshTag).toHaveText(/^\d+d$/);
-    await expect(freshTag).not.toHaveClass(/overdue/);
+    await expect(freshTag).not.toHaveAttribute('data-overdue', 'true');
   });
 
   test('detail drawer footer shows the time in stage, red when overdue', async ({
@@ -43,9 +43,9 @@ test.describe('time-in-stage', () => {
     // Sofia Kim (9d, overdue), not Marcus Webb — see the board-tag test above.
     await openCandidate(page, 'Sofia Kim');
 
-    const age = page.locator('aside.drawer.open .stage-age');
+    const age = page.locator('aside[role="dialog"]:not([inert]) [data-testid="stage-age"]');
     await expect(age).toBeVisible();
-    await expect(age).toHaveClass(/overdue/);
+    await expect(age).toHaveAttribute('data-overdue', 'true');
     // Just the day count — no "past the N-day limit" verbiage.
     await expect(age).toContainText(/In this stage \d+d/);
     await expect(age).not.toContainText('limit');
@@ -57,7 +57,7 @@ test.describe('time-in-stage', () => {
     await login(page);
     await page.goto('/settings');
 
-    const panel = page.locator('.settings-panel', {
+    const panel = page.locator('section', {
       hasText: 'Stalled applicant warning'
     });
     await expect(panel).toBeVisible();
@@ -68,24 +68,24 @@ test.describe('time-in-stage', () => {
     // Change it, save, and confirm it persists across a reload.
     await input.fill('9');
     await panel.getByRole('button', { name: 'Save' }).click();
-    await expect(panel.locator('.settings-saved')).toBeVisible();
+    await expect(panel.locator('[data-testid="settings-saved"]')).toBeVisible();
 
     await page.reload();
     const reloaded = page
-      .locator('.settings-panel', { hasText: 'Stalled applicant warning' })
+      .locator('section', { hasText: 'Stalled applicant warning' })
       .getByLabel('Warn after (days)');
     await expect(reloaded).toHaveValue('9');
 
     // Reset to the seeded value so the threshold stays stable for other specs.
     await reloaded.fill('5');
     await page
-      .locator('.settings-panel', { hasText: 'Stalled applicant warning' })
+      .locator('section', { hasText: 'Stalled applicant warning' })
       .getByRole('button', { name: 'Save' })
       .click();
     await expect(
       page
-        .locator('.settings-panel', { hasText: 'Stalled applicant warning' })
-        .locator('.settings-saved')
+        .locator('section', { hasText: 'Stalled applicant warning' })
+        .locator('[data-testid="settings-saved"]')
     ).toBeVisible();
   });
 
@@ -103,13 +103,13 @@ test.describe('time-in-stage', () => {
     ).toBeVisible();
 
     // Open the notification bell.
-    await page.locator('.notif-btn').click();
-    const menu = page.locator('.notif-menu');
+    await page.locator('[aria-label*="Notifications"]').click();
+    const menu = page.locator('[role="menu"]');
     await expect(menu).toBeVisible();
 
     // A stalled-candidate alert names an overdue candidate benchan owns and
     // states how long they've been in stage — no "limit" language.
-    const alert = menu.locator('.notif-item.alert', { hasText: 'Sofia Kim' });
+    const alert = menu.locator('[data-testid="notif-item"][data-kind="alert"]', { hasText: 'Sofia Kim' });
     await expect(alert).toBeVisible();
     await expect(alert).toContainText('Stalled candidate');
     await expect(alert).toContainText(/has been in .+ for \d+ days?/);

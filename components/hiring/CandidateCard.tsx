@@ -77,6 +77,7 @@ export default function CandidateCard({
           : 'border-border bg-surface hover:border-border-strong'
       }`}
       {...dragProps}
+      data-testid="candidate-card"
       role="button"
       tabIndex={0}
       aria-label={`Open ${candidate.name}`}
@@ -132,6 +133,8 @@ export default function CandidateCard({
           </span>
           {showAge && (
             <span
+              data-testid="time-tag"
+              data-overdue={overdue || undefined}
               className={`flex-none whitespace-nowrap rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${
                 overdue
                   ? 'bg-sno-bg text-sno'

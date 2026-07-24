@@ -24,11 +24,11 @@ test.describe('add feedback to a candidate', () => {
     page
   }) => {
     await openCandidate(page, CANDIDATE);
-    const drawer = page.locator('aside.drawer.open');
-    const form = drawer.locator('.add-fb');
+    const drawer = page.locator('aside[role="dialog"]:not([inert])');
+    const form = drawer.locator('[data-testid="add-feedback"]');
 
     // Score the first tracked trait: click "4" and confirm it becomes active.
-    const firstTrait = form.locator('.trait-score-input').first();
+    const firstTrait = form.locator('[data-testid="trait-score-input"]').first();
     const four = firstTrait.getByRole('button', { name: '4', exact: true });
     await four.click();
     await expect(four).toHaveAttribute('aria-pressed', 'true');
@@ -39,40 +39,46 @@ test.describe('add feedback to a candidate', () => {
     await form.getByRole('button', { name: /feedback/i }).click();
 
     // A collapsed entry appears in the list; expand it to read the note.
-    const entry = drawer.locator('.fb-entry').first();
+    const entry = drawer.locator('[data-testid="feedback-entry"]').first();
     await expect(entry).toBeVisible();
-    await entry.locator('.fb-head').click();
-    await expect(entry.locator('.fb-detail')).toContainText(note);
+    await entry.locator('[data-testid="feedback-entry-head"]').click();
+    await expect(entry.locator('[data-testid="feedback-entry-detail"]')).toContainText(note);
   });
 
   test('feedback persists across a reload', async ({ page }) => {
     await openCandidate(page, CANDIDATE);
-    const drawer = page.locator('aside.drawer.open');
-    const form = drawer.locator('.add-fb');
+    const drawer = page.locator('aside[role="dialog"]:not([inert])');
+    const form = drawer.locator('[data-testid="add-feedback"]');
 
     const note = `Persisted note ${Date.now()}`;
     await form
-      .locator('.trait-score-input')
+      .locator('[data-testid="trait-score-input"]')
       .first()
       .getByRole('button', { name: '3', exact: true })
       .click();
     await form.locator('textarea').fill(note);
-    // Persistence is optimistic; wait for the write (a POST to the route) so the
-    // reload below reads back committed state rather than cancelling it.
+    // Persistence is optimistic; wait for the *feedback write itself* to commit
+    // before reloading, or the reload cancels the in-flight write and the entry
+    // is lost. The board/notification query refetches are also POSTs, so match
+    // the write specifically by the unique note text it carries in its body —
+    // waiting on any POST races and picks up an unrelated refetch (flaky).
     const persisted = page.waitForResponse(
-      (r) => r.request().method() === 'POST'
+      (r) =>
+        r.request().method() === 'POST' &&
+        (r.request().postData() ?? '').includes(note) &&
+        r.ok()
     );
     await form.getByRole('button', { name: /feedback/i }).click();
 
-    const entry = drawer.locator('.fb-entry').first();
-    await entry.locator('.fb-head').click();
-    await expect(entry.locator('.fb-detail')).toContainText(note);
+    const entry = drawer.locator('[data-testid="feedback-entry"]').first();
+    await entry.locator('[data-testid="feedback-entry-head"]').click();
+    await expect(entry.locator('[data-testid="feedback-entry-detail"]')).toContainText(note);
     await persisted;
 
     await page.reload();
     await openCandidate(page, CANDIDATE);
-    const reopened = page.locator('aside.drawer.open .fb-entry').first();
-    await reopened.locator('.fb-head').click();
-    await expect(reopened.locator('.fb-detail')).toContainText(note);
+    const reopened = page.locator('aside[role="dialog"]:not([inert]) [data-testid="feedback-entry"]').first();
+    await reopened.locator('[data-testid="feedback-entry-head"]').click();
+    await expect(reopened.locator('[data-testid="feedback-entry-detail"]')).toContainText(note);
   });
 });

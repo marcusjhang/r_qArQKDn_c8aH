@@ -53,7 +53,10 @@ export default function AddFeedbackForm({
   }
 
   return (
-    <div className="flex flex-col gap-2.5 rounded-md border border-dashed border-border-strong bg-surface-2 p-3">
+    <div
+      className="flex flex-col gap-2.5 rounded-md border border-dashed border-border-strong bg-surface-2 p-3"
+      data-testid="add-feedback"
+    >
       {traits.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <span className="text-[11px] font-bold uppercase tracking-[0.03em] text-muted-foreground">
@@ -68,7 +71,7 @@ export default function AddFeedbackForm({
                   </span>{' '}
                   {t}
                 </span>
-                <div className="flex flex-none gap-1">
+                <div className="flex flex-none gap-1" data-testid="trait-score-input">
                   {RATING_ORDER.map((v) => (
                     <button
                       key={v}

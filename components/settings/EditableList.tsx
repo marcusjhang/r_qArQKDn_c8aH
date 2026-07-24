@@ -70,7 +70,7 @@ export default function EditableList<T extends EditableListItem>({
       </form>
       <FormError message={error} />
 
-      <ul className="m-0 flex list-none flex-col gap-2 p-0">
+      <ul className="m-0 flex list-none flex-col gap-2 p-0" data-testid="editable-list">
         {items.length === 0 && (
           <li className="text-[12.5px] italic text-muted-foreground">
             {emptyText}

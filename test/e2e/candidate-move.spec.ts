@@ -23,12 +23,12 @@ test.describe('move a candidate between stages', () => {
   test('advancing a candidate moves them to the next stage', async ({
     page
   }) => {
-    const fromColumn = page.locator('.column', { has: page.locator(`text=${FROM_STAGE}`) }).first();
-    const toColumn = page.locator('.column', { has: page.locator(`text=${TO_STAGE}`) }).first();
+    const fromColumn = page.locator('[data-stage]', { has: page.locator(`text=${FROM_STAGE}`) }).first();
+    const toColumn = page.locator('[data-stage]', { has: page.locator(`text=${TO_STAGE}`) }).first();
 
     // The candidate starts in the "Applied" column.
     await expect(
-      fromColumn.locator('.card', { hasText: CANDIDATE })
+      fromColumn.locator('[data-testid="candidate-card"]', { hasText: CANDIDATE })
     ).toBeVisible();
 
     // Open the drawer and advance a stage. Moving closes the drawer and returns
@@ -37,12 +37,12 @@ test.describe('move a candidate between stages', () => {
     await page.getByRole('button', { name: /Advance stage/ }).click();
 
     // The drawer closes and the card now lives in the next column.
-    await expect(page.locator('aside.drawer.open')).toHaveCount(0);
+    await expect(page.locator('aside[role="dialog"]:not([inert])')).toHaveCount(0);
     await expect(
-      toColumn.locator('.card', { hasText: CANDIDATE })
+      toColumn.locator('[data-testid="candidate-card"]', { hasText: CANDIDATE })
     ).toBeVisible();
     await expect(
-      fromColumn.locator('.card', { hasText: CANDIDATE })
+      fromColumn.locator('[data-testid="candidate-card"]', { hasText: CANDIDATE })
     ).toHaveCount(0);
   });
 
@@ -56,17 +56,17 @@ test.describe('move a candidate between stages', () => {
     // read the pre-move row. The board does no interval polling, so once the
     // move (and any drawer-mount reads) settle the network goes idle — wait for
     // that before reloading so the write is guaranteed committed.
-    const footer = page.locator('.drawer-foot .stage-now');
+    const footer = page.locator('[data-testid="stage-now"]');
     const before = (await footer.textContent())?.trim();
 
     await page.getByRole('button', { name: /Advance stage/ }).click();
-    await expect(page.locator('aside.drawer.open')).toHaveCount(0);
+    await expect(page.locator('aside[role="dialog"]:not([inert])')).toHaveCount(0);
     await page.waitForLoadState('networkidle');
 
     // Reopen after a reload: the persisted stage should differ from before.
     await page.reload();
     await openCandidate(page, CANDIDATE);
-    const after = (await page.locator('.drawer-foot .stage-now').textContent())?.trim();
+    const after = (await page.locator('[data-testid="stage-now"]').textContent())?.trim();
     expect(after).not.toEqual(before);
   });
 });

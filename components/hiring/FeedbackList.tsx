@@ -49,9 +49,13 @@ function FeedbackEntryRow({
   const scored = traits.filter((t) => entry.traitScores?.[t] != null);
   const avg = entryTraitAvg(entry);
   return (
-    <div className="flex flex-col gap-1.5 rounded-md border border-border bg-surface p-2.5">
+    <div
+      className="flex flex-col gap-1.5 rounded-md border border-border bg-surface p-2.5"
+      data-testid="feedback-entry"
+    >
       <button
         type="button"
+        data-testid="feedback-entry-head"
         className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-left"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
@@ -77,7 +81,7 @@ function FeedbackEntryRow({
         </span>
       </button>
       {open && (
-        <div className="mt-2 flex flex-col gap-1.5">
+        <div className="mt-2 flex flex-col gap-1.5" data-testid="feedback-entry-detail">
           {scored.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
               {scored.map((t) => (

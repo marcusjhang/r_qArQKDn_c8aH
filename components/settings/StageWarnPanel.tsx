@@ -93,7 +93,10 @@ export default function StageWarnPanel({
           Save
         </Button>
         {saved && (
-          <span className="self-center text-[12.5px] font-semibold text-ok">
+          <span
+            className="self-center text-[12.5px] font-semibold text-ok"
+            data-testid="settings-saved"
+          >
             Saved
           </span>
         )}

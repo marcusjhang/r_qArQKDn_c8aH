@@ -155,6 +155,8 @@ export default function NotificationBell({
               {stageAlerts.map((a) => (
                 <div
                   key={`alert-${a.candidateId}`}
+                  data-testid="notif-item"
+                  data-kind="alert"
                   className={`${NOTIF_ITEM} border-l-[3px] border-sno bg-sno-bg hover:brightness-[0.98]`}
                 >
                   <button className={NOTIF_OPEN} onClick={() => openAlert(a)}>
@@ -176,6 +178,8 @@ export default function NotificationBell({
               {items.map((n) => (
                 <div
                   key={n.id}
+                  data-testid="notif-item"
+                  data-kind="mention"
                   className={`${NOTIF_ITEM} ${
                     n.read
                       ? 'hover:bg-surface-2'

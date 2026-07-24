@@ -43,9 +43,14 @@ export default function DetailFooter({
   return (
     <div className="mt-auto flex flex-wrap items-center gap-3 border-t border-border bg-surface p-4">
       <div className="min-w-0 flex-1 text-xs text-muted-foreground">
-        Stage: <b className="text-foreground">{view?.stage ?? '—'}</b>
+        Stage:{' '}
+        <b className="text-foreground" data-testid="stage-now">
+          {view?.stage ?? '—'}
+        </b>
         {showAge && (
           <span
+            data-testid="stage-age"
+            data-overdue={overdue || undefined}
             className={`mt-1 block text-[11.5px] ${overdue ? 'font-semibold text-sno' : 'text-muted-foreground'}`}
           >
             In this stage {ageLabel}
