@@ -176,6 +176,42 @@ export function detectTraitRename(
   return null;
 }
 
+/** Result of scoping submitted trait scores to a job's current traits. */
+export interface ScopedTraitScores {
+  /**
+   * The submitted scores intersected with the job's CURRENT traits — every
+   * stale or renamed key has been dropped, so only a trait the job still tracks
+   * can survive into a persisted feedback entry.
+   */
+  scoped: TraitScores;
+  /** Whether at least one submitted score survived the scoping. */
+  hasAnyScore: boolean;
+}
+
+/**
+ * Scope a client's submitted `traitScores` down to the job's CURRENT `traits`:
+ * keep only the entries whose key is still a tracked trait, dropping any
+ * stale/renamed key so it can never persist. Returns the scoped map plus
+ * `hasAnyScore` (true when anything survived).
+ *
+ * Pure and framework-free so the server feedback write (addFeedbackCore) and any
+ * future caller share one definition of "which scores are allowed to persist",
+ * and the data-integrity guarantee is unit-testable without a database. The
+ * caller pairs this with the job's trait count to enforce the write rule: when a
+ * job tracks any traits, a submission that scopes to nothing is rejected (a
+ * no-op); a job with no traits keeps the (empty) map and still persists.
+ */
+export function scopeTraitScores(
+  jobTraits: string[],
+  submitted: TraitScores
+): ScopedTraitScores {
+  const allowed = new Set(jobTraits);
+  const scoped: TraitScores = Object.fromEntries(
+    Object.entries(submitted ?? {}).filter(([trait]) => allowed.has(trait))
+  );
+  return { scoped, hasAnyScore: Object.keys(scoped).length > 0 };
+}
+
 /**
  * Rewrite a feedback entry's recorded trait scores when a trait is renamed:
  * move the score stored under `from` to `to`, leaving every other trait's score

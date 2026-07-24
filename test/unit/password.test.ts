@@ -3,8 +3,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // The lib/password.ts auth/user-domain services behind the two password-change
 // flows:
 //   - changePassword  — the forced first-login change (validate confirmation +
-//     length, hash, clear mustChangePassword). No current-password check: it
-//     replaces the shared seeded default with minimal friction.
+//     length, reject re-setting the SAME password, hash, clear
+//     mustChangePassword). No current-password *auth* check, but it rejects reuse
+//     so a confined account can't just re-set the shared seeded default.
 //   - updatePassword  — the voluntary change from /settings. Same validation
 //     PLUS it verifies the current password first (a stolen/unattended session
 //     must not silently take the account over).
@@ -86,18 +87,34 @@ describe('changePassword validation', () => {
 
 describe('changePassword success', () => {
   it('stores the new hash and clears the mustChangePassword flag', async () => {
+    // The new password differs from the stored (default) one.
+    vi.mocked(compare).mockResolvedValue(false as never);
     const result = await changePassword({
       userId: 7,
       password: validPassword,
       confirmPassword: validPassword
     });
     expect(result).toEqual({ ok: true });
+    expect(compare).toHaveBeenCalledWith(validPassword, 'stored-hash');
     expect(updateSet).toHaveBeenCalledTimes(1);
     expect(updateSet).toHaveBeenCalledWith({
       passwordHash: 'hashed',
       mustChangePassword: false
     });
     expect(updateWhere).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects re-setting the same (shared default) password', async () => {
+    // compare(new, currentHash) === true → it's a reuse of the current password.
+    vi.mocked(compare).mockResolvedValue(true as never);
+    const result = await changePassword({
+      userId: 7,
+      password: validPassword,
+      confirmPassword: validPassword
+    });
+    expect(result).toMatchObject({ ok: false });
+    expect(compare).toHaveBeenCalledWith(validPassword, 'stored-hash');
+    expect(updateSet).not.toHaveBeenCalled();
   });
 });
 

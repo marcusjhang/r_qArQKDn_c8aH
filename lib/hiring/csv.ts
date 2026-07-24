@@ -28,9 +28,18 @@ import type { HiringState } from './types';
  * Escape one field per RFC 4180: wrap in double quotes when it contains a
  * comma, quote, CR or LF, doubling any embedded quote. Plain values are left
  * untouched so a typical export stays diff-friendly and human-readable.
+ *
+ * Additionally neutralises CSV/formula injection: cells are user-controlled
+ * free text (candidate name, job/source names, URLs — some ingested from an
+ * imported CSV), and a cell beginning with `= + - @` (or tab/CR) is executed as
+ * a formula when the export is opened in Excel/Sheets. Such cells are prefixed
+ * with a leading apostrophe so the spreadsheet treats them as literal text.
  */
 export function escapeCsvField(value: string): string {
-  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+  const guarded = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return /[",\r\n]/.test(guarded)
+    ? `"${guarded.replace(/"/g, '""')}"`
+    : guarded;
 }
 
 /**

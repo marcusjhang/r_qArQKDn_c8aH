@@ -12,7 +12,8 @@ import { loginToBoard, openCandidate } from './helpers';
 // the "Applied" stage with the default pipeline (Applied -> Screen -> ...), so
 // advancing moves them Applied -> Screen. See lib/hiring/seed.ts.
 const CANDIDATE = 'Marcus Webb';
-const FROM_STAGE = 'Applied';
+// Fallback "next" stage when the candidate is at the seeded start (Applied); the
+// test otherwise derives from/to from the live column order to stay retry-safe.
 const TO_STAGE = 'Screen';
 
 test.describe('move a candidate between stages', () => {
@@ -23,13 +24,26 @@ test.describe('move a candidate between stages', () => {
   test('advancing a candidate moves them to the next stage', async ({
     page
   }) => {
-    const fromColumn = page.locator('[data-stage]', { has: page.locator(`text=${FROM_STAGE}`) }).first();
-    const toColumn = page.locator('[data-stage]', { has: page.locator(`text=${TO_STAGE}`) }).first();
-
-    // The candidate starts in the "Applied" column.
     await expect(
-      fromColumn.locator('[data-testid="candidate-card"]', { hasText: CANDIDATE })
+      page.locator('[data-testid="candidate-card"]', { hasText: CANDIDATE }).first()
     ).toBeVisible();
+
+    // Read the candidate's CURRENT stage rather than asserting the seeded start:
+    // the e2e DB is shared and not re-seeded between retries, so a prior attempt
+    // that already advanced this candidate must not turn a flake into a permanent
+    // failure. "Advance" always moves one column right, so derive from/to from the
+    // live column order.
+    const { stages, fromStage } = await page.evaluate((name) => {
+      const cols = [...document.querySelectorAll('[data-stage]')];
+      const order = cols.map((c) => c.getAttribute('data-stage'));
+      const col = cols.find((c) =>
+        [...c.querySelectorAll('[data-testid="candidate-card"]')].some((card) =>
+          card.textContent?.includes(name)
+        )
+      );
+      return { stages: order, fromStage: col?.getAttribute('data-stage') ?? null };
+    }, CANDIDATE);
+    const toStage = stages[stages.indexOf(fromStage) + 1] ?? TO_STAGE;
 
     // Open the drawer and advance a stage. Moving closes the drawer and returns
     // to the board so the change is visible (see DetailDrawer.moveAndClose).
@@ -39,10 +53,14 @@ test.describe('move a candidate between stages', () => {
     // The drawer closes and the card now lives in the next column.
     await expect(page.locator('aside[role="dialog"]:not([inert])')).toHaveCount(0);
     await expect(
-      toColumn.locator('[data-testid="candidate-card"]', { hasText: CANDIDATE })
+      page.locator(`[data-stage="${toStage}"] [data-testid="candidate-card"]`, {
+        hasText: CANDIDATE
+      })
     ).toBeVisible();
     await expect(
-      fromColumn.locator('[data-testid="candidate-card"]', { hasText: CANDIDATE })
+      page.locator(`[data-stage="${fromStage}"] [data-testid="candidate-card"]`, {
+        hasText: CANDIDATE
+      })
     ).toHaveCount(0);
   });
 

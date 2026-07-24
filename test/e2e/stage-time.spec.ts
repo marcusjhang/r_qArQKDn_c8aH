@@ -63,30 +63,36 @@ test.describe('time-in-stage', () => {
     await expect(panel).toBeVisible();
 
     const input = panel.getByLabel('Warn after (days)');
-    await expect(input).toHaveValue('5'); // seeded default
+    await expect(input).toBeVisible();
+    // Read the current value rather than hard-asserting the seeded '5': this
+    // mutates a single GLOBAL threshold that every overdue assertion in the suite
+    // depends on, and the e2e DB isn't re-seeded between retries — asserting the
+    // seeded value as a precondition turns any prior-run drift into a permanent
+    // failure. Pick a distinct value to change to.
+    const current = await input.inputValue();
+    const changed = current === '9' ? '7' : '9';
+    const SEEDED_DEFAULT = '5';
 
-    // Change it, save, and confirm it persists across a reload.
-    await input.fill('9');
-    await panel.getByRole('button', { name: 'Save' }).click();
-    await expect(panel.locator('[data-testid="settings-saved"]')).toBeVisible();
+    const savePanel = () =>
+      page.locator('section', { hasText: 'Stalled applicant warning' });
+    try {
+      await input.fill(changed);
+      await panel.getByRole('button', { name: 'Save' }).click();
+      await expect(panel.locator('[data-testid="settings-saved"]')).toBeVisible();
 
-    await page.reload();
-    const reloaded = page
-      .locator('section', { hasText: 'Stalled applicant warning' })
-      .getByLabel('Warn after (days)');
-    await expect(reloaded).toHaveValue('9');
-
-    // Reset to the seeded value so the threshold stays stable for other specs.
-    await reloaded.fill('5');
-    await page
-      .locator('section', { hasText: 'Stalled applicant warning' })
-      .getByRole('button', { name: 'Save' })
-      .click();
-    await expect(
-      page
-        .locator('section', { hasText: 'Stalled applicant warning' })
-        .locator('[data-testid="settings-saved"]')
-    ).toBeVisible();
+      await page.reload();
+      await expect(
+        savePanel().getByLabel('Warn after (days)')
+      ).toHaveValue(changed);
+    } finally {
+      // ALWAYS restore the seeded default so the global threshold stays stable
+      // for parallel specs and retries, even if an assertion above threw.
+      await savePanel().getByLabel('Warn after (days)').fill(SEEDED_DEFAULT);
+      await savePanel().getByRole('button', { name: 'Save' }).click();
+      await expect(
+        savePanel().locator('[data-testid="settings-saved"]')
+      ).toBeVisible();
+    }
   });
 
   test('notification bell surfaces the owner’s stalled candidates', async ({

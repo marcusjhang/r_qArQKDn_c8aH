@@ -32,16 +32,28 @@ export async function login(
     return;
   }
 
+  // The forced-change service rejects re-setting the same password, so migrate
+  // to a distinct value (derived from the seed default) rather than re-entering
+  // it. Stays idempotent: on a re-run the seed default fails, so retry with the
+  // migrated one.
+  const changed = `${password}-e2e-changed`;
   await page.context().clearCookies();
   await page.goto('/login');
   await page.getByPlaceholder('Email').fill(email);
   await page.getByPlaceholder('Password').fill(password);
   await page.getByRole('button', { name: 'Sign In' }).click();
-  await page.waitForURL((url) => !url.pathname.startsWith('/login'));
+  await page
+    .waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 8000 })
+    .catch(() => {});
+  if (new URL(page.url()).pathname === '/login') {
+    await page.getByPlaceholder('Password').fill(changed);
+    await page.getByRole('button', { name: 'Sign In' }).click();
+    await page.waitForURL((url) => !url.pathname.startsWith('/login'));
+  }
 
   if (new URL(page.url()).pathname === '/change-password') {
-    await page.getByPlaceholder('New password', { exact: true }).fill(password);
-    await page.getByPlaceholder('Confirm new password').fill(password);
+    await page.getByPlaceholder('New password', { exact: true }).fill(changed);
+    await page.getByPlaceholder('Confirm new password').fill(changed);
     await page.getByRole('button', { name: 'Change password' }).click();
   }
 

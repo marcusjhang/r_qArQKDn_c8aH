@@ -186,7 +186,7 @@ export default function FeedbackList({
       <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.03em] text-muted-foreground">
         Feedback
         {feedback.length > 0 && (
-          <span className="ml-auto normal-case tracking-normal">
+          <span className="normal-case tracking-normal text-muted-foreground/70">
             {feedback.length}
           </span>
         )}

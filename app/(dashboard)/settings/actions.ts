@@ -45,6 +45,11 @@ const zName = z.string().trim().max(50);
  */
 async function signedInUserId(): Promise<number | null> {
   const session = await auth();
+  // Reject a session still confined to the forced first-login password change
+  // (mustChangePassword) — not only signed-out callers — so a shared-default
+  // account can't reach these actions (e.g. mint an API token) by POSTing the
+  // action directly. Mirrors resolveUserId (lib/auth-policy).
+  if (session?.user?.mustChangePassword === true) return null;
   return Number(session?.user?.id) || null;
 }
 

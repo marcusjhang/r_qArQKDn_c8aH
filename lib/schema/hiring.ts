@@ -14,7 +14,8 @@ import {
   jsonb,
   check,
   unique,
-  uniqueIndex
+  uniqueIndex,
+  index
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 import {
@@ -148,7 +149,10 @@ export const candidates = pgTable(
       sql`${t.yearsExperience} is null or ${t.yearsExperience} between 0 and ${sql.raw(
         String(MAX_YEARS_EXPERIENCE)
       )}`
-    )
+    ),
+    // Postgres doesn't auto-index FKs; the board's per-job reads and the
+    // job-delete cascade filter candidates by job_id, so index it.
+    jobIdIdx: index('candidates_job_id_idx').on(t.jobId)
   })
 );
 
@@ -192,18 +196,26 @@ export const feedback = pgTable(
 // One row per message; authored by a login account and pinned to a candidate,
 // so it survives stage moves and cascades away only when the candidate is
 // deleted.
-export const messages = pgTable('messages', {
-  id: serial('id').primaryKey(),
-  candidateId: integer('candidate_id')
-    .notNull()
-    .references(() => candidates.id, { onDelete: 'cascade' }),
-  // The login account that wrote the message.
-  authorId: integer('author_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  body: text('body').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull()
-});
+export const messages = pgTable(
+  'messages',
+  {
+    id: serial('id').primaryKey(),
+    candidateId: integer('candidate_id')
+      .notNull()
+      .references(() => candidates.id, { onDelete: 'cascade' }),
+    // The login account that wrote the message.
+    authorId: integer('author_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    body: text('body').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+  },
+  (t) => ({
+    // Every thread read (threadFor) filters by candidate_id; FKs aren't
+    // auto-indexed, so a thread open would otherwise scan the whole table.
+    candidateIdIdx: index('messages_candidate_id_idx').on(t.candidateId)
+  })
+);
 
 // One row per (message, tagged account). Drives the notification inbox:
 // `readAt` is null until the tagged user opens the notification, and
@@ -211,22 +223,32 @@ export const messages = pgTable('messages', {
 // (never a delete) so the row still records who was tagged, which drives the
 // @-mention highlighting on the message itself. Cascades with its message (and
 // therefore with the candidate).
-export const mentions = pgTable('mentions', {
-  id: serial('id').primaryKey(),
-  messageId: integer('message_id')
-    .notNull()
-    .references(() => messages.id, { onDelete: 'cascade' }),
-  // The tagged login account.
-  userId: integer('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  readAt: timestamp('read_at'),
-  // Set when the tagged user clears the notification from their inbox; dismissed
-  // mentions drop out of `notificationsFor` but the row (and its highlight)
-  // stays.
-  dismissedAt: timestamp('dismissed_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull()
-});
+export const mentions = pgTable(
+  'mentions',
+  {
+    id: serial('id').primaryKey(),
+    messageId: integer('message_id')
+      .notNull()
+      .references(() => messages.id, { onDelete: 'cascade' }),
+    // The tagged login account.
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    readAt: timestamp('read_at'),
+    // Set when the tagged user clears the notification from their inbox; dismissed
+    // mentions drop out of `notificationsFor` but the row (and its highlight)
+    // stays.
+    dismissedAt: timestamp('dismissed_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+  },
+  (t) => ({
+    // The notification inbox (notificationsFor) filters mentions by user_id, and
+    // the message-delete cascade deletes them by message_id — index both (FKs
+    // aren't auto-indexed) so neither degrades to a full scan.
+    userIdIdx: index('mentions_user_id_idx').on(t.userId),
+    messageIdIdx: index('mentions_message_id_idx').on(t.messageId)
+  })
+);
 
 export type SelectJob = typeof jobs.$inferSelect;
 export type SelectCandidate = typeof candidates.$inferSelect;

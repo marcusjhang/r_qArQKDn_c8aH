@@ -357,6 +357,49 @@ describe('hiringReducer', () => {
         status: 'onhold'
       });
     });
+
+    it("re-stamps stageEnteredAt to the event's `at` on a real stage change", () => {
+      const entered = new Date('2026-01-01T00:00:00.000Z');
+      const movedAt = new Date('2026-02-01T00:00:00.000Z');
+      const initial = state({
+        candidates: [
+          candidate({ id: 1, stage: 'Applied', stageEnteredAt: entered })
+        ]
+      });
+      const result = hiringReducer(initial, {
+        type: 'moveStage',
+        at: movedAt,
+        id: 1,
+        stage: 'Interview'
+      });
+      // A real move restarts the overdue/stalled clock at the move moment.
+      expect(result.candidates[0].stage).toBe('Interview');
+      expect(result.candidates[0].stageEnteredAt).toBe(movedAt);
+    });
+
+    it('preserves stageEnteredAt on a same-stage no-op move', () => {
+      const entered = new Date('2026-01-01T00:00:00.000Z');
+      const initial = state({
+        candidates: [
+          candidate({
+            id: 1,
+            stage: 'Interview',
+            status: 'onhold',
+            stageEnteredAt: entered
+          })
+        ]
+      });
+      const result = hiringReducer(initial, {
+        type: 'moveStage',
+        // A later timestamp that must be ignored because the stage is unchanged.
+        at: new Date('2026-06-01T00:00:00.000Z'),
+        id: 1,
+        stage: 'Interview'
+      });
+      // Re-dropping a card in its own column must NOT restart the clock.
+      expect(result.candidates[0].stage).toBe('Interview');
+      expect(result.candidates[0].stageEnteredAt).toBe(entered);
+    });
   });
 
   describe('editCandidate', () => {
@@ -445,6 +488,54 @@ describe('hiringReducer', () => {
         stage: 'Interview',
         status: 'rejected'
       });
+    });
+
+    it("re-stamps stageEnteredAt to the event's `at` when hiring moves the card into the Hired column", () => {
+      const entered = new Date('2026-01-01T00:00:00.000Z');
+      const hiredAt = new Date('2026-03-01T00:00:00.000Z');
+      const initial = state({
+        jobs: [job({ id: 1, stages: ['Applied', 'Interview', 'Hired'] })],
+        candidates: [
+          candidate({
+            id: 1,
+            stage: 'Interview',
+            status: 'active',
+            stageEnteredAt: entered
+          })
+        ]
+      });
+      const result = hiringReducer(initial, {
+        type: 'setStatus',
+        at: hiredAt,
+        id: 1,
+        status: 'hired'
+      });
+      // The status change also moved the stage (→ Hired), so the clock restarts.
+      expect(result.candidates[0].stage).toBe('Hired');
+      expect(result.candidates[0].stageEnteredAt).toBe(hiredAt);
+    });
+
+    it('preserves stageEnteredAt when the status change leaves the stage in place', () => {
+      const entered = new Date('2026-01-01T00:00:00.000Z');
+      const initial = state({
+        candidates: [
+          candidate({
+            id: 1,
+            stage: 'Interview',
+            status: 'active',
+            stageEnteredAt: entered
+          })
+        ]
+      });
+      const result = hiringReducer(initial, {
+        type: 'setStatus',
+        // Ignored: rejecting doesn't move the card, so the clock keeps running.
+        at: new Date('2026-06-01T00:00:00.000Z'),
+        id: 1,
+        status: 'rejected'
+      });
+      expect(result.candidates[0].stage).toBe('Interview');
+      expect(result.candidates[0].stageEnteredAt).toBe(entered);
     });
   });
 

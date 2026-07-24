@@ -29,7 +29,12 @@ import type { HiringState, Notification } from './types';
  */
 export async function fetchBoard(): Promise<HiringState> {
   const session = await auth();
-  if (!session?.user) throw new Error('Unauthorized');
+  // Also reject a session still confined to the forced password change: action
+  // ids are POST-able directly, so a shared-default account must not dump the
+  // board without first setting its own password (see resolveUserId).
+  if (!session?.user || session.user.mustChangePassword === true) {
+    throw new Error('Unauthorized');
+  }
   return hiringService.getBoard();
 }
 
@@ -40,6 +45,7 @@ export async function fetchBoard(): Promise<HiringState> {
  */
 export async function fetchNotifications(): Promise<Notification[]> {
   const session = await auth();
+  if (session?.user?.mustChangePassword === true) return [];
   const email = session?.user?.email;
   if (!email) return [];
   const userId = await drizzleChatStore.userIdByEmail(email);

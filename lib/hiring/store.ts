@@ -292,27 +292,34 @@ export function useHiringStore(initial: HiringState): {
         // Optimistic stage-clock start; the DB default (now) is the real value.
         at: new Date()
       });
-      persist({
-        run: () =>
-          api.addCandidate(
-            jobId,
-            name,
-            source,
-            owner,
-            linkedinUrl,
-            githubUrl,
-            yearsExperience
-          ),
-        onResult: (realId) => {
-          if (typeof realId === 'number') {
-            const id = realId;
-            dispatch({ type: 'reconcileCandidateId', tempId: temp, realId: id });
-            flushPending(temp, id); // replay any edits made before reconcile
+      // Defer the write until the job's own create round-trip has reconciled its
+      // temp id — like every other job-scoped action. Adding a candidate to a
+      // just-created job (whose id is still a negative temp) would otherwise send
+      // that temp id to the server, which rejects it (zId positive-int) and rolls
+      // the optimistic candidate back. For an already-real job this fires at once.
+      whenReconciled(jobId, (realJobId) =>
+        persist({
+          run: () =>
+            api.addCandidate(
+              realJobId,
+              name,
+              source,
+              owner,
+              linkedinUrl,
+              githubUrl,
+              yearsExperience
+            ),
+          onResult: (realId) => {
+            if (typeof realId === 'number') {
+              const id = realId;
+              dispatch({ type: 'reconcileCandidateId', tempId: temp, realId: id });
+              flushPending(temp, id); // replay any edits made before reconcile
+            }
           }
-        }
-      });
+        })
+      );
     },
-    [dispatch, persist, flushPending, nextTempId]
+    [dispatch, persist, whenReconciled, flushPending, nextTempId]
   );
 
   const editCandidate = useCallback(
