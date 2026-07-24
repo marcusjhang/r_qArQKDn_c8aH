@@ -188,6 +188,16 @@ export const feedback = pgTable(
     oneByUserPerCandidate: unique('feedback_candidate_by_user_unique').on(
       t.candidateId,
       t.byUser
+    ),
+    // DB-level teeth for the trait-score value-set: every value in the jsonb map
+    // must be an integer 1..4 (the RATING_VALUES scale that $type<TraitScores>()
+    // pins at the type level). Backs the zod validator so a write that bypasses
+    // it (raw SQL, a future path) still can't persist an out-of-range score.
+    // Empty `{}` (the default) trivially passes. Postgres CHECKs can't use a
+    // subquery, so this asserts "no value fails the scale" via jsonb_path_exists.
+    traitScoresValues: check(
+      'feedback_trait_scores_values',
+      sql`not jsonb_path_exists(${t.traitScores}, '$.* ? (@.type() != "number" || @ < 1 || @ > 4 || @.floor() != @)')`
     )
   })
 );
