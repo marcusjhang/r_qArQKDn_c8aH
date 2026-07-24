@@ -158,6 +158,7 @@ async function main() {
           stages: j.stages,
           traits: j.traits,
           description: j.description,
+          starred: j.starred ?? false,
           position: i
         })
         .returning({ id: jobs.id });

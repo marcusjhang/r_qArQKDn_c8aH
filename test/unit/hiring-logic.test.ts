@@ -320,17 +320,14 @@ describe('daysInStage', () => {
 describe('stageAgeLabel', () => {
   const now = 100 * MS_PER_DAY;
 
-  it('uses days once at least a day has passed', () => {
+  it('uses whole days', () => {
     expect(stageAgeLabel(now - 4 * MS_PER_DAY, now)).toBe('4d');
   });
 
-  it('falls back to hours, then minutes', () => {
-    expect(stageAgeLabel(now - 5 * 3_600_000, now)).toBe('5h');
-    expect(stageAgeLabel(now - 12 * 60_000, now)).toBe('12m');
-  });
-
-  it('reads "just now" under a minute', () => {
-    expect(stageAgeLabel(now - 30_000, now)).toBe('just now');
+  it('shows 0d for the same day, never hours or minutes', () => {
+    expect(stageAgeLabel(now - 5 * 3_600_000, now)).toBe('0d');
+    expect(stageAgeLabel(now - 12 * 60_000, now)).toBe('0d');
+    expect(stageAgeLabel(now - 30_000, now)).toBe('0d');
   });
 });
 

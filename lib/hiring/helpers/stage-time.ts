@@ -32,19 +32,12 @@ export function stageOverdue(
   return daysInStage(candidate.stageEnteredAt, now) >= warnDays;
 }
 
-/** Compact label for time-in-stage — "3d", "5h", "12m", or "just now" (days, else hours, else minutes). */
+/** Compact label for time-in-stage, always in whole days — "3d", or "0d" for the same day (never hours or minutes). */
 export function stageAgeLabel(
   stageEnteredAt: Date | string | number,
   now: number
 ): string {
-  const ms = msInStage(stageEnteredAt, now);
-  const days = Math.floor(ms / MS_PER_DAY);
-  if (days >= 1) return `${days}d`;
-  const hours = Math.floor(ms / 3_600_000);
-  if (hours >= 1) return `${hours}h`;
-  const mins = Math.floor(ms / 60_000);
-  if (mins >= 1) return `${mins}m`;
-  return 'just now';
+  return `${daysInStage(stageEnteredAt, now)}d`;
 }
 
 /** One overdue-candidate alert for its owner (the notification-bell shape). Derived on the client, not stored — it vanishes once the owner advances the candidate (resetting the stage clock). */

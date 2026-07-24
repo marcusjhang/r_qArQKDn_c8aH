@@ -33,6 +33,8 @@ export interface SeedJob {
   /** Ordered trait list — order is the ranking that weights the score. */
   traits: string[];
   description: string;
+  /** Starred jobs pin as inline tabs (shown outside the jobs dropdown). */
+  starred?: boolean;
 }
 
 interface SeedFeedback {
@@ -83,6 +85,7 @@ export const SEED_JOBS: SeedJob[] = [
     title: 'Founding Engineer',
     stages: [...DEFAULT_STAGES],
     traits: ['Technical depth', 'Systems design', 'Ownership', 'Velocity'],
+    starred: true,
     description:
       'Founding engineer for an early-stage startup. Own features end to ' +
       'end across the stack, design pragmatic systems, and ship quickly ' +
@@ -162,8 +165,16 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     // 12 days in Interview, past the universal 5-day warn threshold.
     daysInStage: 12,
     feedback: [
-      { by: benOng, note: 'Sharp, great product instincts.' },
-      { by: benChan, note: 'Strong, minor gaps in distributed systems.' }
+      {
+        by: benOng,
+        note: 'Sharp, great product instincts.',
+        traits: { 'Technical depth': 3, Ownership: 4, Velocity: 3 }
+      },
+      {
+        by: benChan,
+        note: 'Strong, minor gaps in distributed systems.',
+        traits: { 'Systems design': 2, 'Technical depth': 3 }
+      }
     ]
   },
   {
@@ -239,11 +250,19 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     job: 'design',
     name: 'Ravi Shah',
     stage: 'Applied',
-    owner: benChan,
+    owner: benOng,
     source: 'Otta',
     yearsExperience: 4,
     status: 'active',
-    feedback: []
+    // 7 days in Applied, past the 5-day threshold: Ben Ong's stalled candidate.
+    daysInStage: 7,
+    feedback: [
+      {
+        by: benChan,
+        note: 'Strong portfolio, great craft.',
+        traits: { Craft: 4, 'Product sense': 3, Communication: 3 }
+      }
+    ]
   },
   {
     job: 'design',
@@ -254,6 +273,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     yearsExperience: 7,
     status: 'active',
     linkedinUrl: 'https://www.linkedin.com/in/mia-torres',
+    daysInStage: 6,
     feedback: [
       {
         by: hengHongLee,
@@ -270,8 +290,13 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     source: 'Referral',
     yearsExperience: null,
     status: 'onhold',
+    daysInStage: 2,
     feedback: [
-      { by: benOng, note: 'Promising — paused while we align on level.' }
+      {
+        by: benOng,
+        note: 'Promising — paused while we align on level.',
+        traits: { Craft: 3, 'Product sense': 3 }
+      }
     ]
   },
   // GTM Lead
@@ -283,7 +308,14 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     source: 'Inbound',
     yearsExperience: 5,
     status: 'active',
-    feedback: []
+    daysInStage: 4,
+    feedback: [
+      {
+        by: hengHongLee,
+        note: 'Strong outbound instincts.',
+        traits: { 'Technical depth': 3, Communication: 4 }
+      }
+    ]
   },
   {
     job: 'gtm',
@@ -293,8 +325,13 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     source: 'LinkedIn',
     yearsExperience: 10,
     status: 'active',
+    daysInStage: 8,
     feedback: [
-      { by: hengHongLee, note: 'Rare combo of GTM + technical depth.' }
+      {
+        by: hengHongLee,
+        note: 'Rare combo of GTM + technical depth.',
+        traits: { 'Technical depth': 3, Communication: 4, Ownership: 4 }
+      }
     ]
   }
 ];
@@ -352,6 +389,36 @@ export const SEED_MESSAGES: SeedMessage[] = [
     by: hengHongLee,
     body: 'Great GTM instincts. @Ben Ong let us align on the comp band.',
     mentions: [benOng],
+    daysAgo: 1
+  },
+  // More cross-team activity so every account has unread mentions on the board
+  // it works: a multi-tag debrief, a stalled-candidate nudge, and two handoffs.
+  {
+    candidate: 'Priya Nair',
+    by: benChan,
+    body: 'Panel went well. @Heng Hong Lee @Marcus Ang debrief this afternoon?',
+    mentions: [hengHongLee, marcus],
+    daysAgo: 2
+  },
+  {
+    candidate: 'Marcus Webb',
+    by: marcus,
+    body: 'This one has been in Applied a while. @Benedict Chan still keen to screen?',
+    mentions: [benChan],
+    daysAgo: 1
+  },
+  {
+    candidate: 'Ravi Shah',
+    by: benChan,
+    body: 'Portfolio looks strong. @Ben Ong want to run the screen?',
+    mentions: [benOng],
+    daysAgo: 2
+  },
+  {
+    candidate: 'Ines Costa',
+    by: marcus,
+    body: 'Good inbound lead. @Heng Hong Lee can you take the first call?',
+    mentions: [hengHongLee],
     daysAgo: 1
   }
 ];
