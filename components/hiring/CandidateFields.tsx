@@ -109,28 +109,28 @@ export default function CandidateFields({
         </div>
       </div>
       <div className={FIELD}>
-        <label className={LABEL} htmlFor={`${uid}-years`}>
-          Years of experience
-        </label>
         <div className="flex items-center gap-2">
-          <input
-            id={`${uid}-years`}
-            className={`${CONTROL} w-24 flex-none`}
-            type="number"
-            min={0}
-            max={MAX_YEARS_EXPERIENCE}
-            step={1}
-            value={draft.years}
-            disabled={disabled}
-            onChange={(e) => onField('years', e.target.value)}
-            placeholder={yearsPlaceholder}
-          />
+          <label className={LABEL} htmlFor={`${uid}-years`}>
+            Years of experience
+          </label>
           {seniority && (
             <span className="rounded-sm border border-primary-border bg-primary-weak px-[7px] py-0.5 text-[10px] font-semibold text-primary">
               {seniority}
             </span>
           )}
         </div>
+        <input
+          id={`${uid}-years`}
+          className={CONTROL}
+          type="number"
+          min={0}
+          max={MAX_YEARS_EXPERIENCE}
+          step={1}
+          value={draft.years}
+          disabled={disabled}
+          onChange={(e) => onField('years', e.target.value)}
+          placeholder={yearsPlaceholder}
+        />
       </div>
       <div className={FIELD}>
         <label className={LABEL} htmlFor={`${uid}-linkedin`}>
