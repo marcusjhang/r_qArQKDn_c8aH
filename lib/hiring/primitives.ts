@@ -12,7 +12,14 @@ export type RatingValue = (typeof RATING_VALUES)[number];
 // defined on the job) to a score on the same 1–4 scale. Stored as jsonb
 // (schema/hiring.ts), surfaced on the Feedback DTO (service/dtos.ts), and
 // validated at the write boundary (schemas.ts).
-export type TraitScores = Record<string, RatingValue>;
+//
+// PARTIAL on purpose: an entry only stores keys for the traits it actually
+// scored, so indexing an unscored trait is `undefined` at runtime. Typing it as
+// a total `Record` (with `noUncheckedIndexedAccess` off) would let a bare
+// `scores[trait]` read as a non-undefined `RatingValue` and ship a NaN; the
+// `Partial` makes every read `RatingValue | undefined`, forcing the null-checks
+// the consumers already perform.
+export type TraitScores = Partial<Record<string, RatingValue>>;
 
 // Upper bound on a candidate's years of experience. Single-sourced here so the
 // DB CHECK (schema/hiring.ts), the zod validator (schemas.ts), and the UI bounds

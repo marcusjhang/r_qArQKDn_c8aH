@@ -25,7 +25,9 @@ import { currentUserId } from './support';
 export async function saveFeedback(
   idRaw: number,
   noteRaw: string,
-  traitScoresRaw: Record<string, number> = {}
+  // Sparse map from the client (a TraitScores only has keys for scored traits);
+  // re-validated in addFeedbackCore. Values allow `undefined` to match that.
+  traitScoresRaw: Record<string, number | undefined> = {}
 ): Promise<number | null> {
   await requireUser();
   const byUser = await currentUserId();

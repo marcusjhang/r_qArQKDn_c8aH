@@ -13,7 +13,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import {
   MAX_TRAIT_NAME,
   MAX_TRAIT_SUGGESTIONS,
-  MAX_TRAIT_WORDS
+  normalizeTraitSuggestions
 } from './helpers';
 
 const MODEL = process.env.TRAIT_AI_MODEL || 'claude-opus-4-8';
@@ -88,24 +88,7 @@ export async function suggestTraits(
   } catch {
     return [];
   }
-  const raw = (parsed as { traits?: unknown })?.traits;
-  if (!Array.isArray(raw)) return [];
-
-  // Normalize: trim, drop empties/over-length (skip rather than truncate — a
-  // truncated label is worse than a missing one), de-dupe case-insensitively,
-  // and keep only the first few.
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const item of raw) {
-    if (typeof item !== 'string') continue;
-    const t = item.trim();
-    if (!t || t.length > MAX_TRAIT_NAME) continue;
-    if (t.split(/\s+/).length > MAX_TRAIT_WORDS) continue;
-    const key = t.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(t);
-    if (out.length >= MAX_TRAIT_SUGGESTIONS) break;
-  }
-  return out;
+  // The trim/length/word-count/dedupe/cap rule lives in one tested place; this
+  // wrapper stays a thin I/O shell over the model call.
+  return normalizeTraitSuggestions((parsed as { traits?: unknown })?.traits);
 }

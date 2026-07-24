@@ -11,6 +11,8 @@ import {
   zProfileUrl,
   zYears,
   zRating,
+  zJobDescription,
+  zTraitList,
   candidateInsertSchema,
   candidateEditSchema,
   feedbackInsertSchema
@@ -20,6 +22,11 @@ import {
   RATING_VALUES,
   MAX_YEARS_EXPERIENCE
 } from '@/lib/hiring/primitives';
+import {
+  MAX_TRAITS,
+  MAX_TRAIT_NAME,
+  MAX_JOB_DESCRIPTION
+} from '@/lib/hiring/helpers';
 
 describe('zId', () => {
   it('accepts positive integers, including large ones', () => {
@@ -192,6 +199,53 @@ describe('zRating', () => {
   });
 });
 
+describe('zJobDescription', () => {
+  it('accepts an empty string', () => {
+    expect(zJobDescription.safeParse('').success).toBe(true);
+  });
+
+  it(`accepts ${MAX_JOB_DESCRIPTION} chars and rejects one more`, () => {
+    expect(zJobDescription.safeParse('x'.repeat(MAX_JOB_DESCRIPTION)).success).toBe(
+      true
+    );
+    expect(
+      zJobDescription.safeParse('x'.repeat(MAX_JOB_DESCRIPTION + 1)).success
+    ).toBe(false);
+  });
+});
+
+// zTraitName is not exported on its own, so its per-element rules (length and
+// the 1-2 word refine) are exercised through the exported zTraitList, which
+// wraps zTraitName for every entry.
+describe('zTraitList', () => {
+  it('accepts a list of valid 1-2 word traits', () => {
+    expect(zTraitList.safeParse(['Ownership', 'Systems design']).success).toBe(
+      true
+    );
+  });
+
+  it('rejects a trait with more than 2 words (zTraitName refine)', () => {
+    expect(zTraitList.safeParse(['systems design mastery']).success).toBe(false);
+  });
+
+  it(`rejects a trait longer than ${MAX_TRAIT_NAME} chars`, () => {
+    expect(zTraitList.safeParse(['x'.repeat(MAX_TRAIT_NAME)]).success).toBe(true);
+    expect(zTraitList.safeParse(['x'.repeat(MAX_TRAIT_NAME + 1)]).success).toBe(
+      false
+    );
+  });
+
+  it('rejects a case-insensitive duplicate (uniqueness refine)', () => {
+    expect(zTraitList.safeParse(['Ownership', 'ownership']).success).toBe(false);
+  });
+
+  it(`accepts exactly ${MAX_TRAITS} traits and rejects one more`, () => {
+    const atCap = Array.from({ length: MAX_TRAITS }, (_, i) => `t${i}`);
+    expect(zTraitList.safeParse(atCap).success).toBe(true);
+    expect(zTraitList.safeParse([...atCap, 'extra']).success).toBe(false);
+  });
+});
+
 describe('candidateInsertSchema', () => {
   const valid = {
     name: 'Ada Lovelace',
@@ -285,5 +339,47 @@ describe('feedbackInsertSchema', () => {
     expect(
       feedbackInsertSchema.safeParse({ ...valid, byUser: 0 }).success
     ).toBe(false);
+  });
+});
+
+// zTraitScores (z.record(zTraitName, zRating)) is not exported on its own, so
+// its key- and value-validation is exercised through feedbackInsertSchema,
+// whose `traitScores` field is a zTraitScores.
+describe('zTraitScores (via feedbackInsertSchema.traitScores)', () => {
+  const parse = (traitScores: unknown) =>
+    feedbackInsertSchema.safeParse({ byUser: 1, note: '', traitScores });
+
+  it('accepts a valid trait → 1-4 score map', () => {
+    expect(parse({ Ownership: 4 }).success).toBe(true);
+  });
+
+  it('rejects a score outside the 1-4 range', () => {
+    expect(parse({ Ownership: 5 }).success).toBe(false);
+    expect(parse({ Ownership: 0 }).success).toBe(false);
+  });
+
+  it('rejects a non-integer score', () => {
+    expect(parse({ Ownership: 2.5 }).success).toBe(false);
+  });
+
+  it('rejects an empty / whitespace-only trait key', () => {
+    expect(parse({ '': 4 }).success).toBe(false);
+    expect(parse({ '   ': 4 }).success).toBe(false);
+  });
+
+  it('rejects a trait key with more than 2 words', () => {
+    expect(parse({ 'a b c': 4 }).success).toBe(false);
+  });
+
+  it('rejects a trait key longer than the name bound', () => {
+    expect(parse({ ['x'.repeat(MAX_TRAIT_NAME + 1)]: 4 }).success).toBe(false);
+  });
+
+  it('trims the trait key on the way through', () => {
+    const result = parse({ '  Ownership  ': 4 });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(Object.keys(result.data.traitScores!)).toEqual(['Ownership']);
+    }
   });
 });

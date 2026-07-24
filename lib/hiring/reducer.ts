@@ -14,9 +14,11 @@
 import { DEFAULT_STAGES } from './config';
 import {
   addStageToPipeline,
+  detectTraitRename,
   placeInStage,
   placeWithStatus,
   removeStage,
+  renameTraitScoreKey,
   reorderStages
 } from './helpers';
 import type { Candidate, HiringState, Status, TraitScores } from './types';
@@ -160,13 +162,36 @@ export function hiringReducer(
         )
       };
 
-    case 'setJobTraits':
+    case 'setJobTraits': {
+      // A single rename carries recorded scores from the old key to the new one
+      // so the optimistic board matches the server's remap (setJobTraits action)
+      // — otherwise the renamed trait would flip to "Not scored" until a refetch.
+      const job = state.jobs.find((j) => j.id === event.jobId);
+      const rename = job ? detectTraitRename(job.traits, event.traits) : null;
       return {
         ...state,
         jobs: state.jobs.map((j) =>
           j.id === event.jobId ? { ...j, traits: event.traits } : j
-        )
+        ),
+        candidates: rename
+          ? state.candidates.map((c) =>
+              c.jobId === event.jobId
+                ? {
+                    ...c,
+                    feedback: c.feedback.map((f) => ({
+                      ...f,
+                      traitScores: renameTraitScoreKey(
+                        f.traitScores,
+                        rename.from,
+                        rename.to
+                      )
+                    }))
+                  }
+                : c
+            )
+          : state.candidates
       };
+    }
 
     case 'reorderTrait':
       return {

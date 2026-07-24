@@ -30,6 +30,10 @@
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 24px;
+  /* Success-confirmation text ("Saved") — reuses the strong-yes green. */
+  --ok-fg: #146c43;
+  /* Favorited-star gold. */
+  --star: #eab308;
   --syes-fg: #146c43;
   --syes-bg: #e7f5ee;
   --yes-fg: #2f855a;
@@ -831,40 +835,6 @@
   font-style: italic;
 }
 
-.ht-root .rating-picker {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.ht-root .rp {
-  border: 1px solid var(--border-strong);
-  background: var(--surface);
-  border-radius: var(--radius-pill);
-  padding: 5px 11px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-.ht-root .rp[aria-pressed='true'].syes {
-  background: var(--syes-bg);
-  color: var(--syes-fg);
-  border-color: var(--syes-fg);
-}
-.ht-root .rp[aria-pressed='true'].yes {
-  background: var(--yes-bg);
-  color: var(--yes-fg);
-  border-color: var(--yes-fg);
-}
-.ht-root .rp[aria-pressed='true'].no {
-  background: var(--no-bg);
-  color: var(--no-fg);
-  border-color: var(--no-fg);
-}
-.ht-root .rp[aria-pressed='true'].sno {
-  background: var(--sno-bg);
-  color: var(--sno-fg);
-  border-color: var(--sno-fg);
-}
 .ht-root .add-fb {
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius-sm);
@@ -1174,6 +1144,10 @@
   background: var(--surface);
   color: inherit;
 }
+/* The "· N+ yrs" threshold beside a seniority band label — de-emphasized. */
+.ht-root .band-threshold {
+  color: var(--text-muted);
+}
 .ht-root .email-empty {
   font-size: 12.5px;
   color: var(--text-muted);
@@ -1390,6 +1364,10 @@
   --primary-border: #6d4e22;
   --shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
   --shadow-drawer: -12px 0 32px rgba(0, 0, 0, 0.55);
+  /* Success-confirmation text ("Saved") — reuses the strong-yes green. */
+  --ok-fg: #79e0a6;
+  /* Favorited-star gold (brighter for the dark surface). */
+  --star: #f5cf3d;
   --syes-fg: #79e0a6;
   --syes-bg: #123123;
   --yes-fg: #7fd0a0;
@@ -2423,6 +2401,13 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+/* "Suggest from JD" — aligns its inline sparkles icon with the label. */
+.ht-root .btn-suggest {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* A label with an inline "ⓘ" that reveals help on hover/focus (same reveal

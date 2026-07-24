@@ -82,6 +82,17 @@ export async function registerUser(input: RegisterInput): Promise<RegisterResult
     };
   }
 
+  // Hash up front, on EVERY validated request. bcrypt (cost 12) dominates the
+  // response time by ~two orders of magnitude over the DB lookups, so computing
+  // it before the allowlist/duplicate branches makes the allowlist-miss and
+  // duplicate paths pay the same cost as a real signup. Without this, only the
+  // "allowlisted and new" path ran bcrypt, and an attacker timing the response
+  // could enumerate exactly which emails are valid signup targets — the very
+  // oracle the uniform `{ ok: true }` body is meant to remove (SECURITY.md →
+  // "Registration enumeration"). The hash is only stored on the fresh-insert
+  // path below.
+  const passwordHash = await hash(password, PASSWORD_COST);
+
   // Signups are restricted to the allowlist (managed in /members). A miss is
   // NOT reported distinctly — returning here with the same shape as success
   // keeps the allowlist unenumerable.
@@ -100,8 +111,6 @@ export async function registerUser(input: RegisterInput): Promise<RegisterResult
   if (existing) {
     return { ok: true, created: false };
   }
-
-  const passwordHash = await hash(password, PASSWORD_COST);
 
   await db.insert(users).values({
     firstName: firstName || null,

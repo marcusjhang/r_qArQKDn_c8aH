@@ -46,6 +46,28 @@ export async function loadJobTraits(jobId: number): Promise<string[] | null> {
 export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /**
+ * Read a job's traits inside a transaction with `SELECT … FOR UPDATE`, taking a
+ * row lock so a concurrent trait edit blocks until this transaction commits.
+ * The trait mutations (replace/reorder) read-modify-write the whole `traits`
+ * array exactly like the stage edits, so without this lock two concurrent trait
+ * edits both read the same array and the second write silently clobbers the
+ * first (a lost update the store never resyncs on success). Mirrors
+ * `lockJobStages`.
+ */
+export async function lockJobTraits(
+  tx: Tx,
+  jobId: number
+): Promise<string[] | null> {
+  const [j] = await tx
+    .select({ traits: jobs.traits })
+    .from(jobs)
+    .where(eq(jobs.id, jobId))
+    .for('update')
+    .limit(1);
+  return j?.traits ?? null;
+}
+
+/**
  * Read a job's stages inside a transaction with `SELECT … FOR UPDATE`, taking a
  * row lock so a concurrent stage edit blocks until this transaction commits.
  * The stage mutations (add/rename/reorder/delete) all read-modify-write the

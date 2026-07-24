@@ -44,7 +44,11 @@ export default function Board({
       <div className="board">
         {job.stages.map((stage, index) => (
           <StageColumn
-            key={index}
+            // Stage names are unique within a job (validateStageName), so keying
+            // by name — not array index — keeps each column's local UI state
+            // (open menu, inline-rename focus) bound to its stage across a
+            // middle reorder/delete instead of remapping to a neighbour.
+            key={stage}
             job={job}
             stage={stage}
             index={index}
