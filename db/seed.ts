@@ -6,6 +6,8 @@ import {
   jobs,
   candidates,
   feedback,
+  messages,
+  mentions,
   allowedEmails,
   sources,
   seniorityBands,
@@ -16,6 +18,7 @@ import { hash } from 'bcryptjs';
 import {
   SEED_JOBS,
   SEED_CANDIDATES,
+  SEED_MESSAGES,
   SEED_SOURCES,
   SEED_SENIORITY_BANDS
 } from '../lib/hiring/seed';
@@ -48,10 +51,13 @@ async function main() {
   const client = postgres(process.env.DATABASE_URL);
   const db = drizzle(client);
 
-  // Seed login accounts (idempotent: create, or reset password if present).
-  // Every account is created/reset to the shared default password, so each one
-  // must change it on first login — mustChangePassword is set true here and
-  // cleared by the /change-password flow (see lib/auth.ts + SECURITY.md).
+  // Seed login accounts idempotently. A BRAND-NEW account is created with the
+  // shared default password and mustChangePassword=true, so its first login is
+  // confined to /change-password until the user sets their own (see lib/auth.ts
+  // + SECURITY.md). An EXISTING account is left alone — re-seeding (which runs
+  // on every boot) must NOT reset the password or re-raise mustChangePassword,
+  // or a user's own password would be silently reverted on every redeploy. Only
+  // the display name is kept in sync. To force a reset, delete the row first.
   const passwordHash = await hash(SEED_PASSWORD, 12);
   for (const acc of SEED_ACCOUNTS) {
     const [existing] = await db
@@ -60,18 +66,13 @@ async function main() {
       .where(eq(users.email, acc.email))
       .limit(1);
     if (existing) {
-      // Re-seeding resets the account back to the default password, so require
-      // a change again even if the user had already picked their own.
+      // Keep the display name current, but preserve the account's own password
+      // and mustChangePassword state across re-seeds.
       await db
         .update(users)
-        .set({
-          passwordHash,
-          firstName: acc.firstName,
-          lastName: acc.lastName,
-          mustChangePassword: true
-        })
+        .set({ firstName: acc.firstName, lastName: acc.lastName })
         .where(eq(users.email, acc.email));
-      console.log(`Updated login account ${acc.email}.`);
+      console.log(`Login account ${acc.email} exists; left credentials as-is.`);
     } else {
       await db.insert(users).values({
         firstName: acc.firstName,
@@ -170,6 +171,9 @@ async function main() {
       slugToId.set(j.slug, row.id);
     }
 
+    // Map each candidate's name to its generated id so the discussion threads
+    // (seeded below) can resolve their candidate by the same readable key.
+    const candidateIdByName = new Map<string, number>();
     let candidateCount = 0;
     let feedbackCount = 0;
     for (const c of SEED_CANDIDATES) {
@@ -190,11 +194,14 @@ async function main() {
           ...(stageEnteredAt ? { stageEnteredAt } : {}),
           owner: resolveUser(c.owner),
           source: resolveSource(c.source),
+          linkedinUrl: c.linkedinUrl ?? null,
+          githubUrl: c.githubUrl ?? null,
           yearsExperience: c.yearsExperience,
           status: c.status,
           starred: c.starred ?? false
         })
         .returning({ id: candidates.id });
+      candidateIdByName.set(c.name, row.id);
       candidateCount++;
       if (c.feedback.length) {
         await db.insert(feedback).values(
@@ -209,8 +216,46 @@ async function main() {
         feedbackCount += c.feedback.length;
       }
     }
+
+    // Seed the discussion threads and their @-mention notifications. Each
+    // message resolves its candidate by name and author by email; each mention
+    // inserts a mentions row (unread unless `read`) so the notification inbox
+    // demonstrates on a fresh boot. Backdated per `daysAgo` so threads read in
+    // chronological order.
+    let messageCount = 0;
+    let mentionCount = 0;
+    for (const msg of SEED_MESSAGES) {
+      const candidateId = candidateIdByName.get(msg.candidate);
+      if (candidateId === undefined) {
+        throw new Error(`Seed message references unknown candidate: ${msg.candidate}`);
+      }
+      const createdAt =
+        msg.daysAgo != null
+          ? new Date(Date.now() - msg.daysAgo * 86_400_000)
+          : undefined;
+      const [row] = await db
+        .insert(messages)
+        .values({
+          candidateId,
+          authorId: resolveUser(msg.by),
+          body: msg.body,
+          ...(createdAt ? { createdAt } : {})
+        })
+        .returning({ id: messages.id });
+      messageCount++;
+      for (const email of msg.mentions ?? []) {
+        await db.insert(mentions).values({
+          messageId: row.id,
+          userId: resolveUser(email),
+          readAt: msg.read ? new Date() : null,
+          ...(createdAt ? { createdAt } : {})
+        });
+        mentionCount++;
+      }
+    }
+
     console.log(
-      `Seeded ${slugToId.size} jobs, ${candidateCount} candidates, ${feedbackCount} feedback entries.`
+      `Seeded ${slugToId.size} jobs, ${candidateCount} candidates, ${feedbackCount} feedback entries, ${messageCount} messages, ${mentionCount} mentions.`
     );
   }
 
