@@ -239,10 +239,12 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     job: 'design',
     name: 'Ravi Shah',
     stage: 'Applied',
-    owner: benChan,
+    owner: benOng,
     source: 'Otta',
     yearsExperience: 4,
     status: 'active',
+    // 7 days in Applied, past the 5-day threshold: Ben Ong's stalled candidate.
+    daysInStage: 7,
     feedback: []
   },
   {
@@ -254,6 +256,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     yearsExperience: 7,
     status: 'active',
     linkedinUrl: 'https://www.linkedin.com/in/mia-torres',
+    daysInStage: 6,
     feedback: [
       {
         by: hengHongLee,
@@ -270,6 +273,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     source: 'Referral',
     yearsExperience: null,
     status: 'onhold',
+    daysInStage: 2,
     feedback: [
       { by: benOng, note: 'Promising — paused while we align on level.' }
     ]
@@ -283,6 +287,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     source: 'Inbound',
     yearsExperience: 5,
     status: 'active',
+    daysInStage: 4,
     feedback: []
   },
   {
@@ -293,6 +298,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     source: 'LinkedIn',
     yearsExperience: 10,
     status: 'active',
+    daysInStage: 8,
     feedback: [
       { by: hengHongLee, note: 'Rare combo of GTM + technical depth.' }
     ]
