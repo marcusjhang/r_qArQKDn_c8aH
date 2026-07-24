@@ -59,7 +59,7 @@ export default function StageWarnPanel({
         <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground">
           Pipeline
         </p>
-        <h1 className="mb-1 text-[17px] font-bold">Stalled applicant warning</h1>
+        <h2 className="mb-1 text-[17px] font-bold">Stalled applicant warning</h2>
         <p className="text-[12.5px] text-muted-foreground">
           Warn on the board when an applicant has sat in a stage too long. One
           threshold applies to every stage.

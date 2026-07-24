@@ -34,7 +34,7 @@ export default function MembersPanel({ members }: { members: Member[] }) {
         <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground">
           Members
         </p>
-        <h1 className="mb-1 text-[17px] font-bold">Team members</h1>
+        <h2 className="mb-1 text-[17px] font-bold">Team members</h2>
         <p className="text-[12.5px] text-muted-foreground">
           Everyone with an account. Click a member to see their activity.
         </p>

@@ -114,7 +114,7 @@ export default function NotificationBell({
       >
         <Bell size={16} aria-hidden />
         {badgeCount > 0 && (
-          <span className="absolute -right-1.5 -top-1.5 inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-sno px-1 text-[10px] font-bold text-white">
+          <span className="absolute -right-1.5 -top-1.5 inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
             {badgeCount > 99 ? '99+' : badgeCount}
           </span>
         )}

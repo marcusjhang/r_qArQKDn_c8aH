@@ -1,7 +1,7 @@
 'use client';
 
-// Lightweight modal built in the board's own design system (scoped under
-// .ht-root), so it stays visually consistent with the drawer and cards.
+// Lightweight modal built with the app's Tailwind design tokens, so it stays
+// visually consistent with the drawer and cards.
 
 import { useEffect } from 'react';
 import { CloseButton } from '@/components/ui/close-button';

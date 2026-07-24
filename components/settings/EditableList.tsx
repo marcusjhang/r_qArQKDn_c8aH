@@ -2,10 +2,9 @@
 
 // Presentational shell for the settings/members editable-list panels (Sources,
 // Seniority bands, Allowlist): the section header, the add form, an inline
-// error, and the list of rows. The shared markup (`.settings-panel`,
-// `.settings-add`, `.email-list`/`.email-row`) and its accessibility live here;
-// each panel supplies only the bits that differ via render props — the add-form
-// fields and each row's contents — and drives the state machine with
+// error, and the list of rows. The shared markup and its accessibility live
+// here; each panel supplies only the bits that differ via render props — the
+// add-form fields and each row's contents — and drives the state machine with
 // `useEditableList`. Item rows key on `item.id`.
 
 import type { ReactNode } from 'react';
@@ -29,13 +28,13 @@ export default function EditableList<T extends EditableListItem>({
   emptyText,
   renderRow
 }: {
-  /** Eyebrow label above the title (`.settings-section-title`). */
+  /** Eyebrow label above the title. */
   section: string;
-  /** Panel heading (`.settings-title`). */
+  /** Panel heading. */
   title: string;
-  /** Sub-copy under the heading (`.settings-sub`). */
+  /** Sub-copy under the heading. */
   description: ReactNode;
-  /** The add-form field(s), rendered inside `form.settings-add`. */
+  /** The add-form field(s), rendered inside the add form. */
   addFields: ReactNode;
   /** Submit-button label for the add form. */
   addLabel: string;
@@ -47,7 +46,7 @@ export default function EditableList<T extends EditableListItem>({
   error: string;
   /** The rows to render. */
   items: T[];
-  /** Copy shown when there are no rows (`.email-empty`). */
+  /** Copy shown when there are no rows. */
   emptyText: ReactNode;
   /** Render one row's contents (either its display or inline-edit view). */
   renderRow: (item: T) => ReactNode;
@@ -58,7 +57,7 @@ export default function EditableList<T extends EditableListItem>({
         <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground">
           {section}
         </p>
-        <h1 className="mb-1 text-[17px] font-bold">{title}</h1>
+        <h2 className="mb-1 text-[17px] font-bold">{title}</h2>
         <p className="text-[12.5px] text-muted-foreground">{description}</p>
       </div>
 

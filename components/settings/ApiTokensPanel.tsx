@@ -117,13 +117,16 @@ export default function ApiTokensPanel({
         <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground">
           MCP
         </p>
-        <h1 className="mb-1 text-[17px] font-bold">API Tokens</h1>
+        <h2 className="mb-1 text-[17px] font-bold">API Tokens</h2>
       </div>
 
       <form className="flex flex-wrap items-end gap-3" onSubmit={create}>
         <div className="flex flex-col gap-1.5" style={{ flex: '1 1 200px' }}>
-          <span className={LABEL_CLASS}>Token name</span>
+          <label className={LABEL_CLASS} htmlFor="api-token-name">
+            Token name
+          </label>
           <input
+            id="api-token-name"
             className={INPUT_CLASS}
             type="text"
             placeholder="e.g. my-laptop"
@@ -136,8 +139,11 @@ export default function ApiTokensPanel({
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <span className={LABEL_CLASS}>Expiry</span>
+          <label className={LABEL_CLASS} htmlFor="api-token-expiry">
+            Expiry
+          </label>
           <select
+            id="api-token-expiry"
             className="w-full rounded-md border border-border-strong bg-surface px-2.5 py-2 text-[13px] text-foreground focus:border-primary focus:shadow-[0_0_0_3px_var(--primary-weak)] focus:outline-none"
             value={expiryDays}
             onChange={(e) => setExpiryDays(Number(e.target.value))}

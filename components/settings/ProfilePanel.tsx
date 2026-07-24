@@ -67,7 +67,7 @@ export default function ProfilePanel({
         <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground">
           Profile
         </p>
-        <h1 className="mb-1 text-[17px] font-bold">Your name</h1>
+        <h2 className="mb-1 text-[17px] font-bold">Your name</h2>
         <p className="text-[12.5px] text-muted-foreground">
           Avatar initials come from it, like BO for Ben Ong.
         </p>

@@ -1,8 +1,8 @@
 'use client';
 
 // Settings: manage appearance, your profile, candidate sources, seniority
-// bands, stage time-limits, and MCP API tokens. Styled with the board's design system
-// (.ht-root) so it matches the rest of the app. Server actions are passed in
+// bands, stage time-limits, and MCP API tokens. Styled with the app's Tailwind
+// design tokens so it matches the rest of the app. Server actions are passed in
 // from the page (the @/app path isn't aliased). The signup allowlist lives on
 // /members (it governs who can become a member), reachable from the account
 // dropdown.

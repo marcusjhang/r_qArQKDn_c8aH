@@ -2,8 +2,8 @@
 
 // Members page: the team directory with per-member activity history, plus the
 // signup allowlist (moved here from /settings — the allowlist governs who can
-// become a member). Styled with the board's design system (.ht-root) so it
-// matches the rest of the app, mirroring SettingsView's layout. Server actions
+// become a member). Styled with the app's Tailwind design tokens so it matches
+// the rest of the app, mirroring SettingsView's layout. Server actions
 // are passed in from the page (the @/app path isn't aliased).
 
 import Link from 'next/link';

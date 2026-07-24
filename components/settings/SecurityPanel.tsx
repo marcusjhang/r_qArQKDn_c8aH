@@ -81,7 +81,7 @@ export default function SecurityPanel({
         <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground">
           Security
         </p>
-        <h1 className="mb-1 text-[17px] font-bold">Password</h1>
+        <h2 className="mb-1 text-[17px] font-bold">Password</h2>
         <p className="text-[12.5px] text-muted-foreground">
           Change the password you use to sign in. You&apos;ll need your current
           one.
