@@ -28,6 +28,9 @@ import type { ChatMessage } from '../types';
 /** The signed-in caller's email from the session, or null when not signed in. */
 async function callerEmail(): Promise<string | null> {
   const session = await auth();
+  // A session still confined to the forced password change can't act as the
+  // caller (post/read chat, clear mentions) — mirrors resolveUserId.
+  if (session?.user?.mustChangePassword === true) return null;
   return session?.user?.email ?? null;
 }
 

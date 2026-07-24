@@ -29,6 +29,31 @@ jobs:
       - name: Unit tests + coverage
         run: bun run test:coverage
 
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    # Enforcing: a standalone `next build` so a build-only break (an RSC/client
+    # boundary error, a `'use server'` non-async export, a bad import) fails fast
+    # and unambiguously here, instead of only surfacing as the slow Playwright web
+    # server failing to boot inside the e2e job.
+    env:
+      # `next build` evaluates server modules (which read these at import time)
+      # but does not connect to Postgres (postgres-js connects lazily), so
+      # throwaway values are enough to build.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/build_placeholder
+      AUTH_SECRET: ci-not-a-secret-throwaway-value-for-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
   lint:
     name: Lint (eslint)
     runs-on: ubuntu-latest

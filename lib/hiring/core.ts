@@ -24,7 +24,7 @@ import 'server-only';
 
 import { eq } from 'drizzle-orm';
 import { db, candidates, feedback, jobs } from '@/lib/db';
-import { placeInStage, placeWithStatus } from './helpers';
+import { placeInStage, placeWithStatus, scopeTraitScores } from './helpers';
 import type { Placement } from './helpers';
 import type { Status } from './types';
 import {
@@ -284,11 +284,11 @@ export async function addFeedbackCore(
     .limit(1);
   if (!c) return null;
   const jobTraits = (await loadJobTraits(c.jobId)) ?? [];
-  const allowed = new Set(jobTraits);
-  const scoped = Object.fromEntries(
-    Object.entries(traitScores ?? {}).filter(([trait]) => allowed.has(trait))
-  );
-  if (jobTraits.length > 0 && Object.keys(scoped).length === 0) return null;
+  // Scope the submitted scores to the job's current traits (dropping any
+  // stale/renamed key) and enforce "if the job tracks traits, at least one must
+  // survive" — the pure rule lives in the helper so it's shared and tested.
+  const { scoped, hasAnyScore } = scopeTraitScores(jobTraits, traitScores ?? {});
+  if (jobTraits.length > 0 && !hasAnyScore) return null;
   const [row] = await db
     .insert(feedback)
     .values({ candidateId, byUser, traitScores: scoped, note, stage: c.stage })

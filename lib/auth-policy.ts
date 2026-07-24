@@ -94,7 +94,7 @@ export function evaluateAccess(params: {
  * NextAuth `Session` or a plain object in tests.
  */
 export interface SessionLike {
-  user?: { id?: unknown } | null;
+  user?: { id?: unknown; mustChangePassword?: unknown } | null;
 }
 
 /**
@@ -105,10 +105,19 @@ export interface SessionLike {
  * protects it (see `SECURITY.md` → "Mutations are not gated by the middleware").
  *
  * `!id` rejects a missing session, a non-numeric id, and id `0` alike.
+ *
+ * It ALSO rejects a session still flagged `mustChangePassword`: that account is
+ * on the shared seeded default password and is confined to `/change-password` by
+ * the page gate, but action ids ship in the client bundle and are POST-able
+ * directly, so the action guard must reject it too — otherwise a confined
+ * account could mutate the board or mint an MCP API token without ever leaving
+ * the default password. The forced-change action reads the id raw (not this
+ * guard), so it is unaffected.
  */
 export function resolveUserId(session: SessionLike | null | undefined): number {
   const id = Number(session?.user?.id);
   if (!id) throw new Error('Unauthorized');
+  if (session?.user?.mustChangePassword === true) throw new Error('Unauthorized');
   return id;
 }
 

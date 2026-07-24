@@ -5,6 +5,7 @@ import {
   mergeTraitSuggestions,
   detectTraitRename,
   renameTraitScoreKey,
+  scopeTraitScores,
   MAX_TRAITS,
   MAX_TRAIT_NAME,
   MAX_TRAIT_SUGGESTIONS
@@ -191,5 +192,60 @@ describe('renameTraitScoreKey', () => {
     expect(next).toBe(scores);
     expect(next.X).toBe(2);
     expect(next.A).toBe(4);
+  });
+});
+
+// The security / data-integrity rule behind a feedback write (addFeedbackCore):
+// submitted scores are scoped to the job's CURRENT traits so a stale/renamed key
+// can never persist, and `hasAnyScore` drives the "empty-after-scoping is a
+// no-op when the job tracks traits" guard. Exercised purely here — no DB.
+describe('scopeTraitScores', () => {
+  it('keeps only the traits the job currently tracks', () => {
+    const result = scopeTraitScores(['Ownership', 'Craft'], {
+      Ownership: 4,
+      Craft: 3
+    });
+    expect(result).toEqual({
+      scoped: { Ownership: 4, Craft: 3 },
+      hasAnyScore: true
+    });
+  });
+
+  it('drops a stale / renamed key not in the job traits', () => {
+    // "Comunication" was renamed to "Communication" on the job; the old key is
+    // no longer tracked, so its score must not survive into the persisted entry.
+    const result = scopeTraitScores(['Communication', 'Ownership'], {
+      Comunication: 4,
+      Ownership: 3
+    });
+    expect(result.scoped).toEqual({ Ownership: 3 });
+    expect(result.hasAnyScore).toBe(true);
+  });
+
+  it('keeps a valid subset and drops the extraneous keys', () => {
+    const result = scopeTraitScores(['A', 'B', 'C'], { A: 4, Z: 2 });
+    expect(result).toEqual({ scoped: { A: 4 }, hasAnyScore: true });
+  });
+
+  it('reports no scores when every submitted key is stale', () => {
+    // Nothing survives scoping → hasAnyScore false → addFeedbackCore rejects the
+    // write (returns null) because the job DOES track traits.
+    const result = scopeTraitScores(['A', 'B'], { X: 4, Y: 2 });
+    expect(result).toEqual({ scoped: {}, hasAnyScore: false });
+  });
+
+  it('scopes to empty and reports no scores when the job tracks no traits', () => {
+    // A job with no traits allows nothing through; the caller keeps the empty
+    // map and still persists (the `jobTraits.length > 0` guard is false), so
+    // this is the deliberate "feedback with only a note" path.
+    const result = scopeTraitScores([], { A: 4, B: 3 });
+    expect(result).toEqual({ scoped: {}, hasAnyScore: false });
+  });
+
+  it('handles an empty submission (nothing to score)', () => {
+    expect(scopeTraitScores(['A', 'B'], {})).toEqual({
+      scoped: {},
+      hasAnyScore: false
+    });
   });
 });

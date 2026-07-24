@@ -30,10 +30,13 @@ export type ChangePasswordResult =
  * Set a new password for an existing account and clear its mustChangePassword
  * flag (the seeded-account first-login gate — see lib/auth.ts + db/seed.ts).
  *
- * Validation order: confirmation match → minimum length. The caller has already
- * authenticated (the page is auth-gated and the action confirms the session),
- * so this deliberately does not re-check the current password — the whole point
- * of the flow is to replace the shared default with minimal friction.
+ * Validation order: confirmation match → minimum length → not a reuse of the
+ * current password. The caller has already authenticated (the page is auth-gated
+ * and the action confirms the session), so this deliberately does not re-check
+ * the current password for auth — but it DOES reject re-setting the same value,
+ * because the whole point of the forced change is to leave the shared seeded
+ * default behind; without this a confined account could "change" `password` back
+ * to `password`, clear the flag, and keep the well-known credential.
  */
 export async function changePassword(
   input: ChangePasswordInput
@@ -49,6 +52,18 @@ export async function changePassword(
     return {
       ok: false,
       error: `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`
+    };
+  }
+
+  const [row] = await db
+    .select({ passwordHash: users.passwordHash })
+    .from(users)
+    .where(eq(users.id, input.userId))
+    .limit(1);
+  if (row && (await compare(password, row.passwordHash))) {
+    return {
+      ok: false,
+      error: 'Choose a new password — it must differ from your current one.'
     };
   }
 

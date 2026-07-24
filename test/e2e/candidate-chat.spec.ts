@@ -78,8 +78,19 @@ test.describe('candidate discussion chat', () => {
 
     const message = `Persisted chat ${Date.now()}`;
     await chat.locator('textarea').fill(message);
+    // The post is optimistic; wait for the write itself to commit before
+    // reloading, or the reload aborts the in-flight server action and the
+    // reopened thread races the commit. Match the write by its unique body (the
+    // board/notification refetches are also POSTs), mirroring the feedback spec.
+    const persisted = page.waitForResponse(
+      (r) =>
+        r.request().method() === 'POST' &&
+        (r.request().postData() ?? '').includes(message) &&
+        r.ok()
+    );
     await chat.getByRole('button', { name: 'Send' }).click();
     await expect(chat.locator('[data-testid="chat-messages"]')).toContainText(message);
+    await persisted;
 
     await page.reload();
     await openCandidate(page, CANDIDATE);

@@ -42,6 +42,14 @@ export default function JobTraitsModal({
     if (jd.trim() !== description.trim()) onDescriptionChange(jd.trim());
   }
 
+  // Commit the JD before closing on ANY path. The textarea saves on blur, but
+  // closing with Escape unmounts the modal without firing blur (React doesn't
+  // blur on unmount), so a typed-but-unblurred JD would be silently dropped.
+  function handleClose() {
+    commitJd();
+    onClose();
+  }
+
   async function suggest() {
     setSuggesting(true);
     setSuggestMsg('');
@@ -66,7 +74,7 @@ export default function JobTraitsModal({
   }
 
   return (
-    <Modal title={`Traits · ${jobTitle}`} onClose={onClose}>
+    <Modal title={`Traits · ${jobTitle}`} onClose={handleClose}>
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <label
@@ -101,7 +109,7 @@ export default function JobTraitsModal({
         />
 
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="appPrimary" onClick={onClose}>
+          <Button type="button" variant="appPrimary" onClick={handleClose}>
             Done
           </Button>
         </div>

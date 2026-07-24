@@ -8,6 +8,7 @@
 // flag drives the detail form's read-only state; the add modal leaves it false.
 
 import { useId } from 'react';
+import { ChevronDown } from 'lucide-react';
 import {
   MAX_PROFILE_URL,
   MAX_YEARS_EXPERIENCE,
@@ -75,37 +76,43 @@ export default function CandidateFields({
           <label className={LABEL} htmlFor={`${uid}-source`}>
             Source
           </label>
-          <select
-            id={`${uid}-source`}
-            value={draft.source}
-            disabled={disabled}
-            onChange={(e) => onField('source', Number(e.target.value))}
-            className={CONTROL}
-          >
-            {sources.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              id={`${uid}-source`}
+              value={draft.source}
+              disabled={disabled}
+              onChange={(e) => onField('source', Number(e.target.value))}
+              className={SELECT}
+            >
+              {sources.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            <SelectChevron />
+          </div>
         </div>
         <div className={`${FIELD} min-w-0 flex-[1_1_140px]`}>
           <label className={LABEL} htmlFor={`${uid}-owner`}>
             Owner
           </label>
-          <select
-            id={`${uid}-owner`}
-            value={draft.owner}
-            disabled={disabled}
-            onChange={(e) => onField('owner', Number(e.target.value))}
-            className={CONTROL}
-          >
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {displayName(u)}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              id={`${uid}-owner`}
+              value={draft.owner}
+              disabled={disabled}
+              onChange={(e) => onField('owner', Number(e.target.value))}
+              className={SELECT}
+            >
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {displayName(u)}
+                </option>
+              ))}
+            </select>
+            <SelectChevron />
+          </div>
         </div>
       </div>
       <div className={FIELD}>
@@ -172,3 +179,17 @@ const LABEL =
   'text-[11px] font-bold uppercase tracking-[0.03em] text-muted-foreground';
 const CONTROL =
   'w-full rounded-md border border-border-strong bg-surface px-2.5 py-2 text-[13px] text-foreground focus:border-primary focus:outline-none focus:shadow-[0_0_0_3px_var(--primary-weak)] disabled:cursor-default disabled:bg-surface-2 disabled:text-foreground';
+// Selects reuse the input styling but drop the native OS arrow (`appearance-none`)
+// and reserve room on the right for the app's own chevron, so Source/Owner match
+// the Status select instead of showing a far-right platform arrow.
+const SELECT = `${CONTROL} cursor-pointer appearance-none pr-[34px]`;
+
+function SelectChevron() {
+  return (
+    <ChevronDown
+      size={16}
+      aria-hidden
+      className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+    />
+  );
+}
