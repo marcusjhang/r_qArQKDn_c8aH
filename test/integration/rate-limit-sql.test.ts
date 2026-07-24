@@ -3,14 +3,10 @@ import { sql } from 'drizzle-orm';
 import { hasTestDatabase } from '../env';
 import { withRollback, closeTestDb, type TestTx } from './helpers/db';
 
-// Exercises the ATOMIC sliding-window limiter that guards the unauthenticated
-// auth endpoints (login + register) against the REAL Postgres function
-// `rate_limit_hit()` — the server-side security logic behind
-// PostgresRateLimitStore (lib/rate-limit.ts, drizzle/0022). The unit tests cover
-// the in-memory reference implementation; this one confirms the SQL function it
-// delegates to in production behaves the same. All hits run inside a rolled-back
-// transaction, so the rate_limit_hits rows never persist. See SECURITY.md →
-// "Rate limiting (auth endpoints)".
+// Exercises the REAL Postgres `rate_limit_hit()` function behind
+// PostgresRateLimitStore (the unit tests cover the in-memory reference impl;
+// this confirms the SQL it delegates to in production matches). All hits run
+// inside a rolled-back transaction, so the rows never persist.
 
 interface Row {
   allowed: boolean;

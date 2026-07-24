@@ -1,14 +1,8 @@
 import 'server-only';
 
-// Members directory + per-member activity history for the /members page.
-//
-// The app has no audit-log table and no roles — access is authentication-only
-// (see lib/schema/auth.ts). So a member's "history of actions" is DERIVED from
-// the user-attributed, timestamped events the app already records — the feedback
-// they submitted and the chat messages they posted, plus the account-created
-// event — rather than introducing a new audit table. This keeps with the app's
-// DB-driven / derive-don't-store approach (owners, sources and seniority bands
-// are all derived from existing rows too; see CLAUDE.md).
+// Members directory + per-member activity history for the /members page. With no
+// audit-log table, a member's history is derived from the user-attributed events
+// the app already records (feedback, messages, plus the account-created event).
 
 import { eq } from 'drizzle-orm';
 import { db, users, feedback, messages, candidates } from '@/lib/db';
@@ -18,11 +12,7 @@ import type { Member, MemberActivity } from './members-types';
 /** Most recent actions kept per member; older ones are trimmed (and flagged). */
 const MEMBER_ACTIVITY_LIMIT = 20;
 
-/**
- * Every member account with a derived, newest-first history of their actions.
- * Members are ordered by most-recent activity so the active people surface
- * first; ties fall back to name.
- */
+/** Every member with a newest-first history, ordered by most-recent activity (ties by name). */
 export async function getMembers(): Promise<Member[]> {
   const [userRows, feedbackRows, messageRows] = await Promise.all([
     db
@@ -125,11 +115,7 @@ export async function getMembers(): Promise<Member[]> {
   return members;
 }
 
-/**
- * One-line summary of a feedback event for the activity timeline. The single
- * verdict rating was replaced by per-trait scores, so summarize by how many
- * traits were scored and their average (or a plain label when note-only).
- */
+/** One-line summary of a feedback event: how many traits were scored and their average. */
 function feedbackSummary(raw: unknown): string {
   // jsonb normally arrives parsed; tolerate a stringified value defensively.
   const scoresObj =

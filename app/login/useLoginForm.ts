@@ -1,9 +1,6 @@
 'use client';
 
-// Auth-form orchestration for the login page: holds the form fields and the
-// sign-in/sign-up mode, and owns the submit flow (optionally register via
-// /api/register, then sign in with credentials, then redirect). Extracted from
-// the page so the component stays presentational.
+// Auth-form orchestration for the login page, extracted so the page stays presentational.
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';

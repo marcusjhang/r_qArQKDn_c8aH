@@ -1,13 +1,6 @@
 'use client';
 
-// Candidate details in the drawer, laid out like the add-candidate form:
-// Name, Source + Owner, years of experience, and the optional LinkedIn / GitHub
-// links. The section is read-only until Edit is pressed, then Save/Cancel; one
-// editCandidate call persists all fields. Status stays a separate, always-live
-// control (it's a pipeline action, not part of the candidate's identity).
-//
-// The fields + validation are shared with the add-candidate modal via
-// <CandidateFields> and useCandidateDraft, so the two forms can't drift.
+// Candidate details in the drawer; read-only until Edit. Status is a separate always-live control; fields + validation shared with the add modal via <CandidateFields>/useCandidateDraft.
 
 import { useEffect, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
@@ -55,21 +48,14 @@ export default function DetailForm({
     draftFromCandidate(view, sources, users)
   );
 
-  // Leave edit mode and re-seed the draft whenever the drawer opens a different
-  // candidate (or closes). Keyed on openId — which flips on open/close/switch —
-  // rather than view?.id: view falls back to the last-shown candidate during
-  // the slide-out, so keying on its id would leave a reopened candidate stuck
-  // in edit mode; and an optimistic update to the open candidate must NOT reset
-  // an in-progress edit.
+  // Re-seed on openId (not view.id): view falls back to the last-shown candidate during slide-out, so keying on its id would leave a reopened candidate stuck in edit mode.
   useEffect(() => {
     setEditing(false);
     reset(draftFromCandidate(view, sources, users));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
 
-  // In read-only mode the fields mirror the live candidate, so an optimistic
-  // update to the open candidate shows through immediately; while editing the
-  // draft is authoritative and must not be clobbered.
+  // Read-only fields mirror the live candidate; while editing the draft is authoritative and must not be clobbered.
   useEffect(() => {
     if (!editing) reset(draftFromCandidate(view, sources, users));
     // eslint-disable-next-line react-hooks/exhaustive-deps

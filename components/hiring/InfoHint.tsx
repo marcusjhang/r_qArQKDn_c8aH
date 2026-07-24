@@ -1,10 +1,6 @@
 'use client';
 
-// A small inline "ⓘ" that reveals a help tooltip on hover or keyboard focus —
-// the same reveal-on-hover pattern the candidate search uses, packaged so any
-// label can carry a short explanation without a separate click target. The
-// tooltip id is generated per instance so multiple hints on one screen stay
-// distinct for `aria-describedby`.
+// A small inline "ⓘ" that reveals a help tooltip on hover or keyboard focus.
 
 import { Info } from 'lucide-react';
 import { useId, type ReactNode } from 'react';
@@ -35,8 +31,7 @@ export default function InfoHint({
       >
         {trigger}
       </button>
-      {/* Transparent `before` bridge over the trigger-to-popup gap so the
-          pointer can travel into the tooltip without it closing. */}
+      {/* Transparent `before` bridge over the trigger-to-popup gap so the pointer can travel in without closing it. */}
       <span
         className="invisible absolute left-0 top-full z-[25] mt-1.5 w-[260px] max-w-[80vw] rounded-md border border-border bg-surface px-3 py-2.5 text-[12.5px] font-normal normal-case tracking-normal text-foreground opacity-0 shadow-ds pointer-events-none before:absolute before:-top-2 before:left-0 before:right-0 before:h-2 before:content-[''] group-hover:visible group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:visible group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
         id={id}

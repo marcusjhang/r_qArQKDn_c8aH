@@ -1,10 +1,7 @@
 'use client';
 
-// Edit the signed-in account's first / last name from /settings. Mirrors the
-// allowlist and sources panels' useTransition write flow. The combined name is
-// what the rest of the app displays, and avatar initials derive from it (first
-// word + last word) — so we show a live initials preview here to make that
-// relationship obvious.
+// Edit the signed-in account's first / last name from /settings. Shows a live
+// initials preview since avatar initials derive from the name.
 
 import { useState, useTransition } from 'react';
 import { initials } from '@/lib/hiring';

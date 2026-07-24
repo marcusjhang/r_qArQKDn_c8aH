@@ -1,13 +1,9 @@
 import 'server-only';
 
-// Bearer-token authentication for the MCP endpoint (app/api/mcp/route.ts).
-//
-// Tokens are minted in /settings (see app/(dashboard)/settings/actions.ts) and
-// stored hashed: only a SHA-256 digest and a short display prefix live in the
-// `api_tokens` table, never the plaintext secret. Verification hashes the
-// incoming bearer, looks the digest up, rejects an expired token, and bumps
-// `lastUsedAt`. The resolved owner id is threaded to the MCP tools as the actor
-// every write acts as (via AuthInfo.extra.userId).
+// Bearer-token authentication for the MCP endpoint. Tokens are stored hashed
+// (SHA-256 digest + display prefix, never the plaintext); verification hashes
+// the incoming bearer, rejects an expired token, bumps `lastUsedAt`, and threads
+// the owner id to the tools as the actor every write acts as.
 
 import { createHash, randomBytes } from 'node:crypto';
 import { eq } from 'drizzle-orm';
@@ -15,12 +11,9 @@ import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import { withMcpAuth } from 'mcp-handler';
 import { db, apiTokens } from '@/lib/db';
 
-// Public prefix on every secret so a leaked string is recognizably one of ours
-// (and greppable in logs / secret scanners). `live` distinguishes it from any
-// future `test` band.
+// Public prefix on every secret so a leaked string is recognizably ours (and greppable).
 const TOKEN_PREFIX = 'hpt_live_';
-// Characters of the secret kept for display in the token list, e.g.
-// `hpt_live_a1b2` — enough to tell tokens apart, too little to be useful alone.
+// Secret chars kept for display (e.g. `hpt_live_a1b2`) — enough to tell tokens apart.
 const DISPLAY_PREFIX_LENGTH = TOKEN_PREFIX.length + 4;
 
 /** SHA-256 hex digest of a token's plaintext — what we persist and match on. */
@@ -38,10 +31,7 @@ export interface MintedToken {
   prefix: string;
 }
 
-/**
- * Mint a new token. The plaintext is `hpt_live_` + 48 hex chars of CSPRNG
- * entropy; only its hash and display prefix are meant to be persisted.
- */
+/** Mint a new token (`hpt_live_` + 48 hex CSPRNG chars); only its hash and prefix are persisted. */
 export function mintToken(): MintedToken {
   const token = TOKEN_PREFIX + randomBytes(24).toString('hex');
   return {
@@ -52,10 +42,8 @@ export function mintToken(): MintedToken {
 }
 
 /**
- * Resolve a bearer token to its owning user, or `undefined` when it's missing,
- * unknown, or expired. On success bumps `lastUsedAt` and returns the MCP
- * `AuthInfo`, exposing the owner id to tool handlers via `extra.userId`.
- * Returning `undefined` makes `withMcpAuth` (required) emit a 401.
+ * Resolve a bearer token to its owning user, or `undefined` (→ 401) when missing,
+ * unknown, or expired. On success bumps `lastUsedAt` and exposes the owner id via `extra.userId`.
  */
 async function authenticateToken(
   _req: Request,
@@ -74,8 +62,7 @@ async function authenticateToken(
   // Reject an expired token before it can act.
   if (row.expiresAt && row.expiresAt.getTime() <= Date.now()) return undefined;
 
-  // Record use. Best-effort — a failed bump must not deny an otherwise valid
-  // token.
+  // Record use — best-effort, a failed bump must not deny an otherwise valid token.
   try {
     await db
       .update(apiTokens)
@@ -94,10 +81,7 @@ async function authenticateToken(
   };
 }
 
-/**
- * Wrap an MCP route handler so every request must carry a valid bearer token.
- * A missing/invalid/expired token short-circuits with 401 before any tool runs.
- */
+/** Wrap an MCP route handler so a missing/invalid/expired bearer 401s before any tool runs. */
 export function withTokenAuth(
   handler: (req: Request) => Response | Promise<Response>
 ): (req: Request) => Promise<Response> {

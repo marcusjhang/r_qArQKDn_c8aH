@@ -1,15 +1,4 @@
-// The board's optimistic state machine. Every mutation the UI makes is a pure
-// (state, event) -> state transition described here, so the optimistic
-// projection lives in exactly one place instead of scattered setState
-// closures. The client store (useHiringStore) dispatches an event for the
-// immediate optimistic update and fires the matching server action to persist
-// the same change; the two temp-id reconciliations (createJob / addCandidate)
-// and the error-recovery `reset` are just more events.
-//
-// All stage/candidate placement logic is delegated to the shared pure helpers
-// (placeInStage, placeWithStatus, addStageToPipeline, reorderStages,
-// removeStage) so the reducer, the store's pre-checks, and the server actions
-// all compute the same result from the same code.
+// The board's optimistic state machine: every UI mutation is a pure (state, event) -> state transition, delegating placement logic to the shared helpers so the reducer, the store's pre-checks, and the server actions stay in sync.
 
 import { DEFAULT_STAGES } from './config';
 import {
@@ -51,14 +40,11 @@ export type HiringEvent =
       linkedinUrl: string | null;
       githubUrl: string | null;
       yearsExperience: number | null;
-      // Stage-clock start for the optimistic row (the store supplies the clock
-      // so the reducer stays pure). Reconciled to the DB default on refresh.
+      // Stage-clock start for the optimistic row (store-supplied so the reducer stays pure). Reconciled to the DB default on refresh.
       at: Date;
     }
   | { type: 'reconcileCandidateId'; tempId: number; realId: number }
-  // `at` = the moment the move happened; the reducer stamps stageEnteredAt with
-  // it when (and only when) the stage actually changes — mirroring the server's
-  // withStageClock rule so the optimistic overdue state matches the DB.
+  // `at` = the move time; stamped onto stageEnteredAt only when the stage actually changes (mirrors withStageClock).
   | { type: 'moveStage'; id: number; stage: string; at: Date }
   | {
       type: 'editCandidate';
@@ -163,9 +149,7 @@ export function hiringReducer(
       };
 
     case 'setJobTraits': {
-      // A single rename carries recorded scores from the old key to the new one
-      // so the optimistic board matches the server's remap (setJobTraits action)
-      // — otherwise the renamed trait would flip to "Not scored" until a refetch.
+      // A single rename carries recorded scores from the old key to the new (matches the server's remap), else the trait flips to "Not scored" until a refetch.
       const job = state.jobs.find((j) => j.id === event.jobId);
       const rename = job ? detectTraitRename(job.traits, event.traits) : null;
       return {
@@ -243,11 +227,7 @@ export function hiringReducer(
       }));
 
     case 'moveStage':
-      // placeInStage couples the (stage, status) pair — entering the terminal
-      // (last) stage marks the candidate hired, leaving it clears a stale hired
-      // back to active. Terminal is resolved from the job's stages by position.
-      // Restart the stage clock only on a real stage change (mirrors the
-      // server's withStageClock) so the optimistic overdue state is correct.
+      // placeInStage couples (stage, status): entering the terminal stage hires, leaving it clears a stale hired. Restart the clock only on a real stage change (mirrors withStageClock).
       return mapCandidate(state, event.id, (c) => {
         const job = state.jobs.find((j) => j.id === c.jobId);
         const placement = placeInStage(event.stage, c, job?.stages ?? []);
@@ -292,9 +272,7 @@ export function hiringReducer(
       return mapCandidate(state, event.id, (c) => {
         const existing = c.feedback.find((f) => f.byUser === event.byUser);
         if (existing) {
-          // One entry per user: update in place (keeping its id) and re-stamp the
-          // stage to the candidate's current one, so the entry shows the latest
-          // round it was scored in — mirroring the server's onConflict update.
+          // One entry per user: update in place (keeping its id), re-stamping stage to the current one (mirrors the server's onConflict update).
           return {
             ...c,
             feedback: c.feedback.map((f) =>
@@ -325,10 +303,7 @@ export function hiringReducer(
       });
 
     case 'reconcileFeedbackId':
-      // The optimistic feedback row carries a negative temp id until the server
-      // returns the real one. Match by temp id across candidates (feedback is
-      // nested per candidate), rebuilding only the candidate that holds it so
-      // every other row keeps its identity.
+      // Feedback carries a negative temp id until the server returns the real one; match across candidates and rebuild only the one holding it.
       return {
         ...state,
         candidates: state.candidates.map((c) =>

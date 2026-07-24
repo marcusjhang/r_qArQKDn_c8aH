@@ -1,9 +1,6 @@
 'use client';
 
-// Native HTML5 drag-and-drop wiring for the board, kept out of the rendering
-// components so cards/columns stay declarative. A dragged card carries its
-// candidate id as `text/plain`; a column highlights on drag-over and dispatches
-// the stage move on drop.
+// Native HTML5 drag-and-drop wiring for the board. A dragged card carries its candidate id as `text/plain`; a column dispatches the stage move on drop.
 
 import type { DragEvent } from 'react';
 

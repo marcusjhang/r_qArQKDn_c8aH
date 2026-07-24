@@ -1,12 +1,6 @@
 'use client';
 
-// Kanban board: renders the active job's stages as columns, candidate cards
-// (Decision 5), drag-and-drop stage transitions, inline stage editing
-// (Decision 1) and the terminal-state filter (Decision 3).
-//
-// This file is now a thin layout: per-column rendering lives in StageColumn, and
-// the stage/card logic is split across CandidateCard, StageMenu, AddStageForm
-// and the useBoardDnd / useInlineEdit hooks.
+// Kanban board: renders the active job's stages as columns. Thin layout — per-column rendering lives in StageColumn.
 
 import {
   selectStageCards,
@@ -44,10 +38,7 @@ export default function Board({
       <div className="flex items-start gap-3 min-h-[60px] pr-4">
         {job.stages.map((stage, index) => (
           <StageColumn
-            // Stage names are unique within a job (validateStageName), so keying
-            // by name — not array index — keeps each column's local UI state
-            // (open menu, inline-rename focus) bound to its stage across a
-            // middle reorder/delete instead of remapping to a neighbour.
+            // Key by stage name (unique per job), not index, so a column's UI state stays bound across a middle reorder/delete.
             key={stage}
             job={job}
             stage={stage}

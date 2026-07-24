@@ -1,11 +1,6 @@
 'use client';
 
-// Inline contentEditable field editing (used for the board's stage rename).
-// Owns the DOM interaction only — the caller supplies the current value, a
-// validator, and a commit callback. On blur/Enter the trimmed text is
-// validated and committed, or the element is reverted to `value`; Escape
-// always reverts. Keeping this out of the component removes the fiddly
-// selection/commit/revert branching from the render path.
+// Inline contentEditable editing (board stage rename). On blur/Enter the trimmed text is validated and committed, else reverted to `value`; Escape always reverts.
 
 import { useRef, type KeyboardEvent } from 'react';
 

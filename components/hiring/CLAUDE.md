@@ -47,6 +47,6 @@ rendered under the auth-gated `app/(dashboard)` route.
   `app/globals.css` (mapped in `tailwind.config.ts`) — there is no separate
   stylesheet.
 
-Keep decision logic (validation, placement, sorting) in `lib/hiring/helpers.ts`
+Keep decision logic (validation, placement, sorting) in `lib/hiring/helpers/`
 so it stays testable — components should stay presentational. For the frontend
 review checklist see the **pr-code-review** skill (`references/frontend.md`).

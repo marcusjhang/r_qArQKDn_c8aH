@@ -1,10 +1,6 @@
 'use client';
 
-// Create a new job (pipeline). You can paste the job description (JD) and set
-// the important traits (manually or, when configured, via AI) before the job is
-// created. The traits UI is the shared TraitsEditor — identical to the Traits
-// modal — wired here to local state; the job starts with the default stages and
-// the board switches to it once created.
+// Create a new job (pipeline) with an optional JD and traits (shared TraitsEditor); the job starts with default stages and the board switches to it.
 
 import { useState } from 'react';
 import {
@@ -12,8 +8,7 @@ import {
   reorderStages,
   MAX_JOB_DESCRIPTION
 } from '@/lib/hiring';
-// recommendTraits is a server action; the `@/lib/hiring` barrel deliberately
-// excludes actions/, so it is imported from that module directly.
+// recommendTraits is a server action; the @/lib/hiring barrel excludes actions/, so import it directly.
 import { recommendTraits } from '@/lib/hiring/actions';
 import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
@@ -65,8 +60,7 @@ export default function NewJobModal({
     }
   }
 
-  // Reorder is the ranking: order 0 is rank #1. Reuses the shared ordered-list
-  // helper so the local list ranks the same way the server actions do.
+  // Reorder is the ranking (order 0 = rank #1); reuses the shared helper so it ranks like the server.
   function reorderTrait(index: number, dir: 1 | -1) {
     setTraits((cur) => {
       const result = reorderStages(cur, index, dir);

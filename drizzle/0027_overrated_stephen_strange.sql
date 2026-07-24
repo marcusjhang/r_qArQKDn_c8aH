@@ -1,0 +1,1 @@
+ALTER TABLE "feedback" ADD CONSTRAINT "feedback_trait_scores_values" CHECK (not jsonb_path_exists("feedback"."trait_scores", '$.* ? (@.type() != "number" || @ < 1 || @ > 4 || @.floor() != @)'));

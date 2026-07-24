@@ -1,12 +1,4 @@
-// Barrel for the pure, framework-free hiring helpers.
-//
-// The helpers were split by concern into the sibling modules below (users,
-// profile URLs, chat mentions, seniority, candidate drafts, candidate status,
-// stage mutations, board-view derivations, candidate search). This barrel
-// preserves the single
-// `@/lib/hiring/helpers` import path — and the re-export through `@/lib/hiring`
-// — so consumers never reach into an individual module and the grouping can be
-// re-shaped without a churn of import rewrites.
+// Barrel for the pure, framework-free hiring helpers — one `@/lib/hiring/helpers` import path over the sibling modules below.
 
 export * from './users';
 export * from './profile-urls';

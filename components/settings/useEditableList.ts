@@ -1,25 +1,13 @@
 'use client';
 
-// Shared state machine for the settings/members editable-list panels (Sources,
-// Seniority bands, Allowlist): an add form plus a list of rows that can be
-// edited inline and removed. Owns the add-draft / inline-edit-draft / error /
-// pending bookkeeping and the add → validate → write → clear|error flow so the
-// panels stay presentational. Generic over the add-form draft `A` and the
-// inline-edit draft `E`; panels that don't support inline editing simply never
-// call `startEdit`/`saveEdit`.
-//
-// Writes go through caller-supplied handlers that resolve to a Result, so a
-// rejected write (duplicate name, item in use, …) surfaces inline instead of
-// throwing. Validation runs client-side first via the caller's `validateAdd` /
-// `validateEdit`, which return an error message (or null when valid).
+// Shared state machine for the settings/members editable-list panels. Generic
+// over the add-form draft `A` and inline-edit draft `E`. Writes go through
+// caller handlers that resolve to a Result, so a rejected write surfaces inline.
 
 import { useState, useTransition } from 'react';
 import type { SettingsResult } from '@/lib/settings-types';
 
-// The hook's write handlers resolve to the shared settings result shape; kept
-// under the domain-neutral `Result` alias (and re-exported) so the generic
-// list panels — including the members Allowlist — read naturally. The canonical
-// declaration lives in lib/settings-types.ts.
+// Domain-neutral alias for the shared settings result shape (canonical decl in lib/settings-types.ts).
 export type Result = SettingsResult;
 
 export interface EditableListApi<A, E> {

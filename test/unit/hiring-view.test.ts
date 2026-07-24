@@ -192,9 +192,8 @@ describe('overallScore', () => {
   });
 
   it('excludes an unscored heavier trait from the denominator', () => {
-    // Rank #1 "A" (weight 2) is unscored; only rank #2 "B" (weight 1) is scored
-    // (avg 3). The result must be B's own average — A's weight must NOT be added
-    // to the denominator (which would drag the score down to (1·3)/(2+1) = 1).
+    // Rank #1 "A" (weight 2) is unscored, so it must NOT enter the denominator;
+    // the result is B's own average (3), not the dragged-down (1·3)/(2+1) = 1.
     const c = candidate({ feedback: withTraitScores('B', 2, 4) });
     expect(overallScore(['A', 'B'], c)).toBeCloseTo(3);
   });

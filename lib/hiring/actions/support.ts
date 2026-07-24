@@ -1,24 +1,13 @@
 import 'server-only';
 
-// Shared, non-action helpers for the server-action write path. These are plain
-// server-only functions (NOT `'use server'` — they are never exposed as
-// callable server actions); the entity action modules (./jobs, ./candidates,
-// ./feedback, ./stages) import them so the auth/user resolution and the job-
-// stages read/lock live in one place rather than duplicated per module.
+// Shared, non-action helpers for the write path — plain server-only functions (NOT `'use server'`), so auth/user resolution and the job read/lock live in one place.
 
 import { eq } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
 import { db, jobs, users } from '@/lib/db';
 import type { Status } from '../types';
 
-/**
- * Resolve the signed-in caller's numeric id from their session email against
- * the live `users` table — the author of a write is derived here, never taken
- * from client input. Mirrors chat-actions/chat-logic: resolving by email (the
- * stable login identity) rather than trusting a JWT-captured id keeps a reseed
- * that renumbers the rows from attributing feedback to the wrong account, and
- * keeps a caller from fabricating feedback authored by a colleague.
- */
+/** Resolve the caller's numeric id from their session email (not a JWT-captured id, so a reseed that renumbers rows can't misattribute writes). */
 export async function currentUserId(): Promise<number | null> {
   const session = await auth();
   const email = session?.user?.email;
@@ -41,19 +30,10 @@ export async function loadJobTraits(jobId: number): Promise<string[] | null> {
   return j?.traits ?? null;
 }
 
-// The transaction handle Drizzle passes to `db.transaction(cb)`, derived so we
-// don't have to import the ORM's transaction types.
+// The transaction handle Drizzle passes to `db.transaction(cb)`, derived to avoid importing the ORM's transaction types.
 export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-/**
- * Read a job's traits inside a transaction with `SELECT … FOR UPDATE`, taking a
- * row lock so a concurrent trait edit blocks until this transaction commits.
- * The trait mutations (replace/reorder) read-modify-write the whole `traits`
- * array exactly like the stage edits, so without this lock two concurrent trait
- * edits both read the same array and the second write silently clobbers the
- * first (a lost update the store never resyncs on success). Mirrors
- * `lockJobStages`.
- */
+/** Read a job's traits `FOR UPDATE`, row-locking so two concurrent trait edits can't both read the same array and lose the first write. Mirrors `lockJobStages`. */
 export async function lockJobTraits(
   tx: Tx,
   jobId: number
@@ -67,15 +47,7 @@ export async function lockJobTraits(
   return j?.traits ?? null;
 }
 
-/**
- * Read a job's stages inside a transaction with `SELECT … FOR UPDATE`, taking a
- * row lock so a concurrent stage edit blocks until this transaction commits.
- * The stage mutations (add/rename/reorder/delete) all read-modify-write the
- * whole `stages` array, so without this lock two concurrent edits both read the
- * same array and the second write silently clobbers the first — and a stale
- * write can drop a stage a rename just re-pointed candidates into, orphaning
- * them. Locking the job row serializes those edits per job.
- */
+/** Read a job's stages `FOR UPDATE`, row-locking so concurrent stage edits can't lose a write (or drop a stage a rename just re-pointed candidates into). */
 export async function lockJobStages(
   tx: Tx,
   jobId: number
@@ -89,14 +61,7 @@ export async function lockJobStages(
   return j?.stages ?? null;
 }
 
-/**
- * Merge the stage clock into a (stage, status) placement: reset
- * `stage_entered_at` to now ONLY when the placement moves the candidate to a
- * different stage. Centralizes the "restart the timer on a real move" rule
- * shared by moveStage and setStatus so the two can't drift, and so a no-op move
- * (re-dropping a card in its own column) never resets the overdue timer. The
- * optimistic client mirror of this rule lives in the reducer.
- */
+/** Merge the stage clock into a placement: reset `stage_entered_at` only on a real stage change, so a no-op move never resets the overdue timer (mirrored by the reducer). */
 export function withStageClock(
   placement: { stage: string; status: Status },
   prevStage: string

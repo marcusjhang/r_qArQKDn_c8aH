@@ -1,8 +1,6 @@
 'use client';
 
-// A single draggable candidate card in a board column. Drag wiring comes from
-// the board's useBoardDnd hook; clicking opens the detail drawer, and the star
-// toggles favourite status without opening it.
+// A single draggable candidate card in a board column.
 
 import {
   userById,
@@ -62,10 +60,7 @@ export default function CandidateCard({
 }) {
   const owner = userById(users, candidate.owner);
   const seniority = seniorityFor(bands, candidate.yearsExperience);
-  // Time-in-stage: shown for candidates still moving through the pipeline once
-  // the clock has mounted. Escalates to a warning past the universal warn
-  // threshold (see stageOverdue). Terminal candidates (hired/rejected) aren't
-  // "in" a stage in the stalled sense, so they show nothing.
+  // Time-in-stage: shown for non-terminal candidates once the clock has mounted; warns past the threshold.
   const showAge = now != null && !isTerminal(candidate);
   const overdue = now != null && stageOverdue(candidate, stageWarnDays, now);
   const ageLabel = now != null ? stageAgeLabel(candidate.stageEnteredAt, now) : '';
@@ -83,9 +78,7 @@ export default function CandidateCard({
       aria-label={`Open ${candidate.name}`}
       onClick={() => onOpen(candidate.id)}
       onKeyDown={(e) => {
-        // Enter/Space open the card, mirroring a native button — but only when
-        // the card itself is focused, so activating an inner control (the star
-        // button, the profile links) doesn't also open the drawer.
+        // Enter/Space open the card, but only when the card itself is focused, so inner controls don't also open the drawer.
         if (e.target !== e.currentTarget) return;
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();

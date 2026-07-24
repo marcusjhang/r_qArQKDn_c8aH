@@ -48,6 +48,7 @@ export default function LoginPage() {
               <div className="flex gap-2">
                 <Input
                   type="text"
+                  aria-label="First name"
                   placeholder="First name"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
@@ -55,6 +56,7 @@ export default function LoginPage() {
                 />
                 <Input
                   type="text"
+                  aria-label="Last name"
                   placeholder="Last name"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
@@ -64,6 +66,7 @@ export default function LoginPage() {
             )}
             <Input
               type="email"
+              aria-label="Email"
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -71,13 +74,18 @@ export default function LoginPage() {
             />
             <Input
               type="password"
+              aria-label="Password"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={isSignUp ? 8 : 1}
             />
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && (
+              <p className="text-sm text-destructive" role="alert">
+                {error}
+              </p>
+            )}
           </CardContent>
           <CardFooter className="flex flex-col gap-3">
             <Button type="submit" className="w-full" disabled={loading}>

@@ -1,8 +1,6 @@
 'use server';
 
-// Job write actions (create / star / delete). Part of the board's single write
-// path — see ./index for the boundary contract (zod-validate → mutate → store
-// rollback on throw) shared by every action module.
+// Job write actions (create / star / delete). See ./index for the boundary contract.
 
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { requireUser } from '@/lib/auth';
@@ -20,12 +18,7 @@ import {
 import { suggestTraits } from '../ai';
 import { lockJobTraits } from './support';
 
-/**
- * Create a new job with the compulsory default stages. Returns the new id so
- * the client can reconcile its optimistic job and switch the board to it.
- * `traits` seeds the job's important-traits list; a job created with none
- * simply starts empty and traits are added later. `description` is the JD.
- */
+/** Create a new job with the default stages; returns the new id. `traits` seeds the important-traits list (empty when none), `description` is the JD. */
 export async function createJob(
   titleRaw: string,
   descriptionRaw = '',
@@ -34,8 +27,7 @@ export async function createJob(
   await requireUser();
   const title = zJobTitle.parse(titleRaw);
   const description = zJobDescription.parse(descriptionRaw ?? '');
-  // Use the caller's chosen traits (e.g. AI suggestions accepted at creation);
-  // no traits means the job starts with an empty list, not a default set.
+  // No traits means an empty list, not a default set.
   const traits = traitsRaw?.length
     ? zTraitList.parse(traitsRaw).map((t) => t.trim())
     : [];
@@ -66,17 +58,7 @@ export async function setJobDescription(
   await db.update(jobs).set({ description }).where(eq(jobs.id, jobId));
 }
 
-/**
- * Replace a job's important-traits list (add/remove/reorder/rename). Validated
- * (capped, unique) then written under a row lock so a concurrent trait edit
- * can't clobber it.
- *
- * When the change is a single *rename* (one label swapped for another), the
- * recorded feedback scores keyed by the old name are carried over to the new
- * name in the same transaction — otherwise a founder fixing a typo would
- * silently orphan every score under the old key. This mirrors how `renameStage`
- * re-points the candidates sitting in a renamed stage.
- */
+/** Replace a job's important-traits list under a row lock. A single rename carries recorded feedback scores from the old key to the new (else they'd orphan), mirroring renameStage. */
 export async function setJobTraits(jobIdRaw: number, traitsRaw: string[]) {
   await requireUser();
   const jobId = zId.parse(jobIdRaw);
@@ -86,10 +68,7 @@ export async function setJobTraits(jobIdRaw: number, traitsRaw: string[]) {
     if (!current) return;
     const rename = detectTraitRename(current, traits);
     if (rename) {
-      // Move the score stored under the old key to the new key for every
-      // feedback row on this job's candidates — but never overwrite a score the
-      // new name already has (the existing value wins). `jsonb_exists` is the
-      // function form of the `?` key-test, avoiding any `?`-placeholder clash.
+      // Move the score from old key to new for this job's feedback rows, never overwriting one the new name already has. `jsonb_exists` is the function form of the `?` key-test, avoiding a `?`-placeholder clash.
       await tx
         .update(feedback)
         .set({
@@ -113,13 +92,7 @@ export async function setJobTraits(jobIdRaw: number, traitsRaw: string[]) {
   });
 }
 
-/**
- * Swap a trait with its neighbour to re-rank it. Reuses the shared
- * `reorderStages` ordered-list helper — traits are just another ordered
- * string[], so the swap+bounds rule is identical. Runs inside a transaction that
- * row-locks the job (see `lockJobTraits`) so a concurrent trait edit can't read
- * the same array and clobber this reorder with a stale write.
- */
+/** Swap a trait with its neighbour (reuses `reorderStages`), under a row lock so a concurrent trait edit can't clobber it with a stale write. */
 export async function reorderTrait(
   jobIdRaw: number,
   indexRaw: number,
@@ -138,11 +111,7 @@ export async function reorderTrait(
   });
 }
 
-/**
- * Ask the AI recommender for a focused few traits from a job title and
- * description. Read-only (no DB writes, no cache change); returns [] rather
- * than throwing on a backend error so the UI can degrade to manual entry.
- */
+/** Ask the AI recommender for a few traits from a job title/description. Returns [] rather than throwing so the UI can degrade to manual entry. */
 export async function recommendTraits(
   titleRaw: string,
   descriptionRaw: string
@@ -161,13 +130,7 @@ export async function setJobStarred(jobIdRaw: number, starred: boolean) {
   await requireUser();
   const jobId = zId.parse(jobIdRaw);
   if (starred) {
-    // Enforce the favorites cap atomically: a single conditional UPDATE that
-    // sets starred=true only while fewer than MAX_FAVORITES *other* jobs are
-    // starred. The count subquery is evaluated within the same statement as
-    // the write, so concurrent stars contend on the same rows and cannot both
-    // slip past the cap — unlike a separate count-then-update, which reads a
-    // stale count. The client-side guard in store.ts mirrors this UX-side; the
-    // server check here is authoritative.
+    // Enforce the favorites cap atomically: one conditional UPDATE whose count subquery runs in the same statement, so concurrent stars can't both slip past the cap (a count-then-update would read a stale count). Authoritative; store.ts mirrors it UX-side.
     await db
       .update(jobs)
       .set({ starred: true })
@@ -186,6 +149,5 @@ export async function setJobStarred(jobIdRaw: number, starred: boolean) {
 export async function deleteJob(jobIdRaw: number) {
   await requireUser();
   const jobId = zId.parse(jobIdRaw);
-  // Candidates (and their feedback) cascade-delete with the job via the FKs.
   await db.delete(jobs).where(eq(jobs.id, jobId));
 }

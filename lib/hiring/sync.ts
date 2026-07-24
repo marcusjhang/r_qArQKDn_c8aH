@@ -1,19 +1,9 @@
 'use client';
 
-// Optimistic server-state synchronization engine for the board.
-//
-// This is the imperative machinery that `useHiringStore` used to inline around
-// its action definitions: the temp-id counter, the queue that defers a mutation
-// until its optimistic row reconciles to a real server id, the single write
-// mutation, and the resync that rolls a failed write back. Pulling it out of the
-// store leaves `store.ts` as the TanStack cache wiring plus plain action
-// definitions, and gives this coordination one named, separately-tested home.
-//
-// It is deliberately agnostic of the board's shape: it knows nothing about jobs,
-// candidates, or the reducer — it only coordinates temp ids, the persist
-// mutation, and the reconcile queue. The store injects `invalidate` (the board
-// query's invalidation) so the engine can resync without importing the query
-// keys or the query client itself. See ADR 0001 for the wider evaluation.
+// Optimistic sync engine for the board: the temp-id counter, the queue that
+// defers a mutation until its row reconciles to a real server id, the single
+// write mutation, and the resync that rolls a failed write back. Agnostic of the
+// board's shape — the store injects `invalidate`. See ADR 0001.
 
 import { useCallback, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
@@ -27,50 +17,23 @@ interface PersistArgs {
 }
 
 export interface OptimisticSync {
-  /**
-   * Next negative temp id for an optimistic row, until the server hands back a
-   * real (non-negative) one. Monotonically decreasing.
-   */
+  /** Next negative temp id for an optimistic row (monotonically decreasing) until the server hands back a real one. */
   nextTempId: () => number;
-  /**
-   * The single write path: runs the server action, hands a create's returned id
-   * to `onResult` for reconciliation, and resyncs on failure (which rolls the
-   * optimistic change back). `persist` is referentially stable.
-   */
+  /** The single write path: runs the server action, hands a create's id to `onResult`, and resyncs on failure. Referentially stable. */
   persist: (args: PersistArgs) => void;
-  /**
-   * Run `fn` with the row's real id: immediately when `id` is already a real
-   * (non-negative) id, or deferred until the temp id reconciles otherwise.
-   * Without this, a mutation targeting a freshly created row would POST a
-   * negative temp id, which the server's positive-int guard rejects.
-   */
+  /** Run `fn` with the row's real id — immediately if already real, else deferred until the temp id reconciles (a negative temp id would fail the server's positive-int guard). */
   whenReconciled: (id: number, fn: (realId: number) => void) => void;
-  /**
-   * Drain the mutations queued against a temp id, replaying them with the real
-   * id the server assigned. Called from the create/add reconciliation paths.
-   */
+  /** Drain the mutations queued against a temp id, replaying them with the server's real id. */
   flushPending: (tempId: number, realId: number) => void;
-  /**
-   * Error recovery: drop anything queued against a temp id and refetch the
-   * authoritative board (via the injected `invalidate`), which replaces the
-   * optimistic cache and rolls the failed write back.
-   */
+  /** Error recovery: drop queued mutations and refetch the authoritative board (rolls the failed write back). */
   resync: () => void;
 }
 
-/**
- * Wire the optimistic-sync engine. `invalidate` refetches the authoritative
- * server snapshot (the store passes the board query's invalidation); it should
- * be referentially stable so `resync` and the persist mutation stay stable too.
- */
+/** Wire the optimistic-sync engine. `invalidate` refetches the authoritative board and should be referentially stable. */
 export function useOptimisticSync(invalidate: () => void): OptimisticSync {
   // Negative ids for optimistic rows until the server hands back a real one.
   const tempId = useRef(-1);
-  // Server mutations targeting a row whose optimistic temp id hasn't reconciled
-  // yet, queued by temp id. An id-targeting action fires immediately once the
-  // row has a real (non-negative) id; while it's still a negative temp id the
-  // mutation is deferred here and flushed with the real id when the create/add
-  // reconciliation lands.
+  // Mutations queued by temp id, deferred until the row's create/add reconciles to a real id, then flushed.
   const pending = useRef(new Map<number, Array<(realId: number) => void>>());
 
   const nextTempId = useCallback(() => tempId.current--, []);
@@ -100,14 +63,12 @@ export function useOptimisticSync(invalidate: () => void): OptimisticSync {
     for (const fn of queue) fn(realId);
   }, []);
 
-  // The single write path documented on `persist` above. `mutate` is
-  // referentially stable, so it's safe in the store's callback deps.
+  // The single write path (see `persist` above); `mutate` is referentially stable.
   const { mutate: persist } = useMutation({
     mutationFn: ({ run }: PersistArgs) => run(),
     onSuccess: (result, { onResult }) => onResult?.(result),
     onError: (_error, { onError }) => {
-      // Let the caller react (e.g. clear a dialog's busy state) before the
-      // board resyncs, which rolls the failed optimistic change back.
+      // Let the caller react (e.g. clear a busy state) before the resync rolls the change back.
       onError?.();
       resync();
     }

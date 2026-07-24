@@ -1,13 +1,5 @@
 // Seed / sample data (Decision 8), consumed by the DB seeder (`db/seed.ts`).
-//
-// Three realistic roles with ~12 candidates spread across stages, mixed
-// trait scores, statuses, sources, and owners — including one rejected and one
-// hired candidate to demonstrate the terminal-state filter.
-//
-// Jobs are keyed by a temporary `slug`; the seeder inserts jobs first and
-// resolves each candidate's `job` slug to the generated serial id. Owners and
-// feedback authors are referenced by the user's EMAIL (a stable, readable key);
-// the seeder resolves each email to the seeded account's serial id.
+// Jobs are keyed by a temporary `slug`, and owners/authors by EMAIL; the seeder resolves both to the generated serial ids.
 
 import { DEFAULT_STAGES, DEFAULT_TRAITS, SENIORITY_BANDS } from './config';
 import type { Status, TraitScores } from './types';
@@ -15,8 +7,7 @@ import type { Status, TraitScores } from './types';
 /** Default seniority bands seeded into the (editable) seniority_bands table. */
 export const SEED_SENIORITY_BANDS = SENIORITY_BANDS;
 
-// The seeded users, referenced by email so the demo assignments read clearly
-// and stay in lockstep with the accounts created in db/seed.ts.
+// The seeded users, referenced by email to stay in lockstep with the accounts in db/seed.ts.
 const SEED_USER_EMAILS = {
   marcus: 'marcusajh0802@gmail.com',
   benOng: 'benong@lightsprint.ai',
@@ -26,8 +17,7 @@ const SEED_USER_EMAILS = {
 
 const { marcus, benOng, benChan, hengHongLee } = SEED_USER_EMAILS;
 
-// Canonical candidate sources, seeded into the `sources` table. The dropdown
-// options are read from that table (not this list), so this is only the seed.
+// Canonical candidate sources, seeded into the `sources` table (the dropdown reads that table, not this list).
 export const SEED_SOURCES: string[] = [
   'LinkedIn',
   'Referral',
@@ -64,12 +54,27 @@ export interface SeedCandidate {
   yearsExperience: number | null;
   status: Status;
   starred?: boolean;
-  // Optional: how many days ago the candidate entered its current stage. The
-  // seeder backdates stage_entered_at by this much so the demo shows a mix of
-  // fresh and stalled applicants (some past the universal warn threshold).
-  // Omitted = entered "now" (the column default).
+  // Optional profile links so the drawer's profile section demos (omitted = NULL).
+  linkedinUrl?: string;
+  githubUrl?: string;
+  // Optional: days ago the candidate entered its stage; the seeder backdates stage_entered_at so the demo mixes fresh and stalled applicants (omitted = now).
   daysInStage?: number;
   feedback: SeedFeedback[];
+}
+
+interface SeedMessage {
+  /** Candidate name (resolved to the candidate id by the seeder). */
+  candidate: string;
+  /** Author's email (resolved to a user id by the seeder). */
+  by: string;
+  /** Message body. To seed a mention, put an `@Display Name` token here AND the email in `mentions`. */
+  body: string;
+  /** Emails to @-mention (a mention row is inserted per user). */
+  mentions?: string[];
+  /** Whether the mention notifications are already read (default false). */
+  read?: boolean;
+  /** Days ago the message was posted (backdates created_at; omitted = now). */
+  daysAgo?: number;
 }
 
 export const SEED_JOBS: SeedJob[] = [
@@ -116,6 +121,8 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     yearsExperience: 6,
     status: 'active',
     starred: true,
+    linkedinUrl: 'https://www.linkedin.com/in/ava-chen',
+    githubUrl: 'https://github.com/avachen',
     daysInStage: 3,
     feedback: [
       {
@@ -138,7 +145,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     source: 'Referral',
     yearsExperience: 3,
     status: 'active',
-    // 20 days in Applied — past the 14-day limit, so the board flags him.
+    // 20 days in Applied, past the 5-day warn threshold, so the board flags him as stalled.
     daysInStage: 20,
     feedback: []
   },
@@ -151,7 +158,8 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     yearsExperience: 9,
     status: 'active',
     starred: true,
-    // 12 days in Interview — past the 7-day limit.
+    linkedinUrl: 'https://www.linkedin.com/in/priya-nair',
+    // 12 days in Interview, past the universal 5-day warn threshold.
     daysInStage: 12,
     feedback: [
       { by: benOng, note: 'Sharp, great product instincts.' },
@@ -177,7 +185,9 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     source: 'Referral',
     yearsExperience: 12,
     status: 'active',
-    // 9 days sitting on the Offer — past the 7-day limit; nudge to close.
+    linkedinUrl: 'https://www.linkedin.com/in/sofia-kim',
+    githubUrl: 'https://github.com/sofiakim',
+    // 9 days sitting on the Offer, past the 5-day warn threshold; nudge to close.
     daysInStage: 9,
     feedback: [
       {
@@ -243,6 +253,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     source: 'LinkedIn',
     yearsExperience: 7,
     status: 'active',
+    linkedinUrl: 'https://www.linkedin.com/in/mia-torres',
     feedback: [
       {
         by: hengHongLee,
@@ -285,5 +296,62 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     feedback: [
       { by: hengHongLee, note: 'Rare combo of GTM + technical depth.' }
     ]
+  }
+];
+
+// Seed discussion threads so chat, @-mention highlighting, and the inbox all demo on a fresh boot. Every `@Display Name` token has its email in `mentions`; together they tag all four accounts so each login has a notification.
+export const SEED_MESSAGES: SeedMessage[] = [
+  // Ava Chen (Screen) — a two-message thread tagging Marcus, then Ben.
+  {
+    candidate: 'Ava Chen',
+    by: benChan,
+    body: 'Take-home was clean. @Marcus Ang can you own the systems-design round?',
+    mentions: [marcus],
+    read: true,
+    daysAgo: 2
+  },
+  {
+    candidate: 'Ava Chen',
+    by: marcus,
+    body: 'On it. @Ben Ong want to pair on the interview panel?',
+    mentions: [benOng],
+    daysAgo: 1
+  },
+  // Priya Nair (Interview) — tags Heng Hong.
+  {
+    candidate: 'Priya Nair',
+    by: benOng,
+    body: 'Strong so far. @Heng Hong Lee can you dig into distributed systems next round?',
+    mentions: [hengHongLee],
+    daysAgo: 3
+  },
+  // Sofia Kim (Offer) — tags Marcus, then a plain reply.
+  {
+    candidate: 'Sofia Kim',
+    by: benChan,
+    body: 'Comp is aligned. @Marcus Ang ready to send the offer?',
+    mentions: [marcus],
+    daysAgo: 1
+  },
+  {
+    candidate: 'Sofia Kim',
+    by: marcus,
+    body: 'Sending it today.'
+  },
+  // Mia Torres (Interview, design) — tags Benedict.
+  {
+    candidate: 'Mia Torres',
+    by: hengHongLee,
+    body: 'Portfolio is excellent. @Benedict Chan want to run the final design crit?',
+    mentions: [benChan],
+    daysAgo: 2
+  },
+  // Jack Reed (Interview, gtm) — tags Ben.
+  {
+    candidate: 'Jack Reed',
+    by: hengHongLee,
+    body: 'Great GTM instincts. @Ben Ong let us align on the comp band.',
+    mentions: [benOng],
+    daysAgo: 1
   }
 ];

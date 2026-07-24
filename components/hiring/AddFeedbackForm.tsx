@@ -1,11 +1,6 @@
 'use client';
 
-// Add/edit-feedback form: a per-trait 1-4 score picker + note. Feedback is
-// always authored by the signed-in user (derived server-side), so there is no
-// interviewer picker. The signed-in user gets one entry per candidate (a DB
-// unique constraint), edited in place: the button flips to "Update feedback"
-// once they've reviewed. The draft state, reset-on-candidate-change and
-// validation live in useFeedbackDraft; this is the presentational shell.
+// Add/edit-feedback form. One entry per user per candidate (DB unique constraint), edited in place; draft state lives in useFeedbackDraft.
 
 import { RATINGS, type Feedback, type Job, type RatingValue } from '@/lib/hiring';
 import { Button } from '@/components/ui/button';
@@ -14,8 +9,7 @@ import { useFeedbackDraft, type FeedbackEntry } from './useFeedbackDraft';
 
 const RATING_ORDER: RatingValue[] = [1, 2, 3, 4];
 
-// Selected-state colours per rating verdict, matching the former
-// `.sp[aria-pressed='true'].<cls>` rules. Keyed by RATINGS[v].cls.
+// Selected-state colours per rating verdict, keyed by RATINGS[v].cls.
 const SP_TONE: Record<string, string> = {
   syes: 'aria-pressed:border-syes aria-pressed:bg-syes-bg aria-pressed:text-syes',
   yes: 'aria-pressed:border-yes aria-pressed:bg-yes-bg aria-pressed:text-yes',

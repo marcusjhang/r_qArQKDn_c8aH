@@ -1,19 +1,12 @@
-// Years-of-experience parsing and the derived seniority band. The band mapping
-// itself is DB-driven (see service `loadBands`); this is the pure resolution.
+// Years-of-experience parsing and the derived seniority band (the band mapping itself is DB-driven; see service `loadBands`).
 
 import { MAX_YEARS_EXPERIENCE } from '../primitives';
 import type { SeniorityBand } from '../types';
 
-// Re-exported from primitives (the single source) so components importing from
-// the `@/lib/hiring` barrel get the bound alongside the seniority helpers.
+// Re-exported from primitives (the single source) so barrel consumers get the bound alongside these helpers.
 export { MAX_YEARS_EXPERIENCE } from '../primitives';
 
-/**
- * Seniority band label for a candidate's years of experience against the
- * configurable `bands` (from board state / DB), or null when experience is
- * unspecified or no band's threshold is met. Bands are scanned high-to-low so
- * the highest threshold the value meets wins, regardless of input order.
- */
+/** Seniority band label for a candidate's years against `bands`, or null when unspecified / no threshold met. Scanned high-to-low so the highest met threshold wins, regardless of input order. */
 export function seniorityFor(
   bands: SeniorityBand[],
   years: number | null | undefined
@@ -26,11 +19,7 @@ export function seniorityFor(
   );
 }
 
-/**
- * Parse a years-of-experience text input into the value we persist. Empty =
- * unspecified (null). Shared by the add-candidate modal and the detail drawer
- * so both enforce the same rule (whole number, 0…MAX_YEARS_EXPERIENCE).
- */
+/** Parse a years-of-experience input into the persisted value: empty = unspecified (null), else a whole number 0…MAX_YEARS_EXPERIENCE. */
 export function parseYearsInput(raw: string): {
   value: number | null;
   ok: boolean;

@@ -1,13 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { login, loginToBoard, openCandidate } from './helpers';
 
-// Time-in-stage feature (PR #38). Exercises the four user-facing surfaces
-// end-to-end against the seeded demo data. One universal "warn after N days"
-// threshold (seeded at 5) applies to every stage; the demo backdates several
-// Founding Engineer candidates past it (Marcus Webb 20d, Priya Nair 12d, Sofia
-// Kim 9d, Tom Alvarez 5d) while Ava Chen (3d) stays fresh. The overdue rows are
-// owned by benchan / henghonglee, so the notification-bell test signs in as
-// benchan.
+// Time-in-stage feature. One universal "warn after N days" threshold (seeded at
+// 5) applies to every stage; the demo backdates several Founding Engineer
+// candidates past it (Sofia Kim 9d, ...) while Ava Chen (3d) stays fresh. The
+// overdue rows are owned by benchan, whom the notification-bell test signs in as.
 test.describe('time-in-stage', () => {
   test('board cards show time-in-stage tags, red for overdue', async ({
     page
@@ -18,11 +15,8 @@ test.describe('time-in-stage', () => {
     await expect(page.locator('[data-testid="time-tag"]').first()).toBeVisible();
     await expect(page.locator('[data-testid="time-tag"][data-overdue="true"]').first()).toBeVisible();
 
-    // A backdated candidate is flagged overdue with a day-count label. Uses Sofia
-    // Kim (9d, Offer) rather than Marcus Webb: candidate-move.spec advances
-    // Marcus Webb in a parallel worker, which resets his stage clock, so reading
-    // him here would race that file's writes. Sofia Kim is read-only across the
-    // suite.
+    // Uses Sofia Kim (read-only across the suite) not Marcus Webb, whom
+    // candidate-move.spec advances in a parallel worker (racing his stage clock).
     const overdueCard = page.locator('[data-testid="candidate-card"]', { hasText: 'Sofia Kim' });
     await expect(overdueCard.locator('[data-testid="time-tag"][data-overdue="true"]')).toHaveText(/^\d+d$/);
 
@@ -64,11 +58,9 @@ test.describe('time-in-stage', () => {
 
     const input = panel.getByLabel('Warn after (days)');
     await expect(input).toBeVisible();
-    // Read the current value rather than hard-asserting the seeded '5': this
-    // mutates a single GLOBAL threshold that every overdue assertion in the suite
-    // depends on, and the e2e DB isn't re-seeded between retries — asserting the
-    // seeded value as a precondition turns any prior-run drift into a permanent
-    // failure. Pick a distinct value to change to.
+    // Read the current value rather than hard-asserting the seeded '5': the DB
+    // isn't re-seeded between retries, so a prior-run drift would become a
+    // permanent failure. Pick a distinct value to change to.
     const current = await input.inputValue();
     const changed = current === '9' ? '7' : '9';
     const SEEDED_DEFAULT = '5';
@@ -98,10 +90,8 @@ test.describe('time-in-stage', () => {
   test('notification bell surfaces the owner’s stalled candidates', async ({
     page
   }) => {
-    // benchan owns overdue candidates (Marcus Webb, Sofia Kim). We assert on
-    // Sofia Kim: Marcus Webb is advanced by candidate-move.spec in a parallel
-    // worker (resetting his clock), so he may not be stalled by the time this
-    // runs. Sofia Kim is read-only across the suite.
+    // benchan owns overdue candidates. Assert on Sofia Kim (read-only across the
+    // suite), not Marcus Webb, whom candidate-move.spec may un-stall in parallel.
     await login(page, 'benchan@lightsprint.ai', 'password');
     await page.goto('/');
     await expect(

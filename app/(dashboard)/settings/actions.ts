@@ -1,10 +1,6 @@
 'use server';
 
-// Manage the signed-in profile, candidate sources, seniority bands, and stage
-// time-limits from /settings. The middleware only gates *page* routes; a Server
-// Action can be POSTed to the public /login route by action id and skip that
-// gate, so each action confirms the session itself via signedInUserId(). (The
-// signup allowlist is managed from /members — see app/(dashboard)/members/actions.ts.)
+// /settings actions (profile, sources, bands, stage limits, tokens); each confirms the session via signedInUserId() because Server Actions bypass the middleware page gate.
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
@@ -20,48 +16,26 @@ import { auth } from '@/lib/auth';
 import type { SettingsResult, CreateTokenResult } from '@/lib/settings-types';
 import { mintToken } from '@/lib/mcp/auth';
 import { updatePassword as updatePasswordService } from '@/lib/password';
-// NOTE: this is a 'use server' module — Next.js requires it to export ONLY async
-// Server Actions. Do NOT re-export the SettingsResult type from here (even via
-// `export type`): Turbopack emits a runtime re-export for it, which fails at
-// request time with "Export SettingsResult doesn't exist" and 500s /settings.
-// Consumers import the type from '@/lib/settings-types' (its canonical home).
+// Do NOT re-export types from this 'use server' module — Turbopack emits a runtime re-export that 500s /settings (types live in '@/lib/settings-types').
 
 const zId = z.number().int().positive();
 const zSourceName = z.string().trim().min(1).max(40);
 const zBandLabel = z.string().trim().min(1).max(40);
 const zMinYears = z.number().int().min(0).max(MAX_YEARS_EXPERIENCE);
-// The one universal stage-warn threshold: at least a day, at most
-// MAX_STAGE_WARN_DAYS.
+// The one universal stage-warn threshold: 1..MAX_STAGE_WARN_DAYS days.
 const zWarnDays = z.number().int().min(1).max(MAX_STAGE_WARN_DAYS);
-// First/last are optional (some people go by one name); each capped to the
-// column width. Trimmed before storing.
+// First/last optional (some go by one name), capped to column width, trimmed.
 const zName = z.string().trim().max(50);
 
-/**
- * Auth guard for these actions: the signed-in user's id, or null when there is
- * no session. Returned (not thrown) so callers keep the SettingsResult contract
- * the UI renders inline. See the file header for why the middleware gate does
- * not cover Server Actions.
- */
+/** Auth guard: the signed-in user's id, or null (returned, not thrown, so callers keep the SettingsResult contract). */
 async function signedInUserId(): Promise<number | null> {
   const session = await auth();
-  // Reject a session still confined to the forced first-login password change
-  // (mustChangePassword) — not only signed-out callers — so a shared-default
-  // account can't reach these actions (e.g. mint an API token) by POSTing the
-  // action directly. Mirrors resolveUserId (lib/auth-policy).
+  // Reject mustChangePassword sessions too — a shared-default account must not reach these actions by POSTing directly (mirrors resolveUserId).
   if (session?.user?.mustChangePassword === true) return null;
   return Number(session?.user?.id) || null;
 }
 
-/**
- * A Postgres unique-violation (SQLSTATE 23505). The rename/update actions below
- * pre-check for a name clash with a SELECT, but that read-then-write has a TOCTOU
- * window: two concurrent renames to the same name both pass the SELECT, then the
- * second UPDATE trips the case-insensitive unique index. Catching that lets the
- * action return the same graceful "already exists" result instead of throwing an
- * unhandled 500 — the DB stays the source of truth, the pre-check just improves
- * the common-case message.
- */
+/** A Postgres unique-violation (SQLSTATE 23505) — caught so a TOCTOU race on the pre-check returns the graceful "already exists" result instead of a 500. */
 function isUniqueViolation(e: unknown): boolean {
   return (
     typeof e === 'object' &&
@@ -73,13 +47,7 @@ function isUniqueViolation(e: unknown): boolean {
 
 /* ---------- Current account profile ---------- */
 
-/**
- * Update the signed-in user's first/last name. These are the account's name of
- * record; the display name and avatar initials (first word + last word) are
- * derived from them (see lib/hiring/helpers.ts). The board picks up the new name
- * on its next server render (its reads are uncached) and its own TanStack Query
- * cache re-seed.
- */
+/** Update the signed-in user's first/last name (the account's name of record; display name + initials are derived). */
 export async function updateProfile(
   firstNameRaw: string,
   lastNameRaw: string
@@ -108,14 +76,7 @@ export async function updateProfile(
   return { ok: true };
 }
 
-/**
- * Change the signed-in account's password (Security panel). A voluntary change,
- * so unlike the forced first-login flow it verifies the current password — the
- * rules live in the lib/password.ts domain service and this stays a thin adapter
- * that confirms the session first (the middleware never gates Server Actions).
- * The stored password isn't part of the session token, so no re-auth is needed;
- * the user stays signed in.
- */
+/** Change the signed-in account's password — verifies the current one (unlike the forced first-login flow); rules live in lib/password.ts. */
 export async function updatePassword(
   currentPassword: string,
   newPassword: string,
@@ -155,10 +116,7 @@ export async function addSource(nameRaw: string): Promise<SettingsResult> {
   return { ok: true };
 }
 
-/**
- * Rename a source. Candidates reference sources by id, so a rename only relabels
- * — no candidate rows change. Rejects a name already used by another source.
- */
+/** Rename a source (candidates reference sources by id, so this only relabels). Rejects a name used by another source. */
 export async function renameSource(
   idRaw: number,
   nameRaw: string
@@ -172,8 +130,7 @@ export async function renameSource(
   } catch {
     return { ok: false, error: 'Enter a source name (1–40 characters).' };
   }
-  // Case-insensitive clash check — matches the DB's lower(name) unique index so
-  // "LinkedIn" and "linkedin" are treated as the same source.
+  // Case-insensitive clash check — matches the DB's lower(name) unique index.
   const [clash] = await db
     .select({ id: sources.id })
     .from(sources)
@@ -194,10 +151,7 @@ export async function renameSource(
   return { ok: true };
 }
 
-/**
- * Delete a source. Blocked while any candidate still references it (the FK would
- * otherwise reject the delete) — the caller must reassign those candidates first.
- */
+/** Delete a source. Blocked while any candidate still references it (reassign them first). */
 export async function removeSource(idRaw: number): Promise<SettingsResult> {
   if (!(await signedInUserId())) return { ok: false, error: 'Not signed in.' };
   let id: number;
@@ -224,10 +178,7 @@ export async function removeSource(idRaw: number): Promise<SettingsResult> {
 
 /* ---------- Seniority bands ---------- */
 
-/**
- * Add a seniority band (a years-of-experience → label tier). The threshold
- * (minYears) is unique, so two bands can't start at the same year.
- */
+/** Add a seniority band (years-of-experience → label tier). The threshold (minYears) is unique. */
 export async function addBand(
   labelRaw: string,
   minYearsRaw: number
@@ -256,11 +207,7 @@ export async function addBand(
   return { ok: true };
 }
 
-/**
- * Update a band's label and/or threshold. Rejects a threshold already used by
- * another band. Bands aren't referenced by candidates (seniority is derived),
- * so editing only relabels/retiers — no candidate rows change.
- */
+/** Update a band's label and/or threshold. Rejects a threshold used by another band. */
 export async function updateBand(
   idRaw: number,
   labelRaw: string,
@@ -319,13 +266,7 @@ export async function removeBand(idRaw: number): Promise<SettingsResult> {
 
 /* ---------- Stage warn threshold (pipeline settings) ---------- */
 
-/**
- * Set the one universal "warn after N days in a stage" threshold — the board
- * flags a candidate as overdue once they have sat in their current stage for at
- * least this many whole days, applied to every stage. Updates the single
- * pipeline_settings row in place (inserting it if the table is somehow empty).
- * The board picks up the change on its next (uncached) server render.
- */
+/** Set the one universal "warn after N days in a stage" threshold, updating the single pipeline_settings row in place. */
 export async function updateStageWarnDays(
   daysRaw: number
 ): Promise<SettingsResult> {
@@ -378,10 +319,7 @@ async function mcpAddCommand(token: string): Promise<string> {
   return `claude mcp add --transport http hiring ${url} --header "Authorization: Bearer ${token}"`;
 }
 
-/**
- * Mint a new API token for the signed-in user. Stores only the SHA-256 hash and
- * a display prefix; returns the plaintext secret once (Decision 1).
- */
+/** Mint a new API token: store only the SHA-256 hash + display prefix, return the plaintext secret once (Decision 1). */
 export async function createApiToken(
   nameRaw: string,
   expiresInDaysRaw: number
@@ -410,10 +348,7 @@ export async function createApiToken(
   return { ok: true, token, prefix, command: await mcpAddCommand(token) };
 }
 
-/**
- * Revoke (delete) one of the signed-in user's tokens. Scoped to the owner, so a
- * user can only revoke their own tokens. Deleting the row is instant revocation.
- */
+/** Revoke (delete) one of the signed-in user's tokens. Scoped to the owner. */
 export async function revokeApiToken(idRaw: number): Promise<SettingsResult> {
   let id: number;
   try {

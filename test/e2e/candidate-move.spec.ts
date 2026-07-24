@@ -1,19 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { loginToBoard, openCandidate } from './helpers';
 
-// Happy path: move a candidate between pipeline stages. The board supports
-// drag-and-drop between columns, but the same stage transition is also driven
-// from the detail drawer's "Advance stage" / "Move back" controls (see
-// DetailFooter -> HiringApp.moveAndClose -> store.advance -> store.moveTo),
-// which are far more robust to drive in an e2e than HTML5 DnD. We assert the
-// candidate leaves its old column and lands in the next one.
-//
-// Uses the seeded candidate "Marcus Webb" (job "Founding Engineer"), seeded in
-// the "Applied" stage with the default pipeline (Applied -> Screen -> ...), so
-// advancing moves them Applied -> Screen. See lib/hiring/seed.ts.
+// Happy path: move a candidate between pipeline stages via the drawer's
+// "Advance stage" control (more robust in an e2e than HTML5 drag-and-drop),
+// asserting the card leaves its old column and lands in the next.
+// Uses seeded "Marcus Webb" (Founding Engineer, starts in Applied). See seed.ts.
 const CANDIDATE = 'Marcus Webb';
-// Fallback "next" stage when the candidate is at the seeded start (Applied); the
-// test otherwise derives from/to from the live column order to stay retry-safe.
+// Fallback "next" stage; the test otherwise derives from/to from the live column
+// order to stay retry-safe.
 const TO_STAGE = 'Screen';
 
 test.describe('move a candidate between stages', () => {
@@ -28,11 +22,10 @@ test.describe('move a candidate between stages', () => {
       page.locator('[data-testid="candidate-card"]', { hasText: CANDIDATE }).first()
     ).toBeVisible();
 
-    // Read the candidate's CURRENT stage rather than asserting the seeded start:
-    // the e2e DB is shared and not re-seeded between retries, so a prior attempt
-    // that already advanced this candidate must not turn a flake into a permanent
-    // failure. "Advance" always moves one column right, so derive from/to from the
-    // live column order.
+    // Read the CURRENT stage rather than the seeded start: the e2e DB isn't
+    // re-seeded between retries, so a prior attempt that already advanced this
+    // candidate must not become a permanent failure. Advance moves one column
+    // right, so derive from/to from the live column order.
     const { stages, fromStage } = await page.evaluate((name) => {
       const cols = [...document.querySelectorAll('[data-stage]')];
       const order = cols.map((c) => c.getAttribute('data-stage'));
@@ -67,13 +60,9 @@ test.describe('move a candidate between stages', () => {
   test('the stage change survives a reload (persisted)', async ({ page }) => {
     await openCandidate(page, CANDIDATE);
 
-    // Read the current stage from the drawer footer, then advance. The move is
-    // optimistic and the drawer closes immediately, but the reload below must
-    // not race the server write: reloading mid-flight aborts the pending
-    // moveStage server action before it commits, and the reopened stage would
-    // read the pre-move row. The board does no interval polling, so once the
-    // move (and any drawer-mount reads) settle the network goes idle — wait for
-    // that before reloading so the write is guaranteed committed.
+    // The move is optimistic and closes the drawer immediately, but the reload
+    // must not race the server write (reloading mid-flight aborts moveStage
+    // before it commits). Wait for the network to go idle first.
     const footer = page.locator('[data-testid="stage-now"]');
     const before = (await footer.textContent())?.trim();
 

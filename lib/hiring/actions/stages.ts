@@ -1,10 +1,6 @@
 'use server';
 
-// Stage-pipeline write actions (add / rename / reorder / delete). Part of the
-// board's single write path — see ./index for the boundary contract. Each edit
-// runs inside a transaction that row-locks the job (see `lockJobStages`) so the
-// concurrent read-modify-writes of the whole `stages` array can't clobber each
-// other, and each applies the same shared pure mutation the store uses.
+// Stage-pipeline write actions (add / rename / reorder / delete). Each edit runs under a job row lock (see `lockJobStages`) so concurrent read-modify-writes of the `stages` array can't clobber each other, applying the same shared pure mutation the store uses.
 
 import { and, eq, sql } from 'drizzle-orm';
 import { requireUser } from '@/lib/auth';
@@ -38,10 +34,7 @@ export async function renameStage(
   await requireUser();
   const jobId = zId.parse(jobIdRaw);
   const index = zIndex.parse(indexRaw);
-  // Lock the job row, then rename the stage and re-point its candidates in one
-  // transaction. The lock serializes this against the other stage-array edits,
-  // so a concurrent add/reorder can't clobber the renamed array and leave the
-  // re-pointed candidates referencing a stage no longer in it.
+  // Rename the stage and re-point its candidates under the job lock, so a concurrent add/reorder can't leave them referencing a stage no longer in the array.
   await db.transaction(async (tx) => {
     const stages = await lockJobStages(tx, jobId);
     if (!stages) return;
@@ -86,8 +79,7 @@ export async function deleteStage(jobIdRaw: number, indexRaw: number) {
     if (!stages) return;
     const stage = stages[index];
     if (stage === undefined) return;
-    // Count occupants under the same lock so the emptiness check and the array
-    // write can't straddle a concurrent stage edit.
+    // Count occupants under the same lock so the emptiness check and the write can't straddle a concurrent stage edit.
     const [{ n }] = await tx
       .select({ n: sql<number>`count(*)` })
       .from(candidates)

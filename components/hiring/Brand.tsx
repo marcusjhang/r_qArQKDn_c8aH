@@ -1,16 +1,11 @@
-// Shared top-left brand mark: the app icon + wordmark. Used by the board and
-// settings top bars so they stay consistent. Plain (non-client) component —
-// just markup — safe to render inside the client shells.
+// Shared top-left brand mark (icon + wordmark). Plain non-client component.
 
 import { APP_NAME } from '@/lib/hiring/config';
 
 export default function Brand({ subtitle }: { subtitle: string }) {
   return (
     <div className="flex items-center gap-2 text-[15px] font-bold">
-      {/* A 22px static SVG brand mark. next/image doesn't optimize inline SVGs
-          (it would only add overhead and require `unoptimized`), so a plain
-          <img> is the correct choice — the no-img-element LCP/bandwidth
-          heuristic targets large content images, not a fixed-size icon. */}
+      {/* Plain <img>: next/image doesn't optimize inline SVGs, only adds overhead. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         className="inline-block h-[22px] w-[22px] object-contain"

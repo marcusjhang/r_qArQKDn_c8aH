@@ -1,13 +1,7 @@
 'use client';
 
-// Manage the signup allowlist from /members (moved here from /settings). Only
-// emails on this list can register and become a member. Mirrors the settings
-// panels' useTransition write flow; revalidation restores state if a write
-// fails. Shares the add/remove state machine and shell with the Sources /
-// Seniority panels via useEditableList / EditableList — the underlying actions
-// return void, so they're adapted to the hook's Result contract here (add
-// failures surface inline; remove failures stay silent, as revalidation
-// restores state).
+// Signup allowlist editor on /members. void actions adapted to the hook's Result
+// contract: add failures surface inline; remove failures stay silent (revalidation restores).
 
 import EditableList from '@/components/settings/EditableList';
 import { Button } from '@/components/ui/button';
@@ -54,7 +48,6 @@ export default function AllowlistPanel({
       } catch {
         /* revalidation will restore state on failure */
       }
-      // Failures are intentionally silent; revalidation restores the row.
       return { ok: true };
     }
   });

@@ -1,9 +1,6 @@
 'use client';
 
-// One ranked trait row, shared by the New Job and Traits modals: the rank, a
-// click-to-rename name (inline contentEditable), up/down reorder, and remove.
-// Order is the ranking, so the reorder controls are how a founder ranks traits
-// both while creating a job and while editing one later.
+// One ranked trait row (shared by the New Job and Traits modals): rank, click-to-rename name, reorder, remove. Order is the ranking.
 
 import { validateTraitName } from '@/lib/hiring';
 import { ArrowUp, ArrowDown, X } from 'lucide-react';

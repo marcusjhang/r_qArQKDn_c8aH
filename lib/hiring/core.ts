@@ -1,26 +1,6 @@
 import 'server-only';
 
-// Actor-scoped write core — the single write path for candidate & feedback
-// mutations, shared by two front doors:
-//
-//   1. the web `'use server'` actions (lib/hiring/actions/**), which resolve the
-//      caller from the next-auth session;
-//   2. the MCP tools (app/api/mcp/route.ts), which resolve the caller from a
-//      bearer token.
-//
-// Each function takes an explicit `actorUserId` (the user the write acts as),
-// does zod-parse → guard → Drizzle write, and returns a small result the caller
-// can use for its own concerns. It deliberately does NOT call `auth()` — auth
-// resolution belongs to the front doors, so the two paths can never drift on the
-// write itself. Nothing revalidates a server cache: the board is uncached and
-// TanStack Query is the client's only cache, so a write just persists to
-// Postgres and the next board fetch reflects it.
-//
-// Convention for "the thing you named doesn't exist": these functions return a
-// sentinel (`null` / `false`) rather than throwing, mirroring the web actions'
-// existing silent no-op on a missing row. Invalid *input* still throws (zod), so
-// the web store's resync reverts the optimistic change and the MCP layer can map
-// the failure to a structured tool error (see lib/mcp/tools.ts).
+// Actor-scoped write core: the single write path for candidate & feedback mutations, shared by the web actions and the MCP tools. Takes an explicit actorUserId (never calls auth()); a missing row returns a sentinel, invalid input throws (zod).
 
 import { eq } from 'drizzle-orm';
 import { db, candidates, feedback } from '@/lib/db';
@@ -41,21 +21,14 @@ import { lockJobStages, withStageClock, loadJobTraits } from './actions/support'
 export interface CandidateWriteInput {
   name: string;
   source: number;
-  /**
-   * Accountable owner (a users.id). On add, defaults to the actor when omitted;
-   * on edit, an omitted field keeps the candidate's current owner.
-   */
+  /** Accountable owner (a users.id); on add defaults to the actor, on edit an omitted field keeps the current owner. */
   owner?: number | null;
   linkedinUrl?: string | null;
   githubUrl?: string | null;
   yearsExperience?: number | null;
 }
 
-/**
- * Add a candidate to a job's first stage, acting as `actorUserId`. The owner
- * defaults to the actor when the caller doesn't name one. Returns the new
- * candidate id, or null when the job doesn't exist.
- */
+/** Add a candidate to a job's first stage; returns the new id, or null when the job doesn't exist. */
 export async function addCandidateCore(
   actorUserId: number,
   jobIdRaw: number,
@@ -71,11 +44,7 @@ export async function addCandidateCore(
       githubUrl: input.githubUrl ?? null,
       yearsExperience: input.yearsExperience ?? null
     });
-  // Read the job's stages and insert into the first one inside a single
-  // transaction that row-locks the job (the same lock the stage mutations take),
-  // so a concurrent rename/reorder/delete of the first stage can't slip between
-  // the read and the insert and strand the candidate in a stage the job no
-  // longer has.
+  // Row-lock the job so a concurrent stage edit can't strand the candidate in a stage the job no longer has.
   return db.transaction(async (tx) => {
     const stages = await lockJobStages(tx, jobId);
     if (!stages) return null;
@@ -97,25 +66,14 @@ export async function addCandidateCore(
   });
 }
 
-/**
- * Edit a candidate's core details. This is a PATCH: `name` and `source` are
- * always supplied, but `owner`, the profile links, and years-of-experience only
- * change when the caller actually provides them. An omitted field (`undefined`)
- * keeps the candidate's current value — so a partial edit never silently
- * reassigns `owner` to the caller (it's notNull) or wipes a link/years to null.
- * Passing an explicit `null` for a link or years still clears it. (The web edit
- * form submits every field, so it stays a full replace; only a partial MCP edit
- * relies on the keep-on-omit behaviour.) Returns false when the candidate
- * doesn't exist.
- */
+/** PATCH a candidate: name/source always apply, owner/links/years change only when provided (omitted keeps current, explicit null clears). Returns false when the candidate doesn't exist. */
 export async function editCandidateCore(
   _actorUserId: number,
   idRaw: number,
   input: CandidateWriteInput
 ): Promise<boolean> {
   const id = zId.parse(idRaw);
-  // Read the current row so any omitted field keeps its existing value — and to
-  // confirm the candidate exists before writing.
+  // Read the current row so omitted fields keep their value (and to confirm existence).
   const [cur] = await db
     .select({
       owner: candidates.owner,
@@ -149,11 +107,7 @@ export async function editCandidateCore(
   return true;
 }
 
-/**
- * Move a candidate into `stage`. Entering the terminal stage marks them hired;
- * leaving it clears a stale hired status (see `placeInStage`). Returns the
- * resulting placement, or null when the candidate doesn't exist.
- */
+/** Move a candidate into `stage` (entering the terminal stage auto-hires; see placeInStage). Returns the placement, or null when the candidate doesn't exist. */
 export async function moveStageCore(
   _actorUserId: number,
   idRaw: number,
@@ -161,15 +115,9 @@ export async function moveStageCore(
 ): Promise<Placement | null> {
   const id = zId.parse(idRaw);
   const stage = zStageName.parse(stageRaw);
-  // Read the stage list and write inside a single transaction that row-locks the
-  // job (the same lock addCandidateCore and the stage mutations take), so a
-  // concurrent rename/reorder/delete of a stage can't commit between the
-  // membership check and the update and strand the candidate in a stage the job
-  // no longer has (or flip a stale terminal to hired).
+  // Row-lock the job so a concurrent stage edit can't strand the candidate (or flip a stale terminal to hired).
   return db.transaction(async (tx) => {
-    // Only the placement inputs are read — jobId (to load the stage list) and the
-    // current stage/status that placeInStage keys off — so project to those three
-    // columns instead of a SELECT * of the whole candidate row.
+    // Project only the placement inputs (jobId, stage, status) rather than SELECT *.
     const [c] = await tx
       .select({
         jobId: candidates.jobId,
@@ -180,15 +128,12 @@ export async function moveStageCore(
       .where(eq(candidates.id, id))
       .limit(1);
     if (!c) return null;
-    // Resolve "terminal" structurally (last stage) under the lock, so auto-hire
-    // survives — and can't race — a rename.
+    // Resolve "terminal" (last stage) under the lock so auto-hire can't race a rename.
     const stages = (await lockJobStages(tx, c.jobId)) ?? [];
-    // Guard stage membership: a stray stage would strand the card in a column no
-    // board renders, and a stray terminal stage would wrongly flip to hired.
+    // Guard stage membership: a stray stage would strand the card off-board (or wrongly hire).
     if (!stages.includes(stage)) return null;
     const placement = placeInStage(stage, c, stages);
-    // Reset the stage clock only on an actual stage change, so re-dropping a card
-    // in its own column (or a no-op move) doesn't restart the overdue timer.
+    // Reset the stage clock only on an actual stage change (a no-op move keeps the timer).
     await tx
       .update(candidates)
       .set(withStageClock(placement, c.stage))
@@ -197,11 +142,7 @@ export async function moveStageCore(
   });
 }
 
-/**
- * Set a candidate's status. Becoming hired pulls them into the terminal stage
- * when one exists (see `placeWithStatus`). Returns the resulting placement, or
- * null when the candidate doesn't exist.
- */
+/** Set a candidate's status (hired pulls them into the terminal stage; see placeWithStatus). Returns the placement, or null when the candidate doesn't exist. */
 export async function setStatusCore(
   _actorUserId: number,
   idRaw: number,
@@ -210,8 +151,7 @@ export async function setStatusCore(
   const id = zId.parse(idRaw);
   const status = zStatus.parse(statusRaw);
   return db.transaction(async (tx) => {
-    // Same projection as moveStageCore: placeWithStatus only needs the current
-    // stage (and jobId to load the stage list), so avoid a SELECT * of the row.
+    // Same projection as moveStageCore — avoid SELECT *.
     const [c] = await tx
       .select({
         jobId: candidates.jobId,
@@ -222,14 +162,11 @@ export async function setStatusCore(
       .where(eq(candidates.id, id))
       .limit(1);
     if (!c) return null;
-    // Only the Hired transition consults the stage list (to find the terminal
-    // stage) — and it locks the job while doing so, so a concurrent stage edit
-    // can't move the terminal out from under the auto-hire.
+    // Only the Hired transition consults (and locks) the stage list, so a concurrent stage edit can't move the terminal out from under auto-hire.
     const stages =
       status === 'hired' ? ((await lockJobStages(tx, c.jobId)) ?? []) : [];
     const placement = placeWithStatus(status, c, stages);
-    // A status change that also moves the card (to the terminal stage) restarts
-    // the clock; a status change that stays in place leaves it running.
+    // A status change that moves the card restarts the clock; one that stays in place leaves it running.
     await tx
       .update(candidates)
       .set(withStageClock(placement, c.stage))
@@ -238,10 +175,7 @@ export async function setStatusCore(
   });
 }
 
-/**
- * Star / unstar a candidate (a purely visual highlight — no favorites cap).
- * Returns false when the candidate doesn't exist.
- */
+/** Star / unstar a candidate (no favorites cap). Returns false when the candidate doesn't exist. */
 export async function setCandidateStarredCore(
   _actorUserId: number,
   idRaw: number,
@@ -256,22 +190,11 @@ export async function setCandidateStarredCore(
   return updated.length > 0;
 }
 
-/**
- * Leave feedback on a candidate, attributed to `actorUserId` (the token's / the
- * session's user — a token can't leave feedback as someone else). Feedback is
- * per-trait scores (1–4) keyed by the job's trait name; the scores are scoped to
- * the job's current traits so a stale/renamed key can never persist, and when
- * the job tracks traits at least one must be scored. Exactly one entry per
- * (candidate, user): the first save inserts (recording the candidate's current
- * stage), later saves by the same user update the scores/note in place. Returns
- * the feedback id, or null when the candidate doesn't exist / nothing scored.
- */
+/** Upsert the actor's feedback on a candidate: per-trait 1–4 scores scoped to the job's current traits, one entry per (candidate, user). Returns the feedback id, or null when the candidate is gone / nothing scored. */
 export async function addFeedbackCore(
   actorUserId: number,
   candidateIdRaw: number,
-  // Untrusted raw input, re-validated by feedbackInsertSchema below. Values may
-  // be absent (the web path passes a sparse TraitScores map), so the value type
-  // allows `undefined`; the zod parse drops anything that isn't a 1–4 rating.
+  // Untrusted raw input (sparse map, allows undefined); the zod parse below drops anything that isn't a 1–4 rating.
   traitScoresRaw: Record<string, number | undefined>,
   noteRaw: string
 ): Promise<number | null> {
@@ -288,17 +211,13 @@ export async function addFeedbackCore(
     .limit(1);
   if (!c) return null;
   const jobTraits = (await loadJobTraits(c.jobId)) ?? [];
-  // Scope the submitted scores to the job's current traits (dropping any
-  // stale/renamed key) and enforce "if the job tracks traits, at least one must
-  // survive" — the pure rule lives in the helper so it's shared and tested.
+  // Scope scores to the job's current traits and require at least one to survive when the job tracks traits (pure rule in the helper).
   const { scoped, hasAnyScore } = scopeTraitScores(jobTraits, traitScores ?? {});
   if (jobTraits.length > 0 && !hasAnyScore) return null;
   const [row] = await db
     .insert(feedback)
     .values({ candidateId, byUser, traitScores: scoped, note, stage: c.stage })
-    // One entry per (candidate, user): re-saving edits it. `stage` is updated to
-    // the candidate's CURRENT stage so the entry reflects the latest round the
-    // interviewer scored them in, not the round it was first created.
+    // One entry per (candidate, user): re-saving edits it; `stage` re-stamps to the current stage (latest round scored).
     .onConflictDoUpdate({
       target: [feedback.candidateId, feedback.byUser],
       set: { traitScores: scoped, note, stage: c.stage }

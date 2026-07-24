@@ -1,25 +1,6 @@
 'use client';
 
-// Client store for the board, backed by TanStack Query.
-//
-// Server truth lives in the query cache (key `hiringKeys.board`), seeded from
-// the server component's props via `initialData` so first paint is instant and
-// no fetch fires on mount. Every mutation is applied optimistically by running
-// the SAME pure event through the hiring reducer straight into the cache
-// (`setQueryData`), then persisted through the sync engine's single write
-// mutation. On a failed write the engine resyncs — it invalidates the board
-// query, which refetches the authoritative rows and replaces the optimistic
-// cache (rolling the failed change back). The server stays authoritative; the
-// client is only ever optimistic between a write and its acknowledgement.
-//
-// This hook is the thin imperative shell: it holds the board cache wiring and,
-// for each mutation, gates on the shared pure helpers (so a doomed change never
-// hits the server), writes the optimistic projection, and hands the write to
-// the sync engine. The optimistic-sync mechanics themselves — the temp-id
-// counter, the temp-id reconciliation queue, the persist mutation, and resync —
-// live in ./sync (`useOptimisticSync`). Every state transition lives in
-// ./reducer, consuming the same helpers as the server actions, so the
-// optimistic projection can't drift from the server's.
+// Client store for the board, backed by TanStack Query: applies each mutation optimistically via the pure reducer straight into the query cache, then persists through the sync engine (which resyncs to roll back a failed write). Cache wiring plus action definitions only; the optimistic-sync mechanics live in ./sync.
 
 import { useCallback, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -29,7 +10,8 @@ import {
   addStageToPipeline,
   reorderStages,
   removeStage,
-  MAX_FAVORITES
+  MAX_FAVORITES,
+  type StageGuard
 } from './helpers';
 import { hiringReducer, type HiringEvent } from './reducer';
 import { useOptimisticSync } from './sync';
@@ -44,9 +26,9 @@ export function canDeleteStage(
   state: HiringState,
   jobId: number,
   index: number
-): { ok: boolean; reason?: string } {
+): StageGuard {
   const job = state.jobs.find((j) => j.id === jobId);
-  if (!job) return { ok: false };
+  if (!job) return { ok: false, reason: 'That job no longer exists.' };
   const stage = job.stages[index];
   const hasCandidates = state.candidates.some(
     (c) => c.jobId === jobId && c.stage === stage
@@ -55,11 +37,7 @@ export function canDeleteStage(
 }
 
 export interface HiringActions {
-  /**
-   * Create a job (with default stages). `traits` seeds the job's trait list
-   * (empty → empty; default traits are seed-only); onReady fires with the new
-   * job id.
-   */
+  /** Create a job (with default stages); `traits` seeds the trait list, onReady fires with the new job id. */
   createJob: (
     title: string,
     description: string,
@@ -93,10 +71,7 @@ export interface HiringActions {
   advance: (id: number, dir: 1 | -1) => void;
   setStatus: (id: number, status: Status) => void;
   setCandidateStarred: (id: number, starred: boolean) => void;
-  /**
-   * Save the signed-in user's feedback (one entry per candidate, upserted).
-   * `byUser` populates the optimistic row only; the server derives the author.
-   */
+  /** Save the signed-in user's feedback (one entry per candidate, upserted); `byUser` populates the optimistic row only, the server derives the author. */
   saveFeedback: (
     id: number,
     entry: { byUser: number; traitScores: TraitScores; note: string }
@@ -105,13 +80,7 @@ export interface HiringActions {
   addStage: (jobId: number, name: string) => void;
   reorderStage: (jobId: number, index: number, dir: 1 | -1) => void;
   deleteStage: (jobId: number, index: number) => void;
-  /**
-   * Bulk-import resolved CSV rows. Not optimistic — a bulk insert can create
-   * jobs and sources too, so on success we resync from the server rather than
-   * projecting many temp rows into the cache. `onDone` fires with the count on
-   * success; `onError` fires if the write fails (so the dialog can leave its
-   * busy state and surface the failure instead of hanging).
-   */
+  /** Bulk-import resolved CSV rows. Not optimistic — the write can create jobs/sources too, so success resyncs from the server; onDone fires with the count, onError lets the dialog recover. */
   importCandidates: (
     rows: ImportRow[],
     onDone: (result: { inserted: number }) => void,
@@ -125,10 +94,7 @@ export function useHiringStore(initial: HiringState): {
 } {
   const queryClient = useQueryClient();
 
-  // The board cache, seeded from the server props. `staleTime: Infinity` +
-  // `refetchOnMount: false` keep the optimistic cache authoritative until we
-  // explicitly resync — a routine re-render (or a new `initial` prop) never
-  // clobbers an in-flight optimistic change; only `invalidateQueries` refetches.
+  // Board cache seeded from server props; staleTime:Infinity + refetchOnMount:false keep the optimistic cache authoritative until an explicit resync.
   const { data } = useQuery({
     queryKey: hiringKeys.board,
     queryFn: fetchBoard,
@@ -138,21 +104,16 @@ export function useHiringStore(initial: HiringState): {
   });
   const state = data ?? initial;
 
-  // First server snapshot, kept as the reducer's fallback base. Never reassigned
-  // so the callbacks below stay referentially stable across `initial` changes.
+  // First server snapshot as the reducer's fallback base; never reassigned so callbacks stay stable across `initial` changes.
   const initialRef = useRef(initial);
 
-  // Refetch the authoritative board — the resync target the sync engine calls on
-  // a failed write. Stable across renders (queryClient is stable), so `resync`
-  // and the persist mutation stay stable too.
+  // Refetch the authoritative board — the resync target on a failed write.
   const invalidate = useCallback(
     () => queryClient.invalidateQueries({ queryKey: hiringKeys.board }),
     [queryClient]
   );
 
-  // The optimistic server-state-sync engine: temp-id counter, temp-id
-  // reconciliation queue, the single persist mutation, and resync. Extracted so
-  // this hook is just the cache wiring plus the action definitions.
+  // The optimistic-sync engine: temp-id counter, reconcile queue, persist, resync.
   const { nextTempId, persist, whenReconciled, flushPending, resync } =
     useOptimisticSync(invalidate);
 
@@ -292,11 +253,7 @@ export function useHiringStore(initial: HiringState): {
         // Optimistic stage-clock start; the DB default (now) is the real value.
         at: new Date()
       });
-      // Defer the write until the job's own create round-trip has reconciled its
-      // temp id — like every other job-scoped action. Adding a candidate to a
-      // just-created job (whose id is still a negative temp) would otherwise send
-      // that temp id to the server, which rejects it (zId positive-int) and rolls
-      // the optimistic candidate back. For an already-real job this fires at once.
+      // Defer the write until the job's temp id reconciles — else a negative temp id hits the server, gets rejected (zId positive-int), and rolls the candidate back.
       whenReconciled(jobId, (realJobId) =>
         persist({
           run: () =>
@@ -362,8 +319,7 @@ export function useHiringStore(initial: HiringState): {
 
   const moveTo = useCallback(
     (id: number, stage: string) => {
-      // Stamp the move time so the reducer can restart the stage clock; the
-      // server independently records its own now (see withStageClock).
+      // Stamp the move time for the reducer's stage clock; the server records its own (see withStageClock).
       dispatch({ type: 'moveStage', id, stage, at: new Date() });
       whenReconciled(id, (realId) =>
         persist({ run: () => api.moveStage(realId, stage) })
@@ -412,8 +368,7 @@ export function useHiringStore(initial: HiringState): {
       id: number,
       entry: { byUser: number; traitScores: TraitScores; note: string }
     ) => {
-      // `byUser` populates the optimistic display row only — the server derives
-      // the author from the session and never trusts a client-supplied one.
+      // `byUser` populates the optimistic row only; the server derives the author.
       const temp = nextTempId();
       dispatch({ type: 'saveFeedback', id, tempId: temp, ...entry });
       whenReconciled(id, (realId) =>
@@ -421,19 +376,14 @@ export function useHiringStore(initial: HiringState): {
           run: () => api.saveFeedback(realId, entry.note, entry.traitScores),
           onResult: (fbId) => {
             if (typeof fbId === 'number') {
-              // Adopt the server's id so a newly-appended row leaves temp-id
-              // state (a no-op when an existing entry was edited in place).
+              // Adopt the server's id (a no-op when an existing entry was edited in place).
               dispatch({
                 type: 'reconcileFeedbackId',
                 tempId: temp,
                 realId: fbId
               });
             } else {
-              // The server resolved without persisting — the candidate is gone,
-              // or every scored trait was stale and got scoped out against the
-              // job's current traits. That's a soft failure the thrown-error
-              // path never sees, so roll the optimistic entry back by refetching
-              // the authoritative board.
+              // Server resolved without persisting (candidate gone, or all scores scoped out) — a soft failure the thrown-error path never sees, so resync to roll the entry back.
               resync();
             }
           }
@@ -463,8 +413,7 @@ export function useHiringStore(initial: HiringState): {
     (jobId: number, name: string) => {
       const job = snapshot().jobs.find((j) => j.id === jobId);
       if (!job) return;
-      // Gate on the shared rule so a rejected name never hits the server; the
-      // reducer recomputes the same insertion from the same helper.
+      // Gate on the shared rule so a rejected name never hits the server.
       if (!addStageToPipeline(job.stages, name).ok) return;
       const trimmed = name.trim();
       dispatch({ type: 'addStage', jobId, name: trimmed });
@@ -516,10 +465,7 @@ export function useHiringStore(initial: HiringState): {
         onDone({ inserted: 0 });
         return;
       }
-      // Not optimistic: the bulk write can create jobs + sources too, so we let
-      // the server commit, then resync the board query to adopt the new rows.
-      // On failure `onError` lets the dialog recover (the shared mutation
-      // onError still resyncs to roll back).
+      // Not optimistic: the bulk write can create jobs + sources, so commit then resync to adopt the new rows (onError lets the dialog recover).
       persist({
         run: () => api.importCandidates(rows),
         onResult: (result) => {

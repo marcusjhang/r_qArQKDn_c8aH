@@ -1,12 +1,4 @@
-// The UI-shaped DTO contract for the hiring board.
-//
-// These interfaces (`Job`, `Candidate`, `Feedback`, `HiringState`, …) are the
-// single place the UI contract is stated — names are the UI's, not the
-// database's — but each carries a compile-time conformance guard (see
-// `_conformance` below) that fails the build if it ever drifts from the Drizzle
-// row it projects. So we get an explicit, hand-owned contract *and* the
-// never-drifts guarantee of a derived type. Pure types (type-only imports), so
-// this module is safe to pull into the client bundle via `types.ts`.
+// The UI-shaped DTO contract for the hiring board: a hand-owned contract (UI names, not the DB's) with a compile-time conformance guard (below) that fails the build on drift. Type-only, so it's client-bundle safe via `types.ts`.
 
 import type {
   SelectJob,
@@ -20,11 +12,7 @@ import type { Status, TraitScores } from '../primitives';
 
 export type { Status, RatingValue, TraitScores } from '../primitives';
 
-/**
- * A user — an owner / interviewer. Projected from the account row (see
- * lib/schema/auth.ts) so the picklist is the seeded/registered users, never a
- * hardcoded list. Display name/initials are derived in helpers, not stored.
- */
+/** A user (owner / interviewer), projected from the account row so the picklist is the seeded/registered users, never hardcoded. */
 export interface User {
   id: number;
   firstName: string | null;
@@ -32,20 +20,13 @@ export interface User {
   email: string;
 }
 
-/**
- * A candidate source (where a candidate came from). Projected from the seeded
- * `sources` table so the options are DB-driven, never a hardcoded list.
- */
+/** A candidate source, projected from the seeded `sources` table so the options are DB-driven, never hardcoded. */
 export interface Source {
   id: number;
   name: string;
 }
 
-/**
- * A seniority band (the configurable years-of-experience → label mapping).
- * Projected from the seeded `seniority_bands` table so the tiers are DB-driven
- * and editable in /settings, never a hardcoded list.
- */
+/** A seniority band (years-of-experience → label), projected from the seeded `seniority_bands` table so the tiers are DB-driven and editable in /settings. */
 export interface SeniorityBand {
   id: number;
   label: string;
@@ -103,13 +84,11 @@ export interface HiringState {
   sources: Source[];
   /** The configurable seniority bands (years-of-experience → label mapping). */
   bands: SeniorityBand[];
-  /** The one universal "warn after N days in a stage" threshold (see
-   *  pipeline_settings), applied to every stage's overdue check. */
+  /** The one universal "warn after N days in a stage" threshold (see pipeline_settings). */
   stageWarnDays: number;
 }
 
-/** The data dependency `getBoard` reads from (Drizzle-backed in production, an
- * in-memory fake in tests). */
+/** The data dependency `getBoard` reads from (Drizzle-backed in production, an in-memory fake in tests). */
 export interface BoardReader {
   loadJobs(): Promise<Job[]>;
   loadCandidates(): Promise<Candidate[]>;
@@ -120,11 +99,7 @@ export interface BoardReader {
   loadStageWarnDays(): Promise<number>;
 }
 
-// Compile-time guard: every DTO must stay a faithful projection of its Drizzle
-// row (same field names, assignable types). If a column is renamed, retyped, or
-// dropped in lib/schema/hiring.ts, one of these assignments stops type-checking
-// and `bun run typecheck` fails — so the DTOs can never silently drift from the
-// schema. Type-only, erased at build (no runtime cost, client-bundle safe).
+// Compile-time guard: every DTO must stay a faithful projection of its Drizzle row, so a schema change that drifts breaks typecheck here. Type-only, erased at build.
 type Conforms<Dto, Row extends Dto> = Row;
 type _JobConforms = Conforms<Job, Pick<SelectJob, keyof Job>>;
 type _CandidateConforms = Conforms<

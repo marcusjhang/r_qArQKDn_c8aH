@@ -2,24 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createHash } from 'node:crypto';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 
-// lib/mcp/auth.ts is the SECOND auth front door into the shared write core (the
-// first is the login-cookie gate): a bearer token minted in /settings, stored
-// only as a SHA-256 digest, verified on every MCP request. This suite pins the
-// security-critical behavior of that boundary.
-//
-// `authenticateToken` and `hashToken` are module-private, so they are exercised
-// through the public surface:
-//   - `hashToken` via `mintToken` (the digest it stores) and via the round-trip
-//     that `mintToken` produces sha256(plaintext).
-//   - `authenticateToken` via `withTokenAuth`, the real mcp-handler wrapper the
-//     route mounts (app/api/mcp/route.ts). A resolved token reaches the handler
-//     with `req.auth` set; an undefined result short-circuits to a 401 before
-//     the handler runs. That is the exact contract the route relies on.
-//
-// The db boundary is mocked the same way allowlist.test.ts / registration do:
-// `select(...).where(...).limit(1)` returns whatever `selectLimit` yields, and
-// the best-effort `lastUsedAt` bump is a spy so we can assert it fires only on
-// success (and never denies an otherwise-valid token when it throws).
+// lib/mcp/auth.ts is the second auth front door into the shared write core: a
+// bearer token minted in /settings, stored only as a SHA-256 digest, verified on
+// every MCP request. The module-private `authenticateToken`/`hashToken` are
+// exercised through the public surface (`mintToken`, `withTokenAuth`), with the
+// db boundary mocked (`selectLimit`) and the best-effort `lastUsedAt` bump spied.
 
 const selectLimit = vi.fn<() => Promise<unknown[]>>();
 const updateWhere = vi.fn<() => Promise<unknown>>();
@@ -58,9 +45,8 @@ beforeEach(() => {
   updateWhere.mockResolvedValue(undefined);
 });
 
-// A stub MCP handler that records the AuthInfo mcp-handler attaches as `req.auth`
-// on the authenticated path, and reports a distinctive 200 so we can tell "the
-// handler ran" apart from the wrapper's 401.
+// A stub MCP handler that records the `req.auth` it receives and returns 200, so
+// "the handler ran" is distinguishable from the wrapper's 401.
 function makeHandler() {
   const captured: { auth?: AuthInfo } = {};
   const handler = vi.fn((req: Request & { auth?: AuthInfo }) => {

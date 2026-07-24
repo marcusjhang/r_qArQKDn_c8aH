@@ -1,9 +1,6 @@
 'use client';
 
-// Drawer footer: shows the candidate's current stage, how long they've been in
-// it (turning red past the universal warn threshold), and the Advance / Move
-// back controls. Stage position drives which buttons exist (no dead-end
-// buttons), and moving returns to the board so the change is visible.
+// Drawer footer: current stage, time-in-stage, and Advance / Move back controls (stage position drives which exist).
 
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import {
@@ -32,9 +29,7 @@ export default function DetailFooter({
 }) {
   const { canMoveBack, canAdvance } = stageNavigation(job, view);
 
-  // Time-in-stage line, shown for a candidate still moving through the pipeline
-  // once the clock has mounted. Terminal candidates aren't stalled, so skip it.
-  // Turns red (.overdue) once past the universal warn threshold.
+  // Time-in-stage line for non-terminal candidates once the clock has mounted; turns red past the warn threshold.
   const showAge = !!view && now != null && !isTerminal(view);
   const overdue = !!view && now != null && stageOverdue(view, stageWarnDays, now);
   const ageLabel =

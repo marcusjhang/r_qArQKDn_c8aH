@@ -1,8 +1,5 @@
-// Client-safe DTOs for the Members page. The server reads that build these live
-// in lib/members.ts (`server-only`); the types are split out here so the client
-// MembersView can import them without pulling the server module into its bundle
-// — the same split the hiring domain uses (service.ts owns reads, types.ts the
-// client-safe shapes).
+// Client-safe DTOs for the Members page, split out from the `server-only` reads
+// in lib/members.ts so the client MembersView can import them without the server module.
 
 /** The kinds of recorded action shown in a member's activity timeline. */
 export type MemberActivityKind = 'joined' | 'feedback' | 'message';

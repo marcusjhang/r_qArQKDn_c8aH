@@ -1,11 +1,6 @@
 'use client';
 
-// Shared add/edit candidate form-draft state. Both the add-candidate modal and
-// the detail/edit form drive the same editable fields (name, source, owner,
-// profile URLs, years) and validate through the same pure rules, so the two
-// can't drift. The hook owns the draft object + the transient validation error;
-// callers own submission (add vs. edit call different store actions) and, in
-// edit mode, the read-only/editing toggle.
+// Shared add/edit candidate form-draft state (owns the draft + validation error); used by both the add modal and detail form so they can't drift.
 
 import { useCallback, useState } from 'react';
 import {
@@ -30,10 +25,7 @@ export interface CandidateDraftControls {
   setError: (error: string) => void;
   /** Replace the whole draft and clear the error (re-seed on open/cancel). */
   reset: (next: CandidateDraft) => void;
-  /**
-   * Validate the current draft. On success returns the normalized values; on
-   * failure surfaces the message via `error` and returns null.
-   */
+  /** Validate the draft; returns normalized values, or null after surfacing the error. */
   validate: () => CandidateDraftValues | null;
   /** Whether the draft differs from `view` (edit-mode Save gate). */
   dirty: (view: Candidate | null) => boolean;

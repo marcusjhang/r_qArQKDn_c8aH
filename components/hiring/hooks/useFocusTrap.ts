@@ -1,17 +1,10 @@
 'use client';
 
-// Focus management for the board's modal surfaces (Modal, DetailDrawer). While
-// active it (1) moves focus into the dialog, (2) keeps Tab / Shift+Tab cycling
-// within it so keyboard and screen-reader users can't wander into the inert
-// background, and (3) restores focus to whatever was focused before it opened
-// (the trigger) when it deactivates. Paired with `aria-modal="true"` on the
-// dialog and `inert` on the background, this is the standard accessible-dialog
-// pattern — kept in one hook so Modal and the drawer can't drift.
+// Focus trap for the board's modal surfaces (Modal, DetailDrawer): move focus in, cycle Tab within, restore to the trigger on close.
 
 import { useEffect, useRef } from 'react';
 
-// Elements that can receive keyboard focus. `[tabindex="-1"]` is deliberately
-// excluded (programmatically focusable, not Tab-reachable).
+// Tab-reachable elements. `[tabindex="-1"]` is deliberately excluded (focusable, not Tab-reachable).
 const FOCUSABLE = [
   'a[href]',
   'button:not([disabled])',
@@ -43,8 +36,7 @@ export function useFocusTrap<T extends HTMLElement>(
         (el) => el.offsetParent !== null || el === document.activeElement
       );
 
-    // Move focus into the dialog (first focusable, else the container itself,
-    // which the caller makes focusable with tabIndex={-1}).
+    // Move focus into the dialog (first focusable, else the container itself).
     (focusables()[0] ?? container).focus();
 
     function onKeyDown(e: KeyboardEvent) {

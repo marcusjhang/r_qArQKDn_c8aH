@@ -1,11 +1,7 @@
 'use client';
 
-// The members directory: every account with a derived, newest-first history of
-// what they've done — feedback left and messages posted across the pipeline,
-// plus the account-created event. The history is read server-side (see
-// lib/members.ts) and handed in as props; this component is presentational.
-// Each member's timeline is collapsible (collapsed by default) so the directory
-// stays scannable — click the row to expand it.
+// Members directory: each account with its newest-first activity history (read
+// server-side in lib/members.ts, passed as props); presentational, timelines collapse.
 
 import { useState } from 'react';
 import {

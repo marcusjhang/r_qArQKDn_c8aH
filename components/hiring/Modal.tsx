@@ -1,7 +1,6 @@
 'use client';
 
-// Lightweight modal built with the app's Tailwind design tokens, so it stays
-// visually consistent with the drawer and cards.
+// Lightweight modal built with the app's Tailwind design tokens.
 
 import { useEffect } from 'react';
 import { CloseButton } from '@/components/ui/close-button';
@@ -16,9 +15,7 @@ export default function Modal({
   onClose: () => void;
   children: React.ReactNode;
 }) {
-  // The modal is only mounted while open, so the trap is always active here; it
-  // moves focus in, cycles Tab within the dialog, and restores focus to the
-  // trigger on unmount.
+  // Only mounted while open, so the focus trap is always active.
   const trapRef = useFocusTrap<HTMLDivElement>(true);
 
   useEffect(() => {

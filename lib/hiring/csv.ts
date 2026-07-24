@@ -1,18 +1,4 @@
-// CSV serialization for the board's "Export CSV" / "Download template" actions
-// and the low-level parser the importer builds on.
-//
-// Pure and framework-free (no DOM, no server APIs) so the whole thing is
-// unit-testable and can live behind the `@/lib/hiring` client barrel. The
-// components only turn the returned strings into a browser download, and the
-// importer (lib/hiring/import.ts) resolves parsed rows against board state.
-//
-// Two column sets, single-sourced here:
-//   • EXPORT_COLUMNS — the full board snapshot, including derived, read-only
-//     columns (seniority, average rating, feedback count).
-//   • IMPORT_COLUMNS — the strict subset that can be imported. Derived columns
-//     are omitted because they're computed, never set. The export is a superset
-//     of the import, so a file produced by "Export candidates" re-imports
-//     cleanly (the importer matches by header name and ignores the extras).
+// CSV serialization + parser for board export/import. Pure and framework-free. EXPORT_COLUMNS is a superset of IMPORT_COLUMNS (import omits derived columns), so an exported file re-imports cleanly (matched by header name, extras ignored).
 
 import { RATINGS, STATUS } from './config';
 import {
@@ -25,15 +11,8 @@ import {
 import type { HiringState } from './types';
 
 /**
- * Escape one field per RFC 4180: wrap in double quotes when it contains a
- * comma, quote, CR or LF, doubling any embedded quote. Plain values are left
- * untouched so a typical export stays diff-friendly and human-readable.
- *
- * Additionally neutralises CSV/formula injection: cells are user-controlled
- * free text (candidate name, job/source names, URLs — some ingested from an
- * imported CSV), and a cell beginning with `= + - @` (or tab/CR) is executed as
- * a formula when the export is opened in Excel/Sheets. Such cells are prefixed
- * with a leading apostrophe so the spreadsheet treats them as literal text.
+ * Escape one field per RFC 4180 (quote when it contains comma/quote/CR/LF, doubling embedded quotes).
+ * Also guards CSV/formula injection: a cell starting with `= + - @` (or tab/CR) gets a leading apostrophe so Excel/Sheets treat it as literal text, not a formula.
  */
 export function escapeCsvField(value: string): string {
   const guarded = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
@@ -42,12 +21,7 @@ export function escapeCsvField(value: string): string {
     : guarded;
 }
 
-/**
- * Join a matrix of cells into a CSV document. Every cell is coerced to a string
- * and escaped; rows are CRLF-terminated (the RFC 4180 line ending, which Excel
- * and Google Sheets both expect). Ragged rows are fine — each row is joined
- * independently.
- */
+/** Join a matrix of cells into a CSV document: each cell coerced to string and escaped, rows CRLF-terminated (RFC 4180). Ragged rows are fine. */
 export function rowsToCsv(rows: (string | number | null | undefined)[][]): string {
   return rows
     .map((row) =>
@@ -56,14 +30,7 @@ export function rowsToCsv(rows: (string | number | null | undefined)[][]): strin
     .join('\r\n');
 }
 
-/**
- * Parse a CSV document into a matrix of string cells — the inverse of
- * `rowsToCsv` and the foundation the importer resolves against. Implements the
- * RFC 4180 rules that matter for round-tripping: double-quoted fields, `""`
- * escapes inside them, and commas / CR / LF preserved within quotes. A leading
- * UTF-8 BOM (which the export prepends for Excel) is stripped. Empty input
- * yields an empty matrix.
- */
+/** Parse a CSV document into a matrix of string cells (inverse of `rowsToCsv`): RFC 4180 quoted fields, `""` escapes, commas/CR/LF preserved within quotes; a leading UTF-8 BOM is stripped. */
 export function parseCsv(text: string): string[][] {
   if (text.charCodeAt(0) === 0xfeff) text = text.slice(1); // strip BOM
   const rows: string[][] = [];
@@ -97,8 +64,7 @@ export function parseCsv(text: string): string[][] {
       row = [];
       field = '';
     } else if (ch !== '\r') {
-      // Bare '\r' outside quotes is a line-ending artifact (CRLF) — drop it; a
-      // '\r' *inside* quotes is preserved by the in-quotes branch above.
+      // Bare '\r' outside quotes is a CRLF artifact — drop it (a quoted '\r' is kept above).
       field += ch;
     }
   }
@@ -127,13 +93,7 @@ export const EXPORT_COLUMNS = [
   'GitHub URL'
 ] as const;
 
-/**
- * The importable columns — the subset a user can fill in and upload. Order is
- * the template's column order. Derived columns (Seniority, Overall score,
- * Feedback count) and Starred are export-only: they're computed or not part of
- * candidate creation. The importer matches by header name, so this order is for
- * humans, not the parser.
- */
+/** The importable columns (the template's column order). Derived columns and Starred are export-only. The importer matches by header name, so this order is for humans. */
 export const IMPORT_COLUMNS = [
   'Job',
   'Candidate',
@@ -152,8 +112,6 @@ function statusLabel(status: string): string {
 }
 
 // Overall score rendered for a cell: "3.5 (Strong Yes)" or '' with no scores.
-// The score is the candidate's rank-weighted trait average (1–4), so the same
-// RATINGS labels apply to the rounded value.
 function scoreCell(average: number | null): string {
   if (average == null) return '';
   const rounded = Math.min(4, Math.max(1, Math.round(average)));
@@ -161,13 +119,7 @@ function scoreCell(average: number | null): string {
   return `${average.toFixed(1)}${label ? ` (${label})` : ''}`;
 }
 
-/**
- * One export row for a candidate, with every id resolved to the label the board
- * shows. `jobTitle` and the job's ranked `traits` are passed in (resolved by the
- * caller against `state.jobs`) so this stays a simple projection — the overall
- * score is the rank-weighted average over those traits. Column order matches
- * EXPORT_COLUMNS.
- */
+/** One export row for a candidate, every id resolved to its board label; `jobTitle`/`traits` are passed in. Column order matches EXPORT_COLUMNS. */
 function candidateRow(
   state: HiringState,
   jobTitle: string,
@@ -191,12 +143,7 @@ function candidateRow(
   ];
 }
 
-/**
- * Full board export: the header row plus one row per candidate across every
- * job, ordered by job (matching the tab order the state arrives in) and then by
- * the candidate order already established upstream. Reactive to whatever the
- * user has created — no jobs/candidates yields a header-only CSV.
- */
+/** Full board export: the header row plus one row per candidate across every job, ordered by job then upstream candidate order. No data yields a header-only CSV. */
 export function buildExportCsv(state: HiringState): string {
   const rows: (string | number | null)[][] = [[...EXPORT_COLUMNS]];
   for (const job of state.jobs) {
@@ -207,14 +154,7 @@ export function buildExportCsv(state: HiringState): string {
   return rowsToCsv(rows);
 }
 
-/**
- * A ready-to-fill import template: the IMPORT_COLUMNS header plus a couple of
- * example rows drawn from the user's *actual* configuration (a real job + its
- * first stage, a real owner/source) so the values are valid on day one. Falls
- * back to neutral placeholders before any config exists. Nothing but header +
- * examples goes in the file — the list of allowed values lives in the import
- * dialog, not as pseudo-comment rows the spreadsheet would treat as data.
- */
+/** A ready-to-fill import template: the IMPORT_COLUMNS header plus example rows drawn from the user's actual config (real job/stage/owner/source), falling back to placeholders before any config exists. */
 export function buildTemplateCsv(state: HiringState): string {
   const firstJob = state.jobs[0];
   const secondJob = state.jobs[1] ?? firstJob;
@@ -230,8 +170,7 @@ export function buildTemplateCsv(state: HiringState): string {
   const sourceLabel = state.sources[0]?.name ?? 'LinkedIn';
   const secondSourceLabel = state.sources[1]?.name ?? sourceLabel;
 
-  // Rows follow IMPORT_COLUMNS order:
-  // [Job, Candidate, Stage, Status, Owner, Source, Years, LinkedIn, GitHub]
+  // Rows follow IMPORT_COLUMNS order: [Job, Candidate, Stage, Status, Owner, Source, Years, LinkedIn, GitHub]
   const rows: (string | number | null)[][] = [
     [...IMPORT_COLUMNS],
     [
@@ -260,8 +199,7 @@ export function buildTemplateCsv(state: HiringState): string {
   return rowsToCsv(rows);
 }
 
-/** A filesystem-safe, dated filename for a downloaded CSV, e.g.
- * `hiring-export-2026-07-22.csv`. The date is passed in so this stays pure. */
+/** A dated filename for a downloaded CSV (e.g. `hiring-export-2026-07-22.csv`); the date is passed in so this stays pure. */
 export function csvFilename(prefix: string, date: Date): string {
   const iso = date.toISOString().slice(0, 10);
   return `${prefix}-${iso}.csv`;

@@ -1,12 +1,6 @@
 'use client';
 
-// Account dropdown in the top bar: shows the signed-in email; opens a menu with
-// context nav items (e.g. Settings + Members on the dashboard) above a red Sign
-// out.
-//
-// Sign out uses redirect:false + a relative navigation because next-auth's
-// built-in redirect builds an absolute URL from the server's internal host
-// (localhost behind the preview proxy), which the browser can't reach.
+// Account dropdown in the top bar. Sign out uses redirect:false + relative navigation because next-auth's built-in redirect builds an absolute URL the browser can't reach behind the preview proxy.
 
 import Link from 'next/link';
 import { ChevronDown } from 'lucide-react';
@@ -18,11 +12,7 @@ import { useDismissableMenu } from './hooks/useDismissableMenu';
 const USERMENU_ITEM =
   'block rounded-sm px-2.5 py-2 text-left text-[13px] no-underline hover:bg-surface-2';
 
-/**
- * The account-menu destinations, defined once so each page's top bar composes
- * the links it needs (the board shows both; settings and members link to each
- * other) without repeating the label + route literals.
- */
+/** The account-menu destinations, defined once so each page's top bar composes the links it needs. */
 export const ACCOUNT_LINKS = {
   settings: { href: '/settings', label: 'Settings' },
   members: { href: '/members', label: 'Members' }

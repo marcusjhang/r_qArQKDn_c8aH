@@ -1,12 +1,7 @@
 'use client';
 
-// Manage the seniority bands (the years-of-experience → label mapping) from
-// /settings — add, edit (label + threshold), and remove. Mirrors the Sources
-// panel's styling and useTransition write flow. Each band starts at `minYears`
-// whole years; a candidate's band is the highest threshold their experience
-// meets. Server actions return a result object so failures (duplicate
-// threshold) surface inline instead of throwing. The add/edit/remove state
-// machine and shell come from useEditableList / EditableList.
+// Manage the seniority bands (years-of-experience → label) from /settings. A
+// candidate's band is the highest threshold their experience meets.
 
 import EditableList from './EditableList';
 import { useEditableList } from './useEditableList';

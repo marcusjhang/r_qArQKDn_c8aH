@@ -1,13 +1,6 @@
 'use client';
 
-// Slide-over candidate detail (Decisions 4, 5 & 7): owner/status/source
-// controls, per-interviewer feedback list + add-feedback form with the
-// 4-point rating picker, and Advance/Back stage controls. The board stays
-// visible behind the drawer so pipeline context is never lost.
-//
-// This file coordinates open/close + the last-shown candidate; the rendering
-// is delegated to DetailHeader, DetailForm, FeedbackList, AddFeedbackForm,
-// DetailFooter and the per-applicant discussion ChatPanel.
+// Slide-over candidate detail; coordinates open/close + last-shown candidate, delegating rendering to DetailHeader/DetailForm/FeedbackList/AddFeedbackForm/DetailFooter/ChatPanel.
 
 import { useEffect, useRef } from 'react';
 import {
@@ -51,9 +44,7 @@ export default function DetailDrawer({
   const view = candidate ?? lastRef.current;
   const open = candidate != null;
 
-  // Trap focus inside the drawer while open and restore it to the trigger on
-  // close; `inert` (below) takes the closed drawer out of the tab order so its
-  // controls can't be reached behind the board.
+  // Trap focus while open and restore to the trigger on close; `inert` (below) takes the closed drawer out of the tab order.
   const trapRef = useFocusTrap<HTMLElement>(open);
 
   // Close on Escape while open.
@@ -118,8 +109,7 @@ export default function DetailDrawer({
               onSave={(entry) =>
                 view &&
                 currentUserId != null &&
-                // byUser feeds the optimistic display row only; the server
-                // derives the real author from the session.
+                // byUser feeds the optimistic display row only; the server derives the real author from the session.
                 actions.saveFeedback(view.id, { byUser: currentUserId, ...entry })
               }
             />

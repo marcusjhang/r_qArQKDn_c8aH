@@ -1,11 +1,7 @@
 import 'server-only';
 
-// Pipeline settings read. The single `pipeline_settings` row is the source of
-// truth for the one universal "warn after N days in a stage" threshold (managed
-// from /settings, seeded in db/seed.ts); the board reads it through service.ts
-// `loadStageWarnDays`, and the settings page reads it here to render the
-// management control. Falls back to the default if the row is somehow missing
-// (the seed always ensures one).
+// Pipeline settings read — the single `pipeline_settings` row holds the universal
+// "warn after N days in a stage" threshold, with the default as a fallback.
 
 import { asc } from 'drizzle-orm';
 import { db } from '@/lib/db';

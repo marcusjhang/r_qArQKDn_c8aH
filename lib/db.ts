@@ -10,12 +10,9 @@ export { rateLimitHits } from './schema';
 export { jobs, candidates, feedback, sources, messages, mentions } from './schema';
 
 /**
- * Build a Drizzle client for an explicit connection string. Factored out of the
- * app singleton below so a test can construct a client against an ISOLATED
- * database (see test/integration/helpers/db.ts) without depending on the
- * module-level `DATABASE_URL` read — the coupling that made database access hard
- * to exercise in isolation. The full schema (incl. relations) is passed so the
- * `db.query` relational API is available on the returned client.
+ * Build a Drizzle client for an explicit connection string, so a test can point
+ * at an isolated database without the module-level `DATABASE_URL` read. The full
+ * schema (incl. relations) is passed so the `db.query` API is available.
  */
 export function createDb(
   connectionString: string,
@@ -24,15 +21,9 @@ export function createDb(
   return drizzle(postgres(connectionString, options), { schema });
 }
 
-// The app singleton, constructed on first use rather than at module load.
-//
-// `createDb` (and the postgres connection it opens) is deferred until something
-// actually reads a property off `db`, so merely IMPORTING this module — for the
-// table objects re-exported above, or from a unit/integration spec that only
-// touches `createDb` — never requires a database. A missing `DATABASE_URL` now
-// surfaces the moment a query runs, not the moment any consumer is imported,
-// which is what let a DB-less import (e.g. an integration suite that skips
-// itself) crash the whole file at collection time.
+// The app singleton, constructed on first use rather than at module load, so
+// merely importing this module (or a missing `DATABASE_URL`) never opens a
+// connection until a query actually runs.
 let singleton: ReturnType<typeof createDb> | null = null;
 
 function resolveDb(): ReturnType<typeof createDb> {
@@ -49,19 +40,9 @@ function resolveDb(): ReturnType<typeof createDb> {
 }
 
 /**
- * The one app-wide client, wired to `DATABASE_URL`. Import this singleton (and
- * the tables re-exported above) everywhere in the app; use `createDb` only in
- * tests. Access is proxied to a lazily-built Drizzle client — methods are bound
- * to the real client so `this` (and any private state) resolves correctly.
- *
- * Caveat: `bind` drops a function's own properties, so a *callable that also
- * carries methods* — notably `db.$client` (the postgres.js `sql` tag, which
- * exposes `.end`/`.begin`) — would come back through this proxy without those
- * methods. Every query builder the app uses (`select`/`insert`/`transaction`/…)
- * is a plain method, so this never bites in practice; but for raw client access
- * (e.g. closing the pool with `$client.end()` in a script or shutdown hook) go
- * through `createDb` and hold your own reference rather than reaching for
- * `db.$client` off this singleton — which is exactly what the test harness does.
+ * The one app-wide client, wired to `DATABASE_URL` and proxied to a lazily-built
+ * Drizzle client (methods bound to the real client). Caveat: `bind` drops a
+ * callable's own methods, so for raw `$client` access go through `createDb`.
  */
 export const db = new Proxy({} as ReturnType<typeof createDb>, {
   get(_target, prop) {

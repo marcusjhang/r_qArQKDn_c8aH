@@ -5,10 +5,7 @@ import { clientIp, loginIpLimiter } from '@/lib/rate-limit';
 // GET is unauthenticated session/CSRF plumbing — passed straight through.
 export const { GET } = handlers;
 
-// Throttle credential sign-in per IP (best-effort, in-memory — see
-// lib/rate-limit.ts) so the login endpoint isn't open to unlimited password
-// guessing. Only the credentials-callback POST is limited; the other NextAuth
-// POSTs (csrf, signout) pass through untouched.
+// Throttle credential sign-in per IP (in-memory, see lib/rate-limit.ts); only the credentials-callback POST is limited.
 export async function POST(request: NextRequest) {
   if (new URL(request.url).pathname.endsWith('/callback/credentials')) {
     const hit = await loginIpLimiter.check(`login:ip:${clientIp(request)}`);

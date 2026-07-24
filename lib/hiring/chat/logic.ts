@@ -1,21 +1,9 @@
 import 'server-only';
 
-// Barrel for the chat read/write logic, split by concern into ./messages
-// (the per-candidate thread) and ./notifications (the mention inbox), with
-// the shared shaping/identity primitives in ./shaping. All of it is
-// expressed against an injectable `ChatStore` seam (see ./store) rather
-// than the `db` singleton — so it is unit-testable in a plain Node environment
-// with an in-memory fake, and importing it never constructs the postgres
-// client. The thin `'use server'` adapters in ./actions call these with
-// the Drizzle-backed store (the default); the server component's notification
-// read (./queries) calls `getNotificationsWith` likewise.
-//
-// The current-user identity is passed in as an `email` (resolved from the auth
-// session by the caller) — this module never imports `@/lib/auth`, keeping the
-// logic free of the request-scoped session so tests can drive it directly.
-//
-// Re-exports the same surface the callers and chat-logic.test.ts import, so the
-// split is invisible to them.
+// Barrel for the chat read/write logic (./messages + ./notifications, shaping in
+// ./shaping). Expressed against the injectable `ChatStore` seam so it's
+// unit-testable without a DB; identity is passed in as an `email`, so this module
+// never imports `@/lib/auth`.
 
 export { loadThreadWith, postMessageWith } from './messages';
 export {
@@ -26,6 +14,5 @@ export {
   getNotificationsWith
 } from './notifications';
 
-// Re-export the production store as the default so callers that don't inject
-// one still get the Drizzle-backed implementation.
+// Re-export the production store as the default for callers that don't inject one.
 export { drizzleChatStore } from './store';

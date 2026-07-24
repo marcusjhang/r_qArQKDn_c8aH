@@ -1,6 +1,4 @@
-// Chat @-mention text rules: detecting a mention token, driving the composer's
-// autocomplete, and building the highlight pattern the thread renders with.
-// Pure string/regex logic, kept out of the chat components so it stays testable.
+// Chat @-mention text rules (token detection, composer autocomplete, highlight pattern). Pure string/regex logic, kept out of the components so it stays testable.
 
 import { displayName } from './users';
 import type { User } from '../types';
@@ -20,22 +18,13 @@ function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/**
- * Whether an `@name` mention token for `name` appears in `text` as a whole
- * token — i.e. not immediately followed by another name character. This stops
- * a shorter name ("Ann") from matching inside a longer one's token ("@Anna").
- */
+/** Whether an `@name` token for `name` appears in `text` as a whole token, so "Ann" doesn't match inside "@Anna". */
 export function mentionPresent(text: string, name: string): boolean {
   const re = new RegExp('@' + escapeRe(name) + '(?![\\p{L}\\d])', 'u');
   return re.test(text);
 }
 
-/**
- * A global regex matching the `@name` tokens for any of `names`, longest name
- * first so "@Ben Ong" wins over "@Ben"; the trailing boundary stops "@Ben"
- * lighting up inside "@Bennett" or adjacent text. Returns null when there are
- * no names to highlight. Used by the chat thread to wrap tagged mentions.
- */
+/** A global regex matching `@name` tokens for any of `names`, longest first so "@Ben Ong" wins over "@Ben"; a trailing boundary stops "@Ben" matching in "@Bennett". Null when there's nothing to highlight. */
 export function mentionHighlightPattern(names: string[]): RegExp | null {
   if (!names.length) return null;
   const alternation = names
@@ -45,11 +34,7 @@ export function mentionHighlightPattern(names: string[]): RegExp | null {
   return new RegExp('@(' + alternation + ')(?![\\p{L}\\d])', 'gu');
 }
 
-/**
- * Find the active `@query` token immediately before the caret, if any. Drives
- * the chat composer's @-mention autocomplete: returns the partial query and the
- * offset of the leading `@` so an accepted pick can splice the name in.
- */
+/** Find the active `@query` token just before the caret. Returns the partial query and the leading `@` offset so an accepted pick can splice the name in. */
 export function activeMention(
   text: string,
   caret: number
@@ -61,11 +46,7 @@ export function activeMention(
   return { query, start: caret - query.length - 1 };
 }
 
-/**
- * The @-mention autocomplete suggestions for a query: the board's users minus
- * the author, name/email substring-matched (case-insensitive; empty query
- * matches all), capped at 6.
- */
+/** The @-mention autocomplete suggestions: board users minus the author, name/email substring-matched (empty query matches all), capped at 6. */
 export function mentionSuggestions(
   users: User[],
   query: string,

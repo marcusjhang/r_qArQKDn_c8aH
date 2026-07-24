@@ -6,6 +6,8 @@ import {
   jobs,
   candidates,
   feedback,
+  messages,
+  mentions,
   allowedEmails,
   sources,
   seniorityBands,
@@ -16,6 +18,7 @@ import { hash } from 'bcryptjs';
 import {
   SEED_JOBS,
   SEED_CANDIDATES,
+  SEED_MESSAGES,
   SEED_SOURCES,
   SEED_SENIORITY_BANDS
 } from '../lib/hiring/seed';
@@ -30,9 +33,8 @@ const SEED_ALLOWED_EMAILS = [
 // Login accounts created on seed. Override the shared password via SEED_PASSWORD.
 // One account per allowlisted user; all share the same seeded password.
 const SEED_PASSWORD = process.env.SEED_PASSWORD ?? 'password';
-// Names are stored as discrete first/last parts (editable from /settings); the
-// display name and avatar initials (first word + last word) are derived from
-// them — e.g. "Ben Ong" → BO, "Heng Hong Lee" → HL.
+// Names are stored as discrete first/last parts; display name and initials are
+// derived from them (e.g. "Ben Ong" → BO, "Heng Hong Lee" → HL).
 const SEED_ACCOUNTS = [
   { email: 'marcusajh0802@gmail.com', firstName: 'Marcus', lastName: 'Ang' },
   { email: 'benong@lightsprint.ai', firstName: 'Ben', lastName: 'Ong' },
@@ -48,10 +50,10 @@ async function main() {
   const client = postgres(process.env.DATABASE_URL);
   const db = drizzle(client);
 
-  // Seed login accounts (idempotent: create, or reset password if present).
-  // Every account is created/reset to the shared default password, so each one
-  // must change it on first login — mustChangePassword is set true here and
-  // cleared by the /change-password flow (see lib/auth.ts + SECURITY.md).
+  // Seed login accounts idempotently. New accounts get the shared default
+  // password and mustChangePassword=true; existing accounts keep their own
+  // password/flag (only the display name is synced) so a redeploy never reverts
+  // a user's password. To force a reset, delete the row first.
   const passwordHash = await hash(SEED_PASSWORD, 12);
   for (const acc of SEED_ACCOUNTS) {
     const [existing] = await db
@@ -60,18 +62,12 @@ async function main() {
       .where(eq(users.email, acc.email))
       .limit(1);
     if (existing) {
-      // Re-seeding resets the account back to the default password, so require
-      // a change again even if the user had already picked their own.
+      // Sync the display name only; preserve the account's password + flag.
       await db
         .update(users)
-        .set({
-          passwordHash,
-          firstName: acc.firstName,
-          lastName: acc.lastName,
-          mustChangePassword: true
-        })
+        .set({ firstName: acc.firstName, lastName: acc.lastName })
         .where(eq(users.email, acc.email));
-      console.log(`Updated login account ${acc.email}.`);
+      console.log(`Login account ${acc.email} exists; left credentials as-is.`);
     } else {
       await db.insert(users).values({
         firstName: acc.firstName,
@@ -91,16 +87,15 @@ async function main() {
   console.log(`Ensured ${SEED_ALLOWED_EMAILS.length} allowlisted emails.`);
 
   // Seed the candidate sources (idempotent via the unique name constraint).
-  // Always ensured — the source picklist is read from this table, so it must
-  // hold the canonical options even when the hiring pipeline seed is skipped.
+  // Always ensured — the source picklist reads this table even when the
+  // pipeline seed below is skipped.
   for (const name of SEED_SOURCES) {
     await db.insert(sources).values({ name }).onConflictDoNothing();
   }
   console.log(`Ensured ${SEED_SOURCES.length} candidate sources.`);
 
   // Seed the seniority bands (idempotent via the unique min_years constraint).
-  // The board reads this table for the years-of-experience → label mapping, so
-  // ensure the defaults exist even when the pipeline seed below is skipped.
+  // The board reads this table for the years → label mapping.
   for (const band of SEED_SENIORITY_BANDS) {
     await db
       .insert(seniorityBands)
@@ -109,9 +104,8 @@ async function main() {
   }
   console.log(`Ensured ${SEED_SENIORITY_BANDS.length} seniority bands.`);
 
-  // Ensure the single pipeline_settings row exists (the universal stage-warn
-  // threshold). Idempotent: insert the default-bearing row only when the table
-  // is empty; the column default supplies the starting value.
+  // Ensure the single pipeline_settings row (the universal stage-warn threshold)
+  // exists — inserted only when the table is empty; the column default seeds it.
   const [{ value: settingsCount }] = await db
     .select({ value: count() })
     .from(pipelineSettings);
@@ -170,6 +164,9 @@ async function main() {
       slugToId.set(j.slug, row.id);
     }
 
+    // Map each candidate's name to its generated id so the discussion threads
+    // (seeded below) can resolve their candidate by the same readable key.
+    const candidateIdByName = new Map<string, number>();
     let candidateCount = 0;
     let feedbackCount = 0;
     for (const c of SEED_CANDIDATES) {
@@ -190,11 +187,14 @@ async function main() {
           ...(stageEnteredAt ? { stageEnteredAt } : {}),
           owner: resolveUser(c.owner),
           source: resolveSource(c.source),
+          linkedinUrl: c.linkedinUrl ?? null,
+          githubUrl: c.githubUrl ?? null,
           yearsExperience: c.yearsExperience,
           status: c.status,
           starred: c.starred ?? false
         })
         .returning({ id: candidates.id });
+      candidateIdByName.set(c.name, row.id);
       candidateCount++;
       if (c.feedback.length) {
         await db.insert(feedback).values(
@@ -209,8 +209,43 @@ async function main() {
         feedbackCount += c.feedback.length;
       }
     }
+
+    // Seed the discussion threads and their @-mention notifications, resolving
+    // candidate by name and author by email, backdated per `daysAgo`.
+    let messageCount = 0;
+    let mentionCount = 0;
+    for (const msg of SEED_MESSAGES) {
+      const candidateId = candidateIdByName.get(msg.candidate);
+      if (candidateId === undefined) {
+        throw new Error(`Seed message references unknown candidate: ${msg.candidate}`);
+      }
+      const createdAt =
+        msg.daysAgo != null
+          ? new Date(Date.now() - msg.daysAgo * 86_400_000)
+          : undefined;
+      const [row] = await db
+        .insert(messages)
+        .values({
+          candidateId,
+          authorId: resolveUser(msg.by),
+          body: msg.body,
+          ...(createdAt ? { createdAt } : {})
+        })
+        .returning({ id: messages.id });
+      messageCount++;
+      for (const email of msg.mentions ?? []) {
+        await db.insert(mentions).values({
+          messageId: row.id,
+          userId: resolveUser(email),
+          readAt: msg.read ? new Date() : null,
+          ...(createdAt ? { createdAt } : {})
+        });
+        mentionCount++;
+      }
+    }
+
     console.log(
-      `Seeded ${slugToId.size} jobs, ${candidateCount} candidates, ${feedbackCount} feedback entries.`
+      `Seeded ${slugToId.size} jobs, ${candidateCount} candidates, ${feedbackCount} feedback entries, ${messageCount} messages, ${mentionCount} mentions.`
     );
   }
 

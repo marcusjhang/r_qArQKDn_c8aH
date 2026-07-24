@@ -1,17 +1,10 @@
-// The editable-candidate draft: the raw form shape shared by the add-candidate
-// modal and the edit/detail form, plus the validation and dirty-check the two
-// share so their rules (and error copy) can't drift.
+// The editable-candidate draft: the raw form shape plus validation/dirty-check shared by the add-candidate modal and edit form, so their rules and error copy can't drift.
 
 import { normalizeProfileUrl } from './profile-urls';
 import { parseYearsInput, yearsToText, MAX_YEARS_EXPERIENCE } from './seniority';
 import type { Candidate, Source, User } from '../types';
 
-/**
- * The editable candidate fields, as raw form strings/ids. Shared by the add-
- * candidate modal and the edit/detail form so both drive the same
- * `<CandidateFields>` and validate through `validateCandidateDraft`. Years is
- * kept as the raw input string (empty = unspecified) until validated.
- */
+/** The editable candidate fields as raw form strings/ids. Years stays a raw input string (empty = unspecified) until validated. */
 export interface CandidateDraft {
   name: string;
   source: number;
@@ -21,10 +14,7 @@ export interface CandidateDraft {
   years: string;
 }
 
-/**
- * A blank draft, defaulting the source/owner selects to the first available
- * option (matching the add-candidate form's initial state).
- */
+/** A blank draft, defaulting the source/owner selects to the first available option. */
 export function emptyCandidateDraft(
   sources: Source[],
   users: User[]
@@ -39,10 +29,7 @@ export function emptyCandidateDraft(
   };
 }
 
-/**
- * Seed a draft from an existing candidate (edit mode), falling back to the
- * first source/owner option when the candidate is null or its FK is unset.
- */
+/** Seed a draft from an existing candidate (edit mode), falling back to the first source/owner option when null or unset. */
 export function draftFromCandidate(
   c: Candidate | null,
   sources: Source[],
@@ -68,12 +55,7 @@ export interface CandidateDraftValues {
   yearsExperience: number | null;
 }
 
-/**
- * Validate a candidate draft with the exact rules (and error copy) shared by
- * the add- and edit-candidate forms: a required name, http(s) profile URLs (or
- * blank), and a whole-number years value in range. Returns the normalized
- * values on success, or the message to surface on the first failing field.
- */
+/** Validate a candidate draft (required name, http(s) or blank profile URLs, whole-number years in range). Returns the normalized values, or the message for the first failing field. */
 export function validateCandidateDraft(
   draft: CandidateDraft
 ): { ok: true; values: CandidateDraftValues } | { ok: false; error: string } {
@@ -109,11 +91,7 @@ export function validateCandidateDraft(
   };
 }
 
-/**
- * Whether a draft differs from the candidate it was seeded from — the edit
- * form's "dirty" check that gates Save. Trims text fields the same way
- * validation does so whitespace-only edits don't count as changes.
- */
+/** Whether a draft differs from its seed candidate — the edit form's Save gate. Trims text like validation does, so whitespace-only edits don't count. */
 export function candidateDraftDirty(
   draft: CandidateDraft,
   view: Candidate | null

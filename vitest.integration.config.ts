@@ -1,12 +1,9 @@
 import { defineConfig } from 'vitest/config';
 import { fileURLToPath } from 'node:url';
 
-// Integration-test config. These specs talk to a REAL Postgres via the harness
-// in test/integration/helpers/db.ts (transaction-rollback isolation), so they
-// are a separate suite from the pure, DB-free unit tests in `vitest.config.ts`
-// and are run explicitly with `bun run test:integration`. When no database is
-// configured the specs skip themselves (see test/env.ts `hasTestDatabase`), so
-// this suite is safe to run anywhere.
+// Integration-test config: specs talk to a REAL Postgres via the rollback
+// harness (test/integration/helpers/db.ts), run with `bun run test:integration`,
+// and skip themselves when no database is configured (test/env.ts).
 export default defineConfig({
   test: {
     environment: 'node',
@@ -20,8 +17,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      // Mirror vitest.config.ts: inert `server-only` stub + the `@/` aliases so
-      // integration specs import the same specifiers as the app.
+      // Mirror vitest.config.ts: inert `server-only` stub + the `@/` aliases.
       'server-only': fileURLToPath(
         new URL('./test/stubs/server-only.ts', import.meta.url)
       ),

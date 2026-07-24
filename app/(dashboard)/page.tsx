@@ -12,8 +12,7 @@ export default async function Page() {
     auth()
   ]);
 
-  // Resolve the signed-in user from the board's canonical user list (already
-  // loaded) rather than a second query, then load their mention inbox.
+  // Resolve the signed-in user from the already-loaded board user list, not a second query.
   const email = session?.user?.email ?? null;
   const currentUserId =
     email == null

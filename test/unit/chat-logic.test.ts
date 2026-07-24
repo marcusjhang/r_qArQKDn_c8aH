@@ -11,12 +11,9 @@ import {
 import type { ChatStore, MessageRow } from '@/lib/hiring/chat/store';
 import type { Notification } from '@/lib/hiring/types';
 
-// The chat logic reads and writes through an injectable ChatStore (rather than
-// the db singleton), so it can be exercised against an in-memory fake — no
-// database, no DATABASE_URL, no mocking of Drizzle's query builder. The fake
-// below is a tiny relational store that honors the SAME per-user scoping the
-// Drizzle store enforces in SQL, so the tests can assert the notification
-// authorization guard directly.
+// The chat logic reads/writes through an injectable ChatStore, so it runs
+// against the in-memory fake below — a tiny relational store that honors the
+// SAME per-user scoping the Drizzle store enforces in SQL.
 
 interface FakeUser {
   id: number;

@@ -43,9 +43,10 @@ which side each module lives on.
   inline in an action, `store.ts`, or a component — so they stay testable and
   shared across layers.
 - `primitives.ts` = the `Status` / `RatingValue` literal unions and their
-  arrays; `config.ts` = `FOUNDERS`, `SOURCES`, and other static config. zod
-  schemas and DTOs are built from these single sources — extend the source, not
-  a duplicate list.
+  arrays; `config.ts` = the code-bound value-sets (rating scale, status labels,
+  default stages/traits, seed seniority bands). Owners and sources are DB-driven,
+  not config. zod schemas and DTOs are built from these single sources — extend
+  the source, not a duplicate list.
 - `seed.ts` = demo data. The board's reads are deliberately uncached (no
   server-side Data Cache / `unstable_cache`): TanStack Query is the single
   caching layer, so actions mutate Postgres and never `revalidateTag`.

@@ -1,7 +1,4 @@
-// User / source lookups and the derived display forms (name, initials).
-//
-// Names are stored as discrete parts (see lib/schema/auth.ts); the combined
-// label, initials, and any id/email resolution are derived here, never stored.
+// User / source lookups and the derived display forms (name, initials). Names are stored as discrete parts (see lib/schema/auth.ts); the combined label and initials are derived here, never stored.
 
 import type { Source, User } from '../types';
 
@@ -15,12 +12,7 @@ export function sourceName(sources: Source[], id: number): string {
   return sources.find((s) => s.id === id)?.name ?? 'Unknown';
 }
 
-/**
- * Resolve a signed-in user's numeric id from their email against the board's
- * user list, or null when unknown/absent. Used client-side to default the
- * feedback author to whoever is actually leaving the review — the authoritative
- * author is still derived server-side (see actions), never from this.
- */
+/** Resolve a user's numeric id from their email against the board's user list, or null when unknown. Client-side convenience only — the authoritative author is derived server-side. */
 export function findUserIdByEmail(
   users: User[],
   email: string | null | undefined
@@ -29,20 +21,14 @@ export function findUserIdByEmail(
   return users.find((u) => u.email === email)?.id ?? null;
 }
 
-/** The name fields display helpers read — a structural subset of `User`, so
- * both a full board `User` and an ad-hoc `{ firstName, lastName, email }` (e.g.
- * a joined chat-author row) satisfy it without a dummy `id`. */
+/** The name fields the display helpers read — a structural subset of `User`, so an ad-hoc `{ firstName, lastName, email }` (e.g. a joined chat-author row) satisfies it without a dummy `id`. */
 type NameParts = {
   firstName: string | null;
   lastName: string | null;
   email: string;
 };
 
-/**
- * Human label for a user: their first and last name joined, falling back to the
- * email when neither is set. The name is stored as discrete parts (see
- * lib/schema/auth.ts); the combined form is derived here, never stored.
- */
+/** Human label for a user: first + last name joined, falling back to the email when neither is set. */
 export function displayName(user: NameParts | undefined): string {
   if (!user) return 'Unknown';
   const full = [user.firstName, user.lastName]
@@ -52,11 +38,7 @@ export function displayName(user: NameParts | undefined): string {
   return full || user.email;
 }
 
-/**
- * Avatar initials for a user, derived from the display name: first letter of
- * the first and last words (e.g. "Ben Ong" → "BO", "Heng Hong Lee" → "HL",
- * single word → first two letters). Derived, never stored.
- */
+/** Avatar initials from the display name: first letter of the first and last words (e.g. "Ben Ong" → "BO", single word → first two letters). */
 export function initials(user: NameParts | undefined): string {
   const name = displayName(user);
   const words = name.trim().split(/\s+/).filter(Boolean);

@@ -1,15 +1,6 @@
 'use server';
 
-// Candidate write actions (add / edit / star / move stage / set status). Part
-// of the board's single write path — see ./index for the boundary contract.
-//
-// These are thin wrappers over the actor-scoped core in ../core, which both this
-// web path and the MCP tools (app/api/mcp/route.ts) share — one write path, two
-// front doors, so they can never drift. Each wrapper confirms the session
-// (requireUser) and calls the core with the acting user; the core does the
-// zod-parse + guard + placement + DB write and does not resolve auth. Neither
-// side revalidates: the board is uncached and TanStack Query is the client's
-// only cache (see ./index).
+// Candidate write actions (add / edit / star / move stage / set status): thin wrappers that confirm the session (requireUser) and call the actor-scoped core in ../core, shared with the MCP tools. See ./index for the boundary contract.
 
 import { inArray, sql } from 'drizzle-orm';
 import { requireUser } from '@/lib/auth';
@@ -26,8 +17,7 @@ import {
 } from '../core';
 import { importCandidatesSchema } from '../schemas';
 
-// Normalize a name for the case-insensitive matching the import uses (mirrors
-// the `sources_name_lower_unique` index and the resolver in ../import).
+// Normalize a name for case-insensitive matching (mirrors the `sources_name_lower_unique` index and ../import's resolver).
 const normKey = (s: string) => s.trim().toLowerCase();
 
 /** Returns the new candidate's id so the client can reconcile its optimistic row. */
@@ -52,10 +42,7 @@ export async function addCandidate(
   });
 }
 
-/**
- * Edit a candidate's core details: name, source, owner, the profile links, and
- * years of experience (which drives the seniority band).
- */
+/** Edit a candidate's core details (name, source, owner, profile links, years of experience). */
 export async function editCandidate(
   idRaw: number,
   nameRaw: string,
@@ -76,10 +63,7 @@ export async function editCandidate(
   });
 }
 
-/**
- * Star / unstar a candidate. A purely visual highlight (starred candidates
- * float to the top of their column), so there's no favorites cap like jobs.
- */
+/** Star / unstar a candidate (a visual highlight, so no favorites cap like jobs). */
 export async function setCandidateStarred(idRaw: number, starred: boolean) {
   const actor = await requireUser();
   await setCandidateStarredCore(actor, idRaw, starred);
@@ -95,16 +79,7 @@ export async function setStatus(idRaw: number, statusRaw: Status) {
   await setStatusCore(actor, idRaw, statusRaw);
 }
 
-/**
- * Bulk-create candidates from a resolved CSV import (see lib/hiring/import.ts
- * for the client-side resolution and lib/hiring/schemas.ts for the row schema).
- * Runs in a single transaction: create any jobs whose title didn't match an
- * existing one (with the default stages), create any sources that didn't match
- * (case-insensitively, reusing an existing row on a race), then bulk-insert the
- * candidates. Ids resolved on the client are re-validated by zod and re-derived
- * here — the client's preview never bypasses the server. Returns how many
- * candidates were inserted so the dialog can report a summary.
- */
+/** Bulk-create candidates from a resolved CSV import, in one transaction: create any missing jobs/sources (re-validating client-resolved ids), then bulk-insert. Returns the inserted count. */
 export async function importCandidates(
   rowsRaw: unknown
 ): Promise<{ inserted: number }> {
@@ -139,8 +114,7 @@ export async function importCandidates(
       }
     }
 
-    // 2. Load the stage lists for the existing jobs we'll insert into, so we can
-    // default a row's stage to the job's first stage.
+    // 2. Load the stage lists for existing target jobs, to default a row's stage to the job's first stage.
     const existingJobIds = [
       ...new Set(rows.map((r) => r.jobId).filter((id): id is number => id != null))
     ];
@@ -162,8 +136,7 @@ export async function importCandidates(
       }
     }
     for (const [key, name] of newSourceNames) {
-      // Reuse an existing row that matches case-insensitively (covers a source
-      // added between the client's resolve and this write), else insert.
+      // Reuse an existing case-insensitive match (covers a source added since the client's resolve), else insert.
       const [existing] = await tx
         .select({ id: sources.id })
         .from(sources)
@@ -189,9 +162,7 @@ export async function importCandidates(
       const terminal = terminalStage(stageList);
       let stage = r.stage && stageList.includes(r.stage) ? r.stage : stageList[0];
       let status = r.status;
-      // Keep the board's (stage, status) coupling, resolved structurally by
-      // position (see terminalStage): landing in the terminal stage means hired,
-      // and a hired status pulls into the terminal stage.
+      // Keep the (stage, status) coupling (see terminalStage): terminal stage means hired, and hired pulls into the terminal stage.
       if (stage === terminal) status = 'hired';
       else if (status === 'hired' && terminal !== undefined) stage = terminal;
       return [
@@ -215,7 +186,6 @@ export async function importCandidates(
     }
   });
 
-  // No server-cache invalidation: the board is uncached and TanStack Query is
-  // the client's only cache, so the store resyncs itself after the import.
+  // No server-cache invalidation: the board is uncached, so the store resyncs itself after the import.
   return { inserted };
 }

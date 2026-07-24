@@ -113,7 +113,7 @@ temporarily un-gate it (e.g. while working down a fresh batch of findings), add
 
 ## Database Schema
 
-Schema is in `lib/schema.ts`; migrations live in `drizzle/`.
+Schema is in `lib/schema/`; migrations live in `drizzle/`.
 
 **Tables:**
 - `users` — email/password accounts (auth only)
@@ -121,7 +121,7 @@ Schema is in `lib/schema.ts`; migrations live in `drizzle/`.
 - `candidates` — one per applicant, references a job; has owner, source, status
 - `feedback` — one row per interviewer entry (rating 1–4 + note)
 
-To modify the schema, edit `lib/schema.ts` then run `bun run db:generate`.
+To modify the schema, edit `lib/schema/` then run `bun run db:generate`.
 
 ## Environment Variables
 

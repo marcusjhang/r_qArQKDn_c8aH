@@ -1,11 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ai.ts is a thin I/O shell over one Anthropic structured-output call. We mock
-// the SDK so no network request is made and drive `messages.create` directly,
-// asserting the request/return contract: it is gated on ANTHROPIC_API_KEY and
-// funnels the model's JSON through the shared normalizeTraitSuggestions rule
-// (dedupe / word-count / length / cap). `server-only` is stubbed by
-// vitest.config.ts, so importing ai.ts here is fine.
+// the SDK and assert the contract: gated on ANTHROPIC_API_KEY, funnelling the
+// model's JSON through the shared normalizeTraitSuggestions rule.
 
 const create = vi.fn();
 

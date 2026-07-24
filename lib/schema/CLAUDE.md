@@ -25,6 +25,6 @@ bun run typecheck
 ```
 
 Keep `db/seed.ts` and `lib/hiring/seed.ts` in sync with column changes, and
-remember downstream `Select*` types (e.g. in `lib/hiring/service.ts`) flow from
+remember downstream `Select*` types (e.g. in `lib/hiring/service/`) flow from
 here. See the **drizzle** skill for the full end-to-end recipe and the
 drizzle-orm / drizzle-kit upgrade rules.

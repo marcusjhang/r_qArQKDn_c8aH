@@ -1,9 +1,6 @@
 'use client';
 
-// A single board column: an inline-editable stage title, an options dropdown
-// (rename / reorder / delete), and the drop zone holding the stage's cards.
-// Drag-and-drop wiring comes from useBoardDnd; the contentEditable rename
-// lifecycle from useInlineEdit — this file is left with layout + menu state.
+// A single board column: inline-editable stage title, options dropdown, and the drop zone of cards.
 
 import {
   validateStageName,
@@ -65,6 +62,9 @@ export default function StageColumn({
           contentEditable
           suppressContentEditableWarning
           spellCheck={false}
+          role="textbox"
+          aria-label={`Rename ${stage} stage`}
+          tabIndex={0}
           title="Click to rename this stage"
           onBlur={rename.onBlur}
           onKeyDown={rename.onKeyDown}
@@ -88,7 +88,7 @@ export default function StageColumn({
               index={index}
               stagesLen={job.stages.length}
               canDelete={del.ok}
-              deleteReason={del.reason}
+              deleteReason={del.ok ? undefined : del.reason}
               onRename={() => {
                 menu.close();
                 rename.start();

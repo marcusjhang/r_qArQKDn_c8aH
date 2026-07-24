@@ -1,11 +1,6 @@
 import 'server-only';
 
-// Runtime validation for the server-action boundary. Server actions receive
-// serialized client input, so types alone are not enough — these zod schemas
-// enforce the same constraints at runtime. Value-sets come from the single
-// source STATUSES / RATING_VALUES (primitives). The owner, feedback-author, and
-// source references are ids, validated as ids here and backed by foreign keys
-// (users / sources) at the DB level.
+// Runtime (zod) validation for the server-action boundary, since actions receive serialized client input. Value-sets come from the single source in primitives; id references are backed by FKs at the DB level.
 
 import { z } from 'zod';
 import { createInsertSchema } from 'drizzle-zod';
@@ -34,9 +29,7 @@ export const zStageName = z.string().trim().min(1).max(48);
 export const zJobTitle = z.string().trim().min(1).max(80);
 export const zJobDescription = z.string().max(MAX_JOB_DESCRIPTION);
 export const zNote = z.string().max(2000);
-// Optional profile link: blank/whitespace collapses to null; anything else must
-// be a valid http(s) URL (≤ 500 chars). The client mirror is normalizeProfileUrl
-// (helpers), kept in sync via the shared MAX_PROFILE_URL bound.
+// Optional profile link: blank collapses to null, else a valid http(s) URL (≤ 500 chars). Client mirror is normalizeProfileUrl.
 export const zProfileUrl = z.preprocess(
   (v) => (typeof v === 'string' && v.trim() === '' ? null : v),
   z
@@ -72,10 +65,7 @@ const zTraitName = z
     message: `Traits must be ${MAX_TRAIT_WORDS} words or fewer.`
   });
 
-/**
- * A job's trait list: capped, and case-insensitively unique after trimming
- * (mirrors the stage-name rules). Order is preserved (order = rank = weight).
- */
+/** A job's trait list: capped, case-insensitively unique after trimming; order preserved (order = rank = weight). */
 export const zTraitList = z
   .array(zTraitName)
   .max(MAX_TRAITS)
@@ -84,11 +74,7 @@ export const zTraitList = z
     { message: 'Traits must be unique.' }
   );
 
-/**
- * Per-trait scores on a feedback entry: a map of trait name → 1–4 score. Keys
- * are shape-validated here; the action further intersects them with the job's
- * current traits so stray/renamed keys never persist.
- */
+/** Per-trait scores (trait name → 1–4). Shape-validated here; the action further scopes them to the job's current traits. */
 const zTraitScores = z.record(zTraitName, zRating);
 
 /* Insert shapes derived from the tables via drizzle-zod, refined to app rules */
@@ -109,9 +95,7 @@ export const candidateInsertSchema = createInsertSchema(candidates, {
   yearsExperience: true
 });
 
-// The detail drawer's Edit form validates the same fields as creation, so it
-// reuses the insert schema outright rather than restating it (the two can't
-// drift). Kept as a named alias to document the edit-path intent at call sites.
+// The Edit form validates the same fields as creation, so it reuses the insert schema (a named alias so the two can't drift).
 export const candidateEditSchema = candidateInsertSchema;
 
 export const feedbackInsertSchema = createInsertSchema(feedback, {
@@ -123,12 +107,7 @@ export const feedbackInsertSchema = createInsertSchema(feedback, {
 
 /* CSV import ------------------------------------------------------------ */
 
-// One resolved import row (see lib/hiring/import.ts). Ids are resolved on the
-// client for the preview, but re-validated here — the action never trusts them
-// blindly and the FKs on owner/source are the existence guards. `jobId` is null
-// when a job must be created from `jobTitle`; `source` is null when a source
-// must be created from `sourceName`. `stage` is optional (server defaults it to
-// the job's first stage); `status` defaults to active.
+// One resolved import row (re-validated server-side; client-resolved ids are never trusted). `jobId`/`source` are null when the job/source must be created; `stage` is optional (defaults to first stage), `status` defaults to active.
 const candidateImportRowSchema = z.object({
   name: zName,
   jobId: zId.nullable(),
@@ -143,9 +122,7 @@ const candidateImportRowSchema = z.object({
   githubUrl: zProfileUrl
 });
 
-// A single import call is bounded so one upload can't insert unboundedly. The
-// client resolver mirrors this cap (import.ts) so an over-cap file is blocked in
-// the preview rather than failing here.
+// A single import call is capped; the client resolver mirrors this so an over-cap file is blocked in the preview.
 export const importCandidatesSchema = z
   .array(candidateImportRowSchema)
   .max(MAX_IMPORT_ROWS);

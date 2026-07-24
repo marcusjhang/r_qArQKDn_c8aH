@@ -1,9 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// allowlist.ts reads the db directly (it is the auth/user domain), so we mock
-// the db boundary — the same approach registration.test.ts uses. The point is
-// the pure rules layered on top of the query: normalizeEmail's shaping and that
-// isEmailAllowed maps a row hit / miss to a boolean.
+// allowlist.ts reads the db directly, so we mock that boundary. The point is the
+// pure rules on top: normalizeEmail's shaping and isEmailAllowed's row → boolean.
 
 const orderByResult = vi.fn<() => Promise<unknown[]>>();
 const limitResult = vi.fn<() => Promise<unknown[]>>();

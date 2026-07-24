@@ -1,11 +1,8 @@
 import 'server-only';
 
-// User-registration domain service. Owns the validation and business rules for
-// creating an account (required fields, password strength, the signup
-// allowlist, and duplicate detection) so the /api/register HTTP handler stays a
-// thin adapter. Kept out of lib/hiring/ (this is the auth/user domain, not the
-// hiring domain) and free of any next/server dependency so the rules can be
-// reused and unit-tested without the HTTP layer.
+// User-registration domain service — validation and rules for creating an account
+// (required fields, password strength, allowlist, duplicate detection), kept free
+// of next/server so the rules stay reusable and unit-testable.
 
 import { hash } from 'bcryptjs';
 import { eq } from 'drizzle-orm';
@@ -25,34 +22,20 @@ export interface RegisterInput {
 }
 
 /**
- * Result of a registration attempt.
- *
- * Only genuine input-validation failures (`ok: false`) are reported distinctly
- * to the caller — a malformed request tells the client nothing about whether
- * any given email is allowlisted or already registered, so a clear 400 is safe
- * and useful.
- *
- * Every request that passes validation resolves to `ok: true` regardless of
- * whether an account was actually created: allowlist-miss, duplicate, and
- * fresh-insert are deliberately indistinguishable to the caller (see
- * `SECURITY.md` → "Registration enumeration"). The internal `created` flag
- * records what really happened for logging/metrics, but MUST NOT be surfaced in
- * the HTTP response — doing so would reintroduce the enumeration oracle.
+ * Result of a registration attempt. Only input-validation failures are reported
+ * distinctly (400); every validated request resolves to `ok: true` whether or not
+ * an account was created, so allowlist-miss/duplicate/insert are indistinguishable
+ * (anti-enumeration). The internal `created` flag is for logging only — never surface it.
  */
 export type RegisterResult =
   | { ok: true; created: boolean }
   | { ok: false; error: string; status: 400 };
 
 /**
- * Validate and (when eligible) create a user account.
- *
- * Runs the checks in order: required fields → password length → allowlist →
- * duplicate → insert. The first two are input validation and surface as a
- * distinct 400. The allowlist and duplicate checks still fully gate account
- * creation, but they no longer produce a distinct result — a request for an
- * email that is not allowlisted, or that already has an account, returns the
- * same `{ ok: true }` shape as a successful creation so an attacker cannot
- * enumerate the allowlist or which emails have accounts.
+ * Validate and (when eligible) create a user account. Checks run in order:
+ * required fields → password length → allowlist → duplicate → insert. The first
+ * two surface as a distinct 400; the rest return the uniform `{ ok: true }` shape
+ * so an attacker can't enumerate the allowlist or which emails have accounts.
  */
 export async function registerUser(input: RegisterInput): Promise<RegisterResult> {
   const rawEmail = typeof input.email === 'string' ? input.email : '';
@@ -70,8 +53,7 @@ export async function registerUser(input: RegisterInput): Promise<RegisterResult
     };
   }
 
-  // Normalize once so the allowlist check, duplicate check, and stored value
-  // all agree (login normalizes the same way).
+  // Normalize once so allowlist, duplicate check, and stored value all agree.
   const email = normalizeEmail(rawEmail);
 
   if (password.length < PASSWORD_MIN_LENGTH) {
@@ -82,20 +64,12 @@ export async function registerUser(input: RegisterInput): Promise<RegisterResult
     };
   }
 
-  // Hash up front, on EVERY validated request. bcrypt (cost 12) dominates the
-  // response time by ~two orders of magnitude over the DB lookups, so computing
-  // it before the allowlist/duplicate branches makes the allowlist-miss and
-  // duplicate paths pay the same cost as a real signup. Without this, only the
-  // "allowlisted and new" path ran bcrypt, and an attacker timing the response
-  // could enumerate exactly which emails are valid signup targets — the very
-  // oracle the uniform `{ ok: true }` body is meant to remove (SECURITY.md →
-  // "Registration enumeration"). The hash is only stored on the fresh-insert
-  // path below.
+  // Hash up front on EVERY validated request so the allowlist-miss and duplicate
+  // paths pay the same (bcrypt-dominated) cost as a real signup, closing the
+  // timing oracle the uniform `{ ok: true }` body removes. Only stored on insert below.
   const passwordHash = await hash(password, PASSWORD_COST);
 
-  // Signups are restricted to the allowlist (managed in /members). A miss is
-  // NOT reported distinctly — returning here with the same shape as success
-  // keeps the allowlist unenumerable.
+  // Allowlist miss returns the success shape, keeping the allowlist unenumerable.
   if (!(await isEmailAllowed(email))) {
     return { ok: true, created: false };
   }
@@ -106,8 +80,7 @@ export async function registerUser(input: RegisterInput): Promise<RegisterResult
     .where(eq(users.email, email))
     .limit(1);
 
-  // A duplicate is likewise indistinguishable from a fresh signup: we simply
-  // do not create a second account and report the uniform success shape.
+  // A duplicate is likewise indistinguishable: no second account, uniform success shape.
   if (existing) {
     return { ok: true, created: false };
   }

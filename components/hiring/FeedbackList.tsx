@@ -1,10 +1,6 @@
 'use client';
 
-// The candidate's scoring surface in the drawer: a quiet "Scores" summary (the
-// rank-weighted overall plus each trait's average) and a "Feedback" list — one
-// entry per interviewer, each collapsing to name + stage + average and
-// expanding to its per-trait scores and note. Scores read as plain numbers, not
-// coloured pills, so the drawer stays calm; the board card keeps the colour cue.
+// The candidate's scoring surface in the drawer: a "Score" summary and a per-interviewer "Feedback" list.
 
 import { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
@@ -199,11 +195,7 @@ export default function FeedbackList({
         ) : (
           <div className="flex flex-col gap-3">
             {feedback.map((f) => (
-              // Key on the stable author, not `f.id`: a new entry's optimistic
-              // temp id is reconciled to the real DB id once the write lands
-              // (store.saveFeedback), and keying on the changing id would remount
-              // the row — collapsing a just-expanded entry. `byUser` is unique
-              // per candidate (one entry per interviewer) and never changes.
+              // Key on the stable byUser, not f.id: an optimistic temp id is reconciled to the real DB id, and keying on the changing id would remount and collapse a just-expanded row.
               <FeedbackEntryRow
                 key={f.byUser}
                 entry={f}

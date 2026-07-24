@@ -1,16 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// The lib/password.ts auth/user-domain services behind the two password-change
-// flows:
-//   - changePassword  — the forced first-login change (validate confirmation +
-//     length, reject re-setting the SAME password, hash, clear
-//     mustChangePassword). No current-password *auth* check, but it rejects reuse
-//     so a confined account can't just re-set the shared seeded default.
-//   - updatePassword  — the voluntary change from /settings. Same validation
-//     PLUS it verifies the current password first (a stolen/unattended session
-//     must not silently take the account over).
-// We mock the DB and bcrypt boundaries (like registration.test.ts) and assert
-// both the validation contract and the write.
+// The lib/password.ts services behind the two password-change flows:
+//   - changePassword  — forced first-login change; no current-password auth, but
+//     rejects reuse so a confined account can't re-set the shared seeded default.
+//   - updatePassword  — voluntary change from /settings; same validation PLUS a
+//     current-password check (a stolen session must not take the account over).
+// DB and bcrypt boundaries are mocked; asserts both validation and the write.
 
 const updateSet = vi.fn();
 const updateWhere = vi.fn();

@@ -1,11 +1,6 @@
 'use client';
 
-// Forced first-login password change for seeded accounts. Reached only via the
-// middleware gate in lib/auth.ts, which confines an account carrying the shared
-// default password here until it sets its own. On success we transparently
-// re-authenticate with the new password: the session token still carries the
-// mustChangePassword flag, so replacing it (a fresh signIn) is what lets the
-// gate release us to the board. Styled like the login page for consistency.
+// Forced first-login password change for seeded accounts; on success re-authenticates so the fresh session drops the mustChangePassword flag and the gate releases.
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -58,17 +53,14 @@ export default function ChangePasswordForm({
         return;
       }
 
-      // Replace the stale session (still flagged mustChangePassword) by signing
-      // in again with the new password. Without this the gate would bounce us
-      // right back to this page.
+      // Re-sign-in to replace the stale mustChangePassword session; without this the gate bounces us back here.
       const signInRes = await signIn('credentials', {
         email,
         password,
         redirect: false
       });
       if (signInRes?.error) {
-        // The password was changed but the automatic re-auth failed — send them
-        // to sign in manually with the new password.
+        // Password changed but auto re-auth failed — sign in manually.
         router.push('/login');
         return;
       }
@@ -96,6 +88,7 @@ export default function ChangePasswordForm({
           <CardContent className="space-y-4">
             <Input
               type="password"
+              aria-label="New password"
               placeholder="New password"
               value={password}
               onChange={(e) => {
@@ -108,6 +101,7 @@ export default function ChangePasswordForm({
             />
             <Input
               type="password"
+              aria-label="Confirm new password"
               placeholder="Confirm new password"
               value={confirmPassword}
               onChange={(e) => {
@@ -121,7 +115,11 @@ export default function ChangePasswordForm({
             <p className="text-sm text-muted-foreground">
               Must be at least {minLength} characters.
             </p>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && (
+              <p className="text-sm text-destructive" role="alert">
+                {error}
+              </p>
+            )}
           </CardContent>
           <CardFooter>
             <Button type="submit" className="w-full" disabled={loading}>
