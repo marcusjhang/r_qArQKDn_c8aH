@@ -199,8 +199,13 @@ export default function FeedbackList({
         ) : (
           <div className="flex flex-col gap-3">
             {feedback.map((f) => (
+              // Key on the stable author, not `f.id`: a new entry's optimistic
+              // temp id is reconciled to the real DB id once the write lands
+              // (store.saveFeedback), and keying on the changing id would remount
+              // the row — collapsing a just-expanded entry. `byUser` is unique
+              // per candidate (one entry per interviewer) and never changes.
               <FeedbackEntryRow
-                key={f.id}
+                key={f.byUser}
                 entry={f}
                 traits={traits}
                 users={users}
