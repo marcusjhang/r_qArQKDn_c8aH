@@ -170,6 +170,20 @@ describe('resolveUserId — the Server-Action session guard', () => {
     expect(() => resolveUserId({ user: { id: '0' } })).toThrow('Unauthorized');
     expect(() => resolveUserId({ user: { id: '' } })).toThrow('Unauthorized');
   });
+
+  it('rejects a confined (mustChangePassword) session even with a valid id', () => {
+    // The forced first-login confinement must hold at the action guard too, not
+    // only the page gate — action ids are POST-able directly. A confined
+    // seeded/default-password account must not mutate the board or mint a token.
+    expect(() =>
+      resolveUserId({ user: { id: '7', mustChangePassword: true } })
+    ).toThrow('Unauthorized');
+    // A non-confined (or unset/false) flag with a valid id resolves normally.
+    expect(
+      resolveUserId({ user: { id: '7', mustChangePassword: false } })
+    ).toBe(7);
+    expect(resolveUserId({ user: { id: '7' } })).toBe(7);
+  });
 });
 
 describe('credentialsSchema — anomalous sign-in input is rejected', () => {

@@ -183,6 +183,13 @@
       "when": 1784824959378,
       "tag": "0025_thankful_the_hood",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1784873427220,
+      "tag": "0026_chubby_warbound",
+      "breakpoints": true
     }
   ]
 }

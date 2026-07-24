@@ -23,7 +23,7 @@ import 'server-only';
 // the failure to a structured tool error (see lib/mcp/tools.ts).
 
 import { eq } from 'drizzle-orm';
-import { db, candidates, feedback, jobs } from '@/lib/db';
+import { db, candidates, feedback } from '@/lib/db';
 import { placeInStage, placeWithStatus, scopeTraitScores } from './helpers';
 import type { Placement } from './helpers';
 import type { Status } from './types';
@@ -36,15 +36,6 @@ import {
   feedbackInsertSchema
 } from './schemas';
 import { lockJobStages, withStageClock, loadJobTraits } from './actions/support';
-
-async function loadJobStages(jobId: number): Promise<string[] | null> {
-  const [j] = await db
-    .select({ stages: jobs.stages })
-    .from(jobs)
-    .where(eq(jobs.id, jobId))
-    .limit(1);
-  return j?.stages ?? null;
-}
 
 /** Fields shared by the add- and edit-candidate cores. */
 export interface CandidateWriteInput {
@@ -170,32 +161,40 @@ export async function moveStageCore(
 ): Promise<Placement | null> {
   const id = zId.parse(idRaw);
   const stage = zStageName.parse(stageRaw);
-  // Only the placement inputs are read — jobId (to load the stage list) and the
-  // current stage/status that placeInStage keys off — so project to those three
-  // columns instead of a SELECT * of the whole candidate row.
-  const [c] = await db
-    .select({
-      jobId: candidates.jobId,
-      stage: candidates.stage,
-      status: candidates.status
-    })
-    .from(candidates)
-    .where(eq(candidates.id, id))
-    .limit(1);
-  if (!c) return null;
-  // Resolve "terminal" structurally (last stage), so auto-hire survives a rename.
-  const stages = (await loadJobStages(c.jobId)) ?? [];
-  // Guard stage membership: a stray stage would strand the card in a column no
-  // board renders, and a stray terminal stage would wrongly flip to hired.
-  if (!stages.includes(stage)) return null;
-  const placement = placeInStage(stage, c, stages);
-  // Reset the stage clock only on an actual stage change, so re-dropping a card
-  // in its own column (or a no-op move) doesn't restart the overdue timer.
-  await db
-    .update(candidates)
-    .set(withStageClock(placement, c.stage))
-    .where(eq(candidates.id, id));
-  return placement;
+  // Read the stage list and write inside a single transaction that row-locks the
+  // job (the same lock addCandidateCore and the stage mutations take), so a
+  // concurrent rename/reorder/delete of a stage can't commit between the
+  // membership check and the update and strand the candidate in a stage the job
+  // no longer has (or flip a stale terminal to hired).
+  return db.transaction(async (tx) => {
+    // Only the placement inputs are read — jobId (to load the stage list) and the
+    // current stage/status that placeInStage keys off — so project to those three
+    // columns instead of a SELECT * of the whole candidate row.
+    const [c] = await tx
+      .select({
+        jobId: candidates.jobId,
+        stage: candidates.stage,
+        status: candidates.status
+      })
+      .from(candidates)
+      .where(eq(candidates.id, id))
+      .limit(1);
+    if (!c) return null;
+    // Resolve "terminal" structurally (last stage) under the lock, so auto-hire
+    // survives — and can't race — a rename.
+    const stages = (await lockJobStages(tx, c.jobId)) ?? [];
+    // Guard stage membership: a stray stage would strand the card in a column no
+    // board renders, and a stray terminal stage would wrongly flip to hired.
+    if (!stages.includes(stage)) return null;
+    const placement = placeInStage(stage, c, stages);
+    // Reset the stage clock only on an actual stage change, so re-dropping a card
+    // in its own column (or a no-op move) doesn't restart the overdue timer.
+    await tx
+      .update(candidates)
+      .set(withStageClock(placement, c.stage))
+      .where(eq(candidates.id, id));
+    return placement;
+  });
 }
 
 /**
@@ -210,28 +209,33 @@ export async function setStatusCore(
 ): Promise<Placement | null> {
   const id = zId.parse(idRaw);
   const status = zStatus.parse(statusRaw);
-  // Same projection as moveStageCore: placeWithStatus only needs the current
-  // stage (and jobId to load the stage list), so avoid a SELECT * of the row.
-  const [c] = await db
-    .select({
-      jobId: candidates.jobId,
-      stage: candidates.stage,
-      status: candidates.status
-    })
-    .from(candidates)
-    .where(eq(candidates.id, id))
-    .limit(1);
-  if (!c) return null;
-  // Setting status to Hired moves the card into the Hired stage if one exists.
-  const stages = status === 'hired' ? await loadJobStages(c.jobId) : null;
-  const placement = placeWithStatus(status, c, stages ?? []);
-  // A status change that also moves the card (to the terminal stage) restarts
-  // the clock; a status change that stays in place leaves it running.
-  await db
-    .update(candidates)
-    .set(withStageClock(placement, c.stage))
-    .where(eq(candidates.id, id));
-  return placement;
+  return db.transaction(async (tx) => {
+    // Same projection as moveStageCore: placeWithStatus only needs the current
+    // stage (and jobId to load the stage list), so avoid a SELECT * of the row.
+    const [c] = await tx
+      .select({
+        jobId: candidates.jobId,
+        stage: candidates.stage,
+        status: candidates.status
+      })
+      .from(candidates)
+      .where(eq(candidates.id, id))
+      .limit(1);
+    if (!c) return null;
+    // Only the Hired transition consults the stage list (to find the terminal
+    // stage) — and it locks the job while doing so, so a concurrent stage edit
+    // can't move the terminal out from under the auto-hire.
+    const stages =
+      status === 'hired' ? ((await lockJobStages(tx, c.jobId)) ?? []) : [];
+    const placement = placeWithStatus(status, c, stages);
+    // A status change that also moves the card (to the terminal stage) restarts
+    // the clock; a status change that stays in place leaves it running.
+    await tx
+      .update(candidates)
+      .set(withStageClock(placement, c.stage))
+      .where(eq(candidates.id, id));
+    return placement;
+  });
 }
 
 /**

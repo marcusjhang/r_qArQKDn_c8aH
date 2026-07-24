@@ -23,5 +23,16 @@ export async function changePassword(
   const userId = Number(session?.user?.id);
   if (!userId) return { ok: false, error: 'Not signed in.' };
 
+  // Restrict this no-current-password path to accounts ACTUALLY in the forced
+  // first-login state. A provisioned account has a real secret and must change
+  // its password via /settings, which verifies the current one — otherwise a
+  // hijacked/unattended session could POST this action directly and set a known
+  // password without proving the old one, defeating updatePassword's guard. A
+  // confined account's "current" password is the shared well-known default, so
+  // skipping verification for it leaks nothing.
+  if (session?.user?.mustChangePassword !== true) {
+    return { ok: false, error: 'Password change is not available here.' };
+  }
+
   return changePasswordService({ userId, password, confirmPassword });
 }
