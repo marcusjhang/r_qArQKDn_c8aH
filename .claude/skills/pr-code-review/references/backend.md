@@ -258,3 +258,10 @@ know about). Watch for both:
   without leaking internals.
 - `strict` TypeScript: no `any`, no non-null `!` to paper over a real nullable,
   handle the `[row] = await …` "no row" case (`?? null`, early return).
+- **Comment hygiene.** Flag excessively long comments the change adds or grows: a
+  multi-paragraph module header, a JSDoc block that just restates the signature,
+  or a narration comment that duplicates the line below it. A comment should
+  state a non-obvious *why* (a gotcha, a decision, a security rationale) in a line
+  or two, not re-explain the code. Suggest collapsing to a one-line why or
+  deleting it. Usually `Low` (don't gate on it) — but a comment that is now stale
+  or contradicts the code it describes is a real finding, not a nit.

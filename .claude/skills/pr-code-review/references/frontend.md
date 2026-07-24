@@ -161,3 +161,10 @@ literal text, not just the markup around it.
 - No `console.log` left in shipped UI; no dead props or unused imports.
 - Loading and empty states handled, not just the happy path.
 - Follow the prettier config (single quotes, 2-space, no trailing commas).
+- **Comment hygiene.** Flag excessively long comments the change adds or grows: a
+  multi-paragraph file header, a JSDoc block that just restates the signature, or
+  a narration comment that duplicates the line below it. A comment should state a
+  non-obvious *why* in a line or two, not re-explain the code. Suggest collapsing
+  to a one-line why or deleting it. Usually `Low` (don't gate on it) — but a
+  comment that is now stale or contradicts the code it describes is a real
+  finding, not a nit.
