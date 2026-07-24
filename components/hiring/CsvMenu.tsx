@@ -19,6 +19,8 @@ import {
   csvFilename,
   type HiringState
 } from '@/lib/hiring';
+import { Button } from '@/components/ui/button';
+import { Download } from 'lucide-react';
 import { downloadCsv } from './csvDownload';
 
 export default function CsvMenu({
@@ -68,41 +70,53 @@ export default function CsvMenu({
   const candidateCount = state.candidates.length;
 
   return (
-    <div className="export-menu" ref={ref}>
-      <button
-        className="btn"
+    <div className="relative inline-flex" ref={ref}>
+      <Button
+        type="button"
+        variant="app"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        ⤓ CSV
-      </button>
+        <Download size={14} aria-hidden /> CSV
+      </Button>
       {open && (
-        <div className="export-pop" role="menu">
+        <div
+          className="absolute right-0 top-full z-[25] mt-1.5 flex min-w-[240px] flex-col rounded-md border border-border bg-surface p-1 shadow-ds"
+          role="menu"
+        >
           <button
-            className="export-item"
+            className="flex cursor-pointer flex-col gap-0.5 rounded-sm border-0 bg-transparent px-2.5 py-2 text-left text-foreground enabled:hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-[0.55]"
             role="menuitem"
             onClick={exportCandidates}
             disabled={candidateCount === 0}
           >
-            <span className="export-item-title">Export candidates</span>
-            <span className="export-item-sub">
+            <span className="text-[13px] font-medium">Export candidates</span>
+            <span className="text-[11px] text-muted-foreground">
               {candidateCount === 0
                 ? 'No candidates yet'
                 : `${candidateCount} candidate${candidateCount === 1 ? '' : 's'} across ${state.jobs.length} job${state.jobs.length === 1 ? '' : 's'}`}
             </span>
           </button>
-          <button className="export-item" role="menuitem" onClick={openImport}>
-            <span className="export-item-title">Import candidates</span>
-            <span className="export-item-sub">Upload a CSV to add candidates</span>
+          <button
+            className="flex cursor-pointer flex-col gap-0.5 rounded-sm border-0 bg-transparent px-2.5 py-2 text-left text-foreground enabled:hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-[0.55]"
+            role="menuitem"
+            onClick={openImport}
+          >
+            <span className="text-[13px] font-medium">Import candidates</span>
+            <span className="text-[11px] text-muted-foreground">
+              Upload a CSV to add candidates
+            </span>
           </button>
           <button
-            className="export-item"
+            className="flex cursor-pointer flex-col gap-0.5 rounded-sm border-0 bg-transparent px-2.5 py-2 text-left text-foreground enabled:hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-[0.55]"
             role="menuitem"
             onClick={downloadTemplate}
           >
-            <span className="export-item-title">Download template</span>
-            <span className="export-item-sub">Example rows to fill in and import</span>
+            <span className="text-[13px] font-medium">Download template</span>
+            <span className="text-[11px] text-muted-foreground">
+              Example rows to fill in and import
+            </span>
           </button>
         </div>
       )}

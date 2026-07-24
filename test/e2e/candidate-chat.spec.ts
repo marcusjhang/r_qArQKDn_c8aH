@@ -17,7 +17,7 @@ test.describe('candidate discussion chat', () => {
 
   test('sending a message appends it to the thread', async ({ page }) => {
     await openCandidate(page, CANDIDATE);
-    const chat = page.locator('aside.drawer.open .chat');
+    const chat = page.locator('aside[role="dialog"]:not([inert]) [data-testid="chat"]');
     // Match the static section header exactly — a bare getByText('Discussion')
     // also matches the "Loading discussion…" placeholder (case-insensitive
     // substring), a strict-mode violation. `exact` pins it to the header, which
@@ -26,7 +26,7 @@ test.describe('candidate discussion chat', () => {
     // resolves.
     await expect(chat.getByText('Discussion', { exact: true })).toBeVisible();
     await expect(
-      chat.locator('.chat-empty', { hasText: 'Loading' })
+      chat.locator('[data-testid="chat-empty"]', { hasText: 'Loading' })
     ).toHaveCount(0);
 
     const message = `Looks strong, let's schedule onsite ${Date.now()}`;
@@ -34,57 +34,57 @@ test.describe('candidate discussion chat', () => {
     await chat.getByRole('button', { name: 'Send' }).click();
 
     // The message shows up as a chat bubble in the transcript.
-    await expect(chat.locator('.chat-msgs')).toContainText(message);
+    await expect(chat.locator('[data-testid="chat-messages"]')).toContainText(message);
   });
 
   test('@-mention autocomplete tags a teammate', async ({ page }) => {
     await openCandidate(page, CANDIDATE);
-    const chat = page.locator('aside.drawer.open .chat');
+    const chat = page.locator('aside[role="dialog"]:not([inert]) [data-testid="chat"]');
     const composer = chat.locator('textarea');
     // Let the thread finish loading before composing/posting.
     await expect(
-      chat.locator('.chat-empty', { hasText: 'Loading' })
+      chat.locator('[data-testid="chat-empty"]', { hasText: 'Loading' })
     ).toHaveCount(0);
 
     // Typing "@" opens the mention menu over the board's users.
     await composer.fill('cc ');
     await composer.press('End');
     await composer.pressSequentially('@');
-    const menu = chat.locator('.mention-menu');
+    const menu = chat.locator('[data-testid="mention-menu"]');
     await expect(menu).toBeVisible();
 
     // Pick the first suggestion; its `@Name` token is inserted into the draft.
-    const first = menu.locator('.mention-item').first();
+    const first = menu.locator('[data-testid="mention-item"]').first();
     const mentionName = (
-      await first.locator('.mention-name').textContent()
+      await first.locator('[data-testid="mention-name"]').textContent()
     )?.trim();
     await first.click();
     await expect(composer).toHaveValue(new RegExp(`@${mentionName}`));
 
     // Send and confirm the mention renders highlighted in the posted message.
     await chat.getByRole('button', { name: 'Send' }).click();
-    await expect(chat.locator('.chat-msgs .mention')).toContainText(
+    await expect(chat.locator('[data-testid="chat-messages"] [data-testid="chat-mention"]')).toContainText(
       `@${mentionName}`
     );
   });
 
   test('messages persist across a reload', async ({ page }) => {
     await openCandidate(page, CANDIDATE);
-    const chat = page.locator('aside.drawer.open .chat');
+    const chat = page.locator('aside[role="dialog"]:not([inert]) [data-testid="chat"]');
     // Let the thread finish loading so the optimistic post survives it.
     await expect(
-      chat.locator('.chat-empty', { hasText: 'Loading' })
+      chat.locator('[data-testid="chat-empty"]', { hasText: 'Loading' })
     ).toHaveCount(0);
 
     const message = `Persisted chat ${Date.now()}`;
     await chat.locator('textarea').fill(message);
     await chat.getByRole('button', { name: 'Send' }).click();
-    await expect(chat.locator('.chat-msgs')).toContainText(message);
+    await expect(chat.locator('[data-testid="chat-messages"]')).toContainText(message);
 
     await page.reload();
     await openCandidate(page, CANDIDATE);
     await expect(
-      page.locator('aside.drawer.open .chat .chat-msgs')
+      page.locator('aside[role="dialog"]:not([inert]) [data-testid="chat"] [data-testid="chat-messages"]')
     ).toContainText(message);
   });
 });

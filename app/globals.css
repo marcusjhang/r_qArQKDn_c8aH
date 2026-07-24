@@ -2,67 +2,132 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Single design-token source for the whole app. These CSS variables are the
+ * app's real palette (ported from the product preview); Tailwind's theme
+ * (tailwind.config.ts) maps its color/radius/shadow utilities onto them, so
+ * `bg-surface`, `text-muted-foreground`, `border-border`, the status/rating
+ * pills, etc. all resolve here — and light/dark is a single class flip on
+ * <html>, no `dark:` variants needed in components.
+ */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: #f6f7f9;
+    --foreground: #1f2733;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --surface: #ffffff;
+    --surface-2: #f1f3f5;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --card: #ffffff;
+    --card-foreground: #1f2733;
+    --popover: #ffffff;
+    --popover-foreground: #1f2733;
 
-    --primary: 32 89% 53%;
-    --primary-foreground: 0 0% 100%;
+    --primary: #f28c1b;
+    --primary-foreground: #ffffff;
+    --primary-weak: #fef1e1;
+    --primary-border: #f6c98c;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: #f1f3f5;
+    --secondary-foreground: #1f2733;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: #f1f3f5;
+    --muted-foreground: #6b7280;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: #fef1e1;
+    --accent-foreground: #f28c1b;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: #c0362c;
+    --destructive-foreground: #ffffff;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 32 89% 53%;
+    --border: #e3e6ea;
+    --border-strong: #d1d6dc;
+    --input: #d1d6dc;
+    --ring: #f28c1b;
 
-    --radius: 0.5rem;
+    --ok: #146c43;
+    --star: #eab308;
+
+    /* Rating verdict pills */
+    --syes-fg: #146c43;
+    --syes-bg: #e7f5ee;
+    --yes-fg: #2f855a;
+    --yes-bg: #eef8f2;
+    --no-fg: #b45309;
+    --no-bg: #fdf1e3;
+    --sno-fg: #c0362c;
+    --sno-bg: #fbeae8;
+
+    /* Candidate status pills */
+    --hold-fg: #92600b;
+    --hold-bg: #fdf5e3;
+    --rej-fg: #c0362c;
+    --rej-bg: #fbeae8;
+    --hired-fg: #146c43;
+    --hired-bg: #e7f5ee;
+
+    --radius: 10px;
+    --radius-sm: 7px;
+
+    --shadow-ds: 0 6px 20px rgba(16, 24, 40, 0.1);
+    --shadow-drawer: -12px 0 32px rgba(16, 24, 40, 0.16);
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: #0f1115;
+    --foreground: #e7eaef;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --surface: #171a20;
+    --surface-2: #1e222a;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --card: #171a20;
+    --card-foreground: #e7eaef;
+    --popover: #171a20;
+    --popover-foreground: #e7eaef;
 
-    --primary: 32 92% 58%;
-    --primary-foreground: 0 0% 100%;
+    --primary: #f7a03a;
+    --primary-foreground: #1a120a;
+    --primary-weak: #3a2a12;
+    --primary-border: #6d4e22;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: #1e222a;
+    --secondary-foreground: #e7eaef;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: #1e222a;
+    --muted-foreground: #9aa3b2;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: #3a2a12;
+    --accent-foreground: #f7a03a;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: #e5484d;
+    --destructive-foreground: #ffffff;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 32 92% 58%;
+    --border: #2a2f39;
+    --border-strong: #3a414d;
+    --input: #3a414d;
+    --ring: #f7a03a;
+
+    --ok: #79e0a6;
+    --star: #f5cf3d;
+
+    --syes-fg: #79e0a6;
+    --syes-bg: #123123;
+    --yes-fg: #7fd0a0;
+    --yes-bg: #122a1d;
+    --no-fg: #f0b46a;
+    --no-bg: #33260f;
+    --sno-fg: #f19a92;
+    --sno-bg: #361b19;
+
+    --hold-fg: #e6c06a;
+    --hold-bg: #31260f;
+    --rej-fg: #f19a92;
+    --rej-bg: #361b19;
+    --hired-fg: #79e0a6;
+    --hired-bg: #123123;
+
+    --shadow-ds: 0 6px 20px rgba(0, 0, 0, 0.5);
+    --shadow-drawer: -12px 0 32px rgba(0, 0, 0, 0.55);
   }
 }
 
@@ -72,21 +137,46 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family:
+      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
 }
 
-/* Chrome, Safari, Edge, Opera */
+/* Hide the native search-clear affordance (we render our own controls). */
 input[type='search']::-webkit-search-cancel-button {
   -webkit-appearance: none;
   appearance: none;
 }
-
-/* Firefox */
 input[type='search']::-moz-search-cancel-button {
   display: none;
 }
-
-/* Microsoft Edge */
 input[type='search']::-ms-clear {
   display: none;
+}
+
+/* One-off highlight flash when the chat inbox jumps to a mentioned message.
+ * useChatThread imperatively toggles the `chat-msg-focus` class on the target
+ * bubble, so the keyframe is driven by this class rather than a Tailwind
+ * utility. */
+@keyframes msg-flash {
+  0% {
+    background-color: var(--primary-weak);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+.chat-msg-focus {
+  animation: msg-flash 2.2s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -17,11 +17,18 @@ export default function ProfileLinks({
   withLabels?: boolean;
 }) {
   if (!linkedinUrl && !githubUrl) return null;
+  // In the card the links are compact icon-only chips (muted box); in the
+  // drawer header (withLabels) they read as primary-coloured icon+label links.
+  const linkClass = withLabels
+    ? 'inline-flex items-center justify-center gap-1 text-[12.5px] font-semibold text-primary no-underline hover:underline'
+    : 'inline-flex h-[22px] w-[22px] items-center justify-center gap-1 rounded-sm bg-surface-2 text-muted-foreground no-underline';
   return (
-    <span className="profile-links">
+    <span
+      className={`inline-flex items-center ${withLabels ? 'mt-1.5 gap-3' : 'gap-1'}`}
+    >
       {linkedinUrl && (
         <a
-          className="profile-link"
+          className={linkClass}
           href={linkedinUrl}
           target="_blank"
           rel="noopener noreferrer"
@@ -35,7 +42,7 @@ export default function ProfileLinks({
       )}
       {githubUrl && (
         <a
-          className="profile-link"
+          className={linkClass}
           href={githubUrl}
           target="_blank"
           rel="noopener noreferrer"

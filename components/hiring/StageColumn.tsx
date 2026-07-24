@@ -16,6 +16,7 @@ import {
 import type { BoardDnd } from './hooks/useBoardDnd';
 import { useInlineEdit } from './hooks/useInlineEdit';
 import { useDismissableMenu } from './hooks/useDismissableMenu';
+import { MoreHorizontal } from 'lucide-react';
 import CandidateCard from './CandidateCard';
 import StageMenu from './StageMenu';
 
@@ -53,13 +54,13 @@ export default function StageColumn({
 
   return (
     <div
-      className={`column${menu.open ? ' menu-open' : ''}`}
+      className={`relative flex w-60 flex-none basis-60 flex-col gap-2 rounded-lg border border-border bg-surface-2 p-2 [&.dragover]:bg-primary-weak [&.dragover]:outline-2 [&.dragover]:outline-dashed [&.dragover]:outline-primary [&.dragover]:outline-offset-[-3px]${menu.open ? ' z-[5]' : ''}`}
       data-stage={stage}
       {...dnd.columnProps(stage)}
     >
-      <div className="col-head">
+      <div className="flex items-center gap-1.5 px-1.5 pt-1 pb-0.5">
         <div
-          className="col-title"
+          className="min-w-0 flex-1 rounded-sm border border-transparent px-1 py-0.5 text-xs font-bold uppercase tracking-[0.02em] text-foreground focus:border-primary-border focus:bg-surface focus:outline-none"
           ref={rename.ref}
           contentEditable
           suppressContentEditableWarning
@@ -70,14 +71,16 @@ export default function StageColumn({
         >
           {stage}
         </div>
-        <span className="col-count">{cards.length}</span>
-        <div className="col-menu-wrap" ref={menu.wrapRef}>
+        <span className="rounded-full border border-border bg-surface px-[7px] text-[11px] text-muted-foreground">
+          {cards.length}
+        </span>
+        <div className="relative flex-none" ref={menu.wrapRef}>
           <button
-            className="col-menu"
+            className="inline-flex items-center justify-center rounded-sm border-none bg-transparent px-1 py-0.5 leading-none text-muted-foreground hover:bg-surface hover:text-foreground"
             title="Stage options"
             {...menu.triggerProps}
           >
-            ⋯
+            <MoreHorizontal size={16} aria-hidden />
           </button>
           {menu.open && (
             <StageMenu
@@ -102,9 +105,11 @@ export default function StageColumn({
           )}
         </div>
       </div>
-      <div className="col-body">
+      <div className="flex flex-col gap-2 min-h-6">
         {cards.length === 0 ? (
-          <div className="empty-hint">Drop here</div>
+          <div className="px-1 py-2.5 text-center text-[11px] text-muted-foreground opacity-70">
+            Drop here
+          </div>
         ) : (
           cards.map((c) => (
             <CandidateCard

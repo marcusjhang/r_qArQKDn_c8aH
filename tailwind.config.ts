@@ -1,5 +1,10 @@
 import type { Config } from 'tailwindcss';
 
+// All colors resolve to the CSS variables defined in app/globals.css (a single
+// light/dark token source). App-specific tokens (surface, the status/rating
+// pill families, the favourite-star gold, etc.) sit alongside the standard
+// shadcn semantic names so both the shadcn primitives and the hiring UI share
+// one theme.
 export default {
   darkMode: ['class'],
   content: [
@@ -10,69 +15,76 @@ export default {
   ],
   prefix: '',
   theme: {
-    container: {
-      center: true,
-      padding: '2rem',
-      screens: {
-        '2xl': '1400px'
-      }
-    },
     extend: {
       colors: {
-        border: 'hsl(var(--border))',
-        input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))',
-        background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
+        border: 'var(--border)',
+        'border-strong': 'var(--border-strong)',
+        input: 'var(--input)',
+        ring: 'var(--ring)',
+        background: 'var(--background)',
+        foreground: 'var(--foreground)',
+        surface: 'var(--surface)',
+        'surface-2': 'var(--surface-2)',
+        star: 'var(--star)',
+        ok: 'var(--ok)',
         primary: {
-          DEFAULT: 'hsl(var(--primary))',
-          foreground: 'hsl(var(--primary-foreground))'
+          DEFAULT: 'var(--primary)',
+          foreground: 'var(--primary-foreground)',
+          weak: 'var(--primary-weak)',
+          border: 'var(--primary-border)'
         },
         secondary: {
-          DEFAULT: 'hsl(var(--secondary))',
-          foreground: 'hsl(var(--secondary-foreground))'
+          DEFAULT: 'var(--secondary)',
+          foreground: 'var(--secondary-foreground)'
         },
         destructive: {
-          DEFAULT: 'hsl(var(--destructive))',
-          foreground: 'hsl(var(--destructive-foreground))'
+          DEFAULT: 'var(--destructive)',
+          foreground: 'var(--destructive-foreground)'
         },
         muted: {
-          DEFAULT: 'hsl(var(--muted))',
-          foreground: 'hsl(var(--muted-foreground))'
+          DEFAULT: 'var(--muted)',
+          foreground: 'var(--muted-foreground)'
         },
         accent: {
-          DEFAULT: 'hsl(var(--accent))',
-          foreground: 'hsl(var(--accent-foreground))'
+          DEFAULT: 'var(--accent)',
+          foreground: 'var(--accent-foreground)'
         },
         popover: {
-          DEFAULT: 'hsl(var(--popover))',
-          foreground: 'hsl(var(--popover-foreground))'
+          DEFAULT: 'var(--popover)',
+          foreground: 'var(--popover-foreground)'
         },
         card: {
-          DEFAULT: 'hsl(var(--card))',
-          foreground: 'hsl(var(--card-foreground))'
-        }
+          DEFAULT: 'var(--card)',
+          foreground: 'var(--card-foreground)'
+        },
+        // Rating-verdict + candidate-status pill families (fg + bg).
+        syes: { DEFAULT: 'var(--syes-fg)', bg: 'var(--syes-bg)' },
+        yes: { DEFAULT: 'var(--yes-fg)', bg: 'var(--yes-bg)' },
+        no: { DEFAULT: 'var(--no-fg)', bg: 'var(--no-bg)' },
+        sno: { DEFAULT: 'var(--sno-fg)', bg: 'var(--sno-bg)' },
+        hold: { DEFAULT: 'var(--hold-fg)', bg: 'var(--hold-bg)' },
+        rej: { DEFAULT: 'var(--rej-fg)', bg: 'var(--rej-bg)' },
+        hired: { DEFAULT: 'var(--hired-fg)', bg: 'var(--hired-bg)' }
       },
       borderRadius: {
         lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)'
+        md: 'var(--radius-sm)',
+        sm: '5px'
+      },
+      boxShadow: {
+        ds: 'var(--shadow-ds)',
+        drawer: 'var(--shadow-drawer)'
       },
       keyframes: {
-        'accordion-down': {
-          from: { height: '0' },
-          to: { height: 'var(--radix-accordion-content-height)' }
-        },
-        'accordion-up': {
-          from: { height: 'var(--radix-accordion-content-height)' },
-          to: { height: '0' }
+        'msg-flash': {
+          '0%': { backgroundColor: 'var(--primary-weak)' },
+          '100%': { backgroundColor: 'transparent' }
         }
       },
       animation: {
-        'accordion-down': 'accordion-down 0.2s ease-out',
-        'accordion-up': 'accordion-up 0.2s ease-out'
+        'msg-flash': 'msg-flash 2.2s ease-out'
       }
     }
   },
-  plugins: [require('tailwindcss-animate')]
+  plugins: []
 } satisfies Config;

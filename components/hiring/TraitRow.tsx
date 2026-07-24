@@ -6,6 +6,7 @@
 // both while creating a job and while editing one later.
 
 import { validateTraitName } from '@/lib/hiring';
+import { ArrowUp, ArrowDown, X } from 'lucide-react';
 import { useInlineEdit } from './hooks/useInlineEdit';
 
 export default function TraitRow({
@@ -32,10 +33,12 @@ export default function TraitRow({
     onCommit: (text) => onRename(index, text)
   });
   return (
-    <li className="trait-row">
-      <span className="trait-rank">#{index + 1}</span>
+    <li className="flex items-center gap-2 rounded-md border border-border bg-surface px-2.5 py-[7px]">
+      <span className="min-w-[22px] text-[11px] font-bold text-muted-foreground">
+        #{index + 1}
+      </span>
       <div
-        className="trait-name"
+        className="min-w-0 flex-1 text-[13px] text-foreground"
         ref={edit.ref}
         role="textbox"
         tabIndex={0}
@@ -48,33 +51,33 @@ export default function TraitRow({
       >
         {trait}
       </div>
-      <span className="trait-rank-btns">
+      <span className="flex flex-[0_0_auto] gap-0.5">
         <button
           type="button"
-          className="rank-btn"
+          className="inline-flex h-[22px] w-[22px] items-center justify-center rounded-md border border-border-strong bg-surface text-[11px] leading-none text-muted-foreground enabled:hover:border-primary enabled:hover:text-primary"
           aria-label={`Move ${trait} up`}
           disabled={index === 0}
           onClick={() => onReorder(index, -1)}
         >
-          ↑
+          <ArrowUp size={14} aria-hidden />
         </button>
         <button
           type="button"
-          className="rank-btn"
+          className="inline-flex h-[22px] w-[22px] items-center justify-center rounded-md border border-border-strong bg-surface text-[11px] leading-none text-muted-foreground enabled:hover:border-primary enabled:hover:text-primary"
           aria-label={`Move ${trait} down`}
           disabled={index === total - 1}
           onClick={() => onReorder(index, 1)}
         >
-          ↓
+          <ArrowDown size={14} aria-hidden />
         </button>
       </span>
       <button
         type="button"
-        className="trait-remove"
+        className="inline-flex h-[22px] w-[22px] flex-[0_0_auto] items-center justify-center rounded-full border-0 bg-surface-2 text-xs leading-none text-muted-foreground hover:bg-rej-bg hover:text-rej"
         aria-label={`Remove ${trait}`}
         onClick={() => onRemove(index)}
       >
-        ✕
+        <X size={14} aria-hidden />
       </button>
     </li>
   );

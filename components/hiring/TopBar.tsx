@@ -23,13 +23,17 @@ export default function TopBar({
 }) {
   return (
     <>
-      <header className="topbar">
+      <header className="flex flex-wrap items-center gap-3 border-b border-border bg-surface p-4">
         <Brand subtitle={subtitle} />
-        <div className="spacer" />
+        <div className="min-w-0 flex-1" />
         {topRight}
         <UserMenu email={userEmail} navItems={navItems} />
       </header>
-      {children && <div className="subnav">{children}</div>}
+      {children && (
+        <div className="flex flex-wrap items-center gap-2 px-4 py-3">
+          {children}
+        </div>
+      )}
     </>
   );
 }

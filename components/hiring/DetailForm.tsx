@@ -10,6 +10,7 @@
 // <CandidateFields> and useCandidateDraft, so the two forms can't drift.
 
 import { useEffect, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import {
   STATUS,
   draftFromCandidate,
@@ -24,6 +25,14 @@ import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
 import CandidateFields from './CandidateFields';
 import { useCandidateDraft } from './hooks/useCandidateDraft';
+
+// Status dot colour per status, matching the former `.status-dot.st-*` rules.
+const STATUS_DOT_TONE: Record<Status, string> = {
+  active: 'bg-primary',
+  onhold: 'bg-hold',
+  rejected: 'bg-rej',
+  hired: 'bg-hired'
+};
 
 export default function DetailForm({
   view,
@@ -94,8 +103,10 @@ export default function DetailForm({
 
   return (
     <>
-      <div className="details-form">
-        <div className="section-title">Candidate details</div>
+      <div className="flex flex-col gap-3 border-b border-border pb-6">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.03em] text-muted-foreground">
+          Candidate details
+        </div>
         <CandidateFields
           draft={draft}
           onField={setField}
@@ -106,7 +117,7 @@ export default function DetailForm({
           yearsPlaceholder="Unspecified"
         />
         {editing && <FormError message={error} />}
-        <div className="modal-actions">
+        <div className="flex justify-end gap-2">
           {editing ? (
             <>
               <Button variant="app" onClick={cancelEdit}>
@@ -128,17 +139,21 @@ export default function DetailForm({
         </div>
       </div>
 
-      <div className="field">
-        <label className="label" htmlFor="detail-status">
+      <div className="flex flex-col gap-1.5">
+        <label
+          className="text-[11px] font-bold uppercase tracking-[0.03em] text-muted-foreground"
+          htmlFor="detail-status"
+        >
           Status
         </label>
-        <div className="status-control">
+        <div className="relative flex items-center gap-2">
           <span
-            className={`status-dot st-${view?.status ?? 'active'}`}
+            className={`h-2.5 w-2.5 flex-none rounded-full ${STATUS_DOT_TONE[view?.status ?? 'active']}`}
             aria-hidden
           />
           <select
             id="detail-status"
+            className="min-w-0 flex-auto appearance-none rounded-md border border-border-strong bg-surface py-2 pl-2.5 pr-[34px] text-[13px] text-foreground focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary-weak focus:ring-offset-0"
             value={view?.status ?? 'active'}
             onChange={(e) =>
               view && actions.setStatus(view.id, e.target.value as Status)
@@ -150,6 +165,11 @@ export default function DetailForm({
               </option>
             ))}
           </select>
+          <ChevronDown
+            size={16}
+            aria-hidden
+            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+          />
         </div>
       </div>
     </>

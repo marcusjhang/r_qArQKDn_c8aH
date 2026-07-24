@@ -10,7 +10,17 @@
 
 import EditableList from './EditableList';
 import { useEditableList } from './useEditableList';
+import { Button } from '@/components/ui/button';
 import type { SettingsResult } from '@/lib/settings-types';
+
+const LABEL_CLASS =
+  'text-[11px] font-bold uppercase tracking-[0.03em] text-muted-foreground';
+const INPUT_CLASS =
+  'w-full rounded-md border border-border-strong bg-surface px-2.5 py-2 text-[13px] text-foreground focus:border-primary focus:shadow-[0_0_0_3px_var(--primary-weak)] focus:outline-none';
+const ROW_EDIT_CLASS =
+  'min-w-0 flex-1 rounded-md border border-border bg-surface px-2.5 py-1.5 text-[13px] text-foreground focus:border-primary focus:shadow-[0_0_0_3px_var(--primary-weak)] focus:outline-none';
+const YEARS_EDIT_CLASS =
+  'w-[84px] min-w-0 flex-[0_0_84px] rounded-md border border-border bg-surface px-2.5 py-1.5 text-[13px] text-foreground focus:border-primary focus:shadow-[0_0_0_3px_var(--primary-weak)] focus:outline-none';
 
 type Draft = { label: string; years: string };
 
@@ -72,12 +82,13 @@ export default function SeniorityBandsPanel({
       }
       addFields={
         <>
-          <div className="field" style={{ flex: '2 1 160px' }}>
-            <label className="label" htmlFor="bands-label">
+          <div className="flex flex-col gap-1.5" style={{ flex: '2 1 160px' }}>
+            <label className={LABEL_CLASS} htmlFor="bands-label">
               Label
             </label>
             <input
               id="bands-label"
+              className={INPUT_CLASS}
               type="text"
               placeholder="e.g. Staff"
               maxLength={40}
@@ -85,12 +96,13 @@ export default function SeniorityBandsPanel({
               onChange={(e) => list.setAddDraft({ label: e.target.value })}
             />
           </div>
-          <div className="field" style={{ flex: '0 0 120px' }}>
-            <label className="label" htmlFor="bands-min">
+          <div className="flex flex-col gap-1.5" style={{ flex: '0 0 120px' }}>
+            <label className={LABEL_CLASS} htmlFor="bands-min">
               From (years)
             </label>
             <input
               id="bands-min"
+              className={INPUT_CLASS}
               type="number"
               min={0}
               max={maxYears}
@@ -112,7 +124,7 @@ export default function SeniorityBandsPanel({
         list.editingId === b.id ? (
           <>
             <input
-              className="source-edit"
+              className={ROW_EDIT_CLASS}
               type="text"
               aria-label={`Label for ${b.label}`}
               maxLength={40}
@@ -125,7 +137,7 @@ export default function SeniorityBandsPanel({
               }}
             />
             <input
-              className="band-years-edit"
+              className={YEARS_EDIT_CLASS}
               aria-label={`From (years) for ${b.label}`}
               type="number"
               min={0}
@@ -138,29 +150,31 @@ export default function SeniorityBandsPanel({
                 if (e.key === 'Escape') list.cancelEdit();
               }}
             />
-            <button
-              className="btn primary"
+            <Button
+              variant="appPrimary"
               onClick={() => list.saveEdit(b.id)}
               disabled={list.pending}
             >
               Save
-            </button>
-            <button
-              className="btn"
+            </Button>
+            <Button
+              variant="app"
               onClick={list.cancelEdit}
               disabled={list.pending}
             >
               Cancel
-            </button>
+            </Button>
           </>
         ) : (
           <>
-            <span className="email-addr">
+            <span className="min-w-0 flex-1 truncate text-[13px]">
               {b.label}{' '}
-              <span className="band-threshold">· {b.minYears}+ yrs</span>
+              <span className="text-muted-foreground">
+                · {b.minYears}+ yrs
+              </span>
             </span>
-            <button
-              className="btn"
+            <Button
+              variant="app"
               onClick={() =>
                 list.startEdit(b.id, {
                   label: b.label,
@@ -171,15 +185,15 @@ export default function SeniorityBandsPanel({
               aria-label={`Edit ${b.label}`}
             >
               Edit
-            </button>
-            <button
-              className="btn"
+            </Button>
+            <Button
+              variant="app"
               onClick={() => list.remove(b.id)}
               disabled={list.pending}
               aria-label={`Remove ${b.label}`}
             >
               Remove
-            </button>
+            </Button>
           </>
         )
       }

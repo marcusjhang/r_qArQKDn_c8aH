@@ -87,9 +87,12 @@ export default function NewJobModal({
 
   return (
     <Modal title="New job" onClose={onClose}>
-      <form className="modal-form" onSubmit={submit}>
-        <div className="field">
-          <label className="label" htmlFor="newjob-title">
+      <form className="flex flex-col gap-4" onSubmit={submit}>
+        <div className="flex flex-col gap-1.5">
+          <label
+            className="text-[11px] font-bold uppercase tracking-[0.03em] text-muted-foreground"
+            htmlFor="newjob-title"
+          >
             Job title
           </label>
           <input
@@ -99,6 +102,7 @@ export default function NewJobModal({
             maxLength={80}
             value={title}
             placeholder="e.g. Founding Engineer"
+            className="w-full rounded-md border border-border-strong bg-surface px-2.5 py-2 text-[13px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onChange={(e) => {
               setTitle(e.target.value);
               setError('');
@@ -106,13 +110,16 @@ export default function NewJobModal({
           />
         </div>
 
-        <div className="field">
-          <label className="label" htmlFor="newjob-jd">
+        <div className="flex flex-col gap-1.5">
+          <label
+            className="text-[11px] font-bold uppercase tracking-[0.03em] text-muted-foreground"
+            htmlFor="newjob-jd"
+          >
             Job description (optional)
           </label>
           <textarea
             id="newjob-jd"
-            className="jd-textarea"
+            className="max-h-[260px] min-h-[96px] w-full rounded-md border border-border-strong bg-surface px-2.5 py-2 text-[13px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             maxLength={MAX_JOB_DESCRIPTION}
             value={description}
             placeholder={
@@ -135,7 +142,7 @@ export default function NewJobModal({
         />
 
         <FormError message={error} />
-        <div className="modal-actions">
+        <div className="flex justify-end gap-2">
           <Button type="button" variant="app" onClick={onClose}>
             Cancel
           </Button>

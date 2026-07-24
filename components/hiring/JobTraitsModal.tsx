@@ -67,14 +67,17 @@ export default function JobTraitsModal({
 
   return (
     <Modal title={`Traits · ${jobTitle}`} onClose={onClose}>
-      <div className="modal-form">
-        <div className="field">
-          <label className="label" htmlFor="jobtraits-jd">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <label
+            className="text-[11px] font-bold uppercase tracking-[0.03em] text-muted-foreground"
+            htmlFor="jobtraits-jd"
+          >
             Job description (JD)
           </label>
           <textarea
             id="jobtraits-jd"
-            className="jd-textarea"
+            className="max-h-[260px] min-h-[96px] w-full rounded-md border border-border-strong bg-surface px-2.5 py-2 text-[13px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             maxLength={MAX_JOB_DESCRIPTION}
             value={jd}
             placeholder={
@@ -97,7 +100,7 @@ export default function JobTraitsModal({
           onSuggest={suggest}
         />
 
-        <div className="modal-actions">
+        <div className="flex justify-end gap-2">
           <Button type="button" variant="appPrimary" onClick={onClose}>
             Done
           </Button>

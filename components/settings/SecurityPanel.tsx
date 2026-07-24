@@ -7,8 +7,14 @@
 // password isn't part of the session token, so the user simply stays signed in.
 
 import { useState, useTransition } from 'react';
+import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
 import type { SettingsResult } from '@/lib/settings-types';
+
+const LABEL_CLASS =
+  'text-[11px] font-bold uppercase tracking-[0.03em] text-muted-foreground';
+const INPUT_CLASS =
+  'w-full rounded-md border border-border-strong bg-surface px-2.5 py-2 text-[13px] text-foreground focus:border-primary focus:shadow-[0_0_0_3px_var(--primary-weak)] focus:outline-none';
 
 export default function SecurityPanel({
   minLength,
@@ -70,23 +76,26 @@ export default function SecurityPanel({
   }
 
   return (
-    <section className="settings-panel">
+    <section className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
       <div>
-        <p className="settings-section-title">Security</p>
-        <h1 className="settings-title">Password</h1>
-        <p className="settings-sub">
+        <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground">
+          Security
+        </p>
+        <h2 className="mb-1 text-[17px] font-bold">Password</h2>
+        <p className="text-[12.5px] text-muted-foreground">
           Change the password you use to sign in. You&apos;ll need your current
           one.
         </p>
       </div>
 
-      <form className="settings-form" onSubmit={save}>
-        <div className="field">
-          <label className="label" htmlFor="current-password">
+      <form className="flex max-w-[360px] flex-col gap-3" onSubmit={save}>
+        <div className="flex flex-col gap-1.5">
+          <label className={LABEL_CLASS} htmlFor="current-password">
             Current password
           </label>
           <input
             id="current-password"
+            className={INPUT_CLASS}
             type="password"
             autoComplete="current-password"
             value={currentPassword}
@@ -94,12 +103,13 @@ export default function SecurityPanel({
             required
           />
         </div>
-        <div className="field">
-          <label className="label" htmlFor="new-password">
+        <div className="flex flex-col gap-1.5">
+          <label className={LABEL_CLASS} htmlFor="new-password">
             New password
           </label>
           <input
             id="new-password"
+            className={INPUT_CLASS}
             type="password"
             autoComplete="new-password"
             minLength={minLength}
@@ -108,12 +118,13 @@ export default function SecurityPanel({
             required
           />
         </div>
-        <div className="field">
-          <label className="label" htmlFor="confirm-password">
+        <div className="flex flex-col gap-1.5">
+          <label className={LABEL_CLASS} htmlFor="confirm-password">
             Confirm new password
           </label>
           <input
             id="confirm-password"
+            className={INPUT_CLASS}
             type="password"
             autoComplete="new-password"
             minLength={minLength}
@@ -122,15 +133,21 @@ export default function SecurityPanel({
             required
           />
         </div>
-        <p className="settings-sub">Must be at least {minLength} characters.</p>
+        <p className="text-[12.5px] text-muted-foreground">
+          Must be at least {minLength} characters.
+        </p>
         <div>
-          <button className="btn primary" type="submit" disabled={pending}>
+          <Button variant="appPrimary" type="submit" disabled={pending}>
             {pending ? 'Updating…' : 'Update password'}
-          </button>
+          </Button>
         </div>
       </form>
       <FormError message={error} />
-      {saved && !error && <div className="settings-sub">Password updated.</div>}
+      {saved && !error && (
+        <div className="text-[12.5px] text-muted-foreground">
+          Password updated.
+        </div>
+      )}
     </section>
   );
 }

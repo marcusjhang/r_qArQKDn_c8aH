@@ -63,12 +63,12 @@ export async function loginToBoard(page: Page): Promise<void> {
 
 /**
  * Open the detail drawer for the named candidate by clicking its board card.
- * Cards render the candidate name in a `.card-name` span (see CandidateCard);
+ * Cards carry data-testid="candidate-card" and an aria-label "Open <name>";
  * the drawer header renders the same name in an <h2> (see DetailHeader).
  */
 export async function openCandidate(page: Page, name: string): Promise<void> {
-  await page.locator('.card', { hasText: name }).first().click();
-  const drawer = page.locator('aside.drawer.open');
+  await page.locator('[data-testid="candidate-card"]', { hasText: name }).first().click();
+  const drawer = page.locator('aside[role="dialog"]:not([inert])');
   await expect(drawer).toBeVisible();
   await expect(drawer.getByRole('heading', { name })).toBeVisible();
 }

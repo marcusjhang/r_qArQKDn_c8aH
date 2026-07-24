@@ -18,6 +18,9 @@ import {
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
+const INPUT_CLASS =
+  'w-full rounded-md border border-border-strong bg-surface px-2.5 py-2 text-[13px] text-foreground focus:border-primary focus:shadow-[0_0_0_3px_var(--primary-weak)] focus:outline-none';
+
 export default function AllowlistPanel({
   emails,
   addEmail,
@@ -62,10 +65,16 @@ export default function AllowlistPanel({
       title="Signup allowlist"
       description="Only these emails can sign up."
       addFields={
-        <div className="field" style={{ flex: '1 1 220px' }}>
-          <label className="label" htmlFor="allowlist-email">Add email</label>
+        <div className="flex flex-col gap-1.5" style={{ flex: '1 1 220px' }}>
+          <label
+            className="text-[11px] font-bold uppercase tracking-[0.03em] text-muted-foreground"
+            htmlFor="allowlist-email"
+          >
+            Add email
+          </label>
           <input
             id="allowlist-email"
+            className={INPUT_CLASS}
             type="text"
             placeholder="name@company.com"
             value={list.addDraft.email}
@@ -81,7 +90,7 @@ export default function AllowlistPanel({
       emptyText="No emails yet. No one can sign up."
       renderRow={(e) => (
         <>
-          <span className="email-addr">{e.email}</span>
+          <span className="min-w-0 flex-1 truncate text-[13px]">{e.email}</span>
           <Button
             variant="app"
             onClick={() => list.remove(e.id)}

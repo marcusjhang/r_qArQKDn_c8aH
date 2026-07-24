@@ -12,6 +12,7 @@
 // below are derived from that one union rather than kept in sync by hand.
 
 import { useState } from 'react';
+import { Flag, Plus } from 'lucide-react';
 import {
   findUserIdByEmail,
   formatJobMeta,
@@ -38,7 +39,6 @@ import CandidateSearch from './CandidateSearch';
 import { useNow } from './hooks/useNow';
 import CsvMenu from './CsvMenu';
 import ImportDialog from './ImportDialog';
-import './hiring.css';
 
 export default function HiringApp({
   initial,
@@ -100,7 +100,7 @@ export default function HiringApp({
   );
 
   return (
-    <div className="ht-root">
+    <div className="relative flex h-[100dvh] w-full flex-col bg-background text-[14px] leading-[1.4] text-foreground antialiased [container-name:plan-preview] [container-type:inline-size]">
       <TopBar
         subtitle="Pipeline Tracker"
         userEmail={userEmail}
@@ -115,7 +115,7 @@ export default function HiringApp({
         }
       >
         <Button variant="appPrimary" onClick={view.openNewJob}>
-          ＋ New job
+          <Plus size={14} aria-hidden /> New job
         </Button>
         <JobTabs
           jobs={state.jobs}
@@ -127,10 +127,12 @@ export default function HiringApp({
         />
       </TopBar>
 
-      <div className="toolbar">
+      <div className="flex flex-wrap items-center gap-3 px-4 py-3">
         <div>
-          <h1 className="jobtitle">{job?.title ?? 'No jobs yet'}</h1>
-          <div className="jobmeta">{meta}</div>
+          <h1 className="m-0 text-[17px] font-bold">
+            {job?.title ?? 'No jobs yet'}
+          </h1>
+          <div className="text-[12px] text-muted-foreground">{meta}</div>
         </div>
         <CandidateSearch
           candidates={state.candidates}
@@ -140,10 +142,11 @@ export default function HiringApp({
           bands={state.bands}
           onSelect={view.openInJob}
         />
-        <div className="spacer" />
-        <label className="toggle">
+        <div className="min-w-0 flex-1" />
+        <label className="inline-flex select-none items-center gap-[7px] text-[12px] text-muted-foreground">
           <input
             type="checkbox"
+            className="h-[15px] w-[15px] accent-primary"
             checked={showRejected}
             onChange={(e) => view.setShowRejected(e.target.checked)}
           />{' '}
@@ -156,14 +159,14 @@ export default function HiringApp({
           disabled={!job}
           title="Choose the important traits scored on this job"
         >
-          ⚑ Traits{job ? ` · ${job.traits.length}` : ''}
+          <Flag size={14} aria-hidden /> Traits{job ? ` · ${job.traits.length}` : ''}
         </Button>
         <Button
           variant="appPrimary"
           onClick={view.openAddCandidate}
           disabled={!job}
         >
-          ＋ Add candidate
+          <Plus size={14} aria-hidden /> Add candidate
         </Button>
       </div>
 
