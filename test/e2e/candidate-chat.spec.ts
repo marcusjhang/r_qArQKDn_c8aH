@@ -54,11 +54,16 @@ test.describe('candidate discussion chat', () => {
     await first.click();
     await expect(composer).toHaveValue(new RegExp(`@${mentionName}`));
 
-    // Send and confirm the mention renders highlighted in the posted message.
+    // Confirm the mention renders highlighted in the JUST-POSTED message. Scope
+    // to the last bubble: the thread may already hold seeded messages (and a
+    // retry appends more), so asserting across every chat-mention is ambiguous.
     await chat.getByRole('button', { name: 'Send' }).click();
-    await expect(chat.locator('[data-testid="chat-messages"] [data-testid="chat-mention"]')).toContainText(
-      `@${mentionName}`
-    );
+    const lastBubble = chat
+      .locator('[data-testid="chat-messages"] [data-mid]')
+      .last();
+    await expect(
+      lastBubble.locator('[data-testid="chat-mention"]')
+    ).toContainText(`@${mentionName}`);
   });
 
   test('messages persist across a reload', async ({ page }) => {
