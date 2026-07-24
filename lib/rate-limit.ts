@@ -207,7 +207,19 @@ export class RateLimiter {
  */
 export function clientIp(req: Request): string {
   const fwd = req.headers.get('x-forwarded-for');
-  if (fwd) return fwd.split(',')[0]!.trim();
+  if (fwd) {
+    // Trust the RIGHTMOST entry — the address the nearest trusted proxy appended
+    // — not the leftmost, which is client-controlled: a caller can prepend an
+    // arbitrary `X-Forwarded-For` value and mint a fresh rate-limit bucket on
+    // every request, defeating the per-IP login/register throttle. This assumes
+    // a single trusted proxy hop in front of the app (as in this deployment); a
+    // multi-hop setup would need a configured trusted-hop count.
+    const parts = fwd
+      .split(',')
+      .map((p) => p.trim())
+      .filter(Boolean);
+    if (parts.length) return parts[parts.length - 1]!;
+  }
   return req.headers.get('x-real-ip')?.trim() || 'unknown';
 }
 

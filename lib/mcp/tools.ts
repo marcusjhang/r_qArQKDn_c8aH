@@ -87,12 +87,19 @@ function pgViolation(error: unknown): string | null {
   return null;
 }
 
-/** Flatten any thrown error into an actionable, human-readable message. */
+/** Flatten any thrown error into an actionable, caller-safe message. */
 function reason(error: unknown): string {
   if (error instanceof z.ZodError) {
     return error.issues.map((i) => i.message).join('; ');
   }
-  return pgViolation(error) ?? (error instanceof Error ? error.message : String(error));
+  const friendly = pgViolation(error);
+  if (friendly) return friendly;
+  // Any other throw (an unexpected DB/driver error) can carry the raw
+  // "Failed query: …" SQL with table/column names in its `.message`; never
+  // surface that to the MCP caller. Log the real error server-side for
+  // diagnosis and return an opaque sentence.
+  console.error('[mcp] unexpected tool error:', error);
+  return 'The operation failed. Please try again.';
 }
 
 /** Resolve the acting user, or throw a clean error if the token didn't carry one. */

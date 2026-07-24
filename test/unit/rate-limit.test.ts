@@ -142,10 +142,22 @@ describe('clientIp', () => {
   const req = (headers: Record<string, string>) =>
     new Request('http://x/', { headers });
 
-  it('takes the first hop from x-forwarded-for', () => {
+  it('takes the nearest-proxy (rightmost) hop from x-forwarded-for', () => {
+    // The rightmost entry is the address the trusted proxy appended; the
+    // leftmost is client-controlled and would let a caller spoof a fresh bucket.
     expect(clientIp(req({ 'x-forwarded-for': '1.2.3.4, 5.6.7.8' }))).toBe(
-      '1.2.3.4'
+      '5.6.7.8'
     );
+  });
+
+  it('ignores a spoofed leftmost value and trusts the appended one', () => {
+    expect(
+      clientIp(req({ 'x-forwarded-for': 'evil, 203.0.113.7' }))
+    ).toBe('203.0.113.7');
+  });
+
+  it('handles a single-value x-forwarded-for', () => {
+    expect(clientIp(req({ 'x-forwarded-for': '1.2.3.4' }))).toBe('1.2.3.4');
   });
 
   it('falls back to x-real-ip', () => {
