@@ -13,7 +13,7 @@ test.describe('settings edits', () => {
     await login(page);
     await page.goto('/settings');
 
-    const panel = page.locator('.settings-panel', {
+    const panel = page.locator('section', {
       hasText: 'Candidate sources'
     });
     await expect(panel).toBeVisible();
@@ -23,14 +23,14 @@ test.describe('settings edits', () => {
     await panel.getByRole('button', { name: 'Add source' }).click();
 
     // The new source shows up as a row in the list.
-    await expect(panel.locator('.email-list')).toContainText(sourceName);
+    await expect(panel.locator('[data-testid="editable-list"]')).toContainText(sourceName);
 
     // And it survives a reload (persisted via the server action).
     await page.reload();
     await expect(
       page
-        .locator('.settings-panel', { hasText: 'Candidate sources' })
-        .locator('.email-list')
+        .locator('section', { hasText: 'Candidate sources' })
+        .locator('[data-testid="editable-list"]')
     ).toContainText(sourceName);
   });
 
@@ -46,20 +46,20 @@ test.describe('settings edits', () => {
     // The form commits on Enter or the "Add" button.
     await page.getByRole('button', { name: 'Add', exact: true }).click();
 
-    const newColumn = page.locator(`.column[data-stage="${stageName}"]`);
+    const newColumn = page.locator(`[data-stage="${stageName}"]`);
     await expect(newColumn).toBeVisible();
 
     // Rename it inline: the column title is a contentEditable that commits on
     // blur (StageColumn -> useInlineEdit -> store.renameStage).
     const renamed = `${stageName} (renamed)`;
-    const title = newColumn.locator('.col-title');
+    const title = newColumn.locator('[title="Click to rename this stage"]');
     await title.click();
     await title.selectText();
     await page.keyboard.type(renamed);
     await title.blur();
 
     await expect(
-      page.locator(`.column[data-stage="${renamed}"]`)
+      page.locator(`[data-stage="${renamed}"]`)
     ).toBeVisible();
   });
 });

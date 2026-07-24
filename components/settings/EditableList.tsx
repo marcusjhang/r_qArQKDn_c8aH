@@ -9,6 +9,7 @@
 // `useEditableList`. Item rows key on `item.id`.
 
 import type { ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
 
 export interface EditableListItem {
@@ -52,25 +53,34 @@ export default function EditableList<T extends EditableListItem>({
   renderRow: (item: T) => ReactNode;
 }) {
   return (
-    <section className="settings-panel">
+    <section className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
       <div>
-        <p className="settings-section-title">{section}</p>
-        <h1 className="settings-title">{title}</h1>
-        <p className="settings-sub">{description}</p>
+        <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground">
+          {section}
+        </p>
+        <h1 className="mb-1 text-[17px] font-bold">{title}</h1>
+        <p className="text-[12.5px] text-muted-foreground">{description}</p>
       </div>
 
-      <form className="settings-add" onSubmit={onAddSubmit}>
+      <form className="flex flex-wrap items-end gap-3" onSubmit={onAddSubmit}>
         {addFields}
-        <button className="btn primary" type="submit" disabled={pending}>
+        <Button variant="appPrimary" type="submit" disabled={pending}>
           {addLabel}
-        </button>
+        </Button>
       </form>
       <FormError message={error} />
 
-      <ul className="email-list">
-        {items.length === 0 && <li className="email-empty">{emptyText}</li>}
+      <ul className="m-0 flex list-none flex-col gap-2 p-0" data-testid="editable-list">
+        {items.length === 0 && (
+          <li className="text-[12.5px] italic text-muted-foreground">
+            {emptyText}
+          </li>
+        )}
         {items.map((item) => (
-          <li className="email-row" key={item.id}>
+          <li
+            className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2"
+            key={item.id}
+          >
             {renderRow(item)}
           </li>
         ))}

@@ -9,9 +9,14 @@
 // (localhost behind the preview proxy), which the browser can't reach.
 
 import Link from 'next/link';
+import { ChevronDown } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { useDismissableMenu } from './hooks/useDismissableMenu';
+
+// The account-menu row shared by the nav links and the Sign out action.
+const USERMENU_ITEM =
+  'block rounded-sm px-2.5 py-2 text-left text-[13px] no-underline hover:bg-surface-2';
 
 /**
  * The account-menu destinations, defined once so each page's top bar composes
@@ -38,21 +43,35 @@ export default function UserMenu({
   }
 
   return (
-    <div className="usermenu" ref={menu.wrapRef}>
-      <Button variant="app" className="usermenu-trigger" {...menu.triggerProps}>
-        <span className="usermenu-email" title={email ?? undefined}>
+    <div className="relative flex items-center gap-2" ref={menu.wrapRef}>
+      <Button
+        variant="app"
+        className="max-w-[220px]"
+        {...menu.triggerProps}
+      >
+        <span
+          className="max-w-[180px] overflow-hidden text-ellipsis whitespace-nowrap text-[12px] text-muted-foreground"
+          title={email ?? undefined}
+        >
           {email ?? 'Account'}
         </span>
-        <span className="caret">▾</span>
+        <ChevronDown
+          size={12}
+          className="text-muted-foreground"
+          aria-hidden
+        />
       </Button>
       {menu.open && (
-        <div className="usermenu-menu" {...menu.menuProps}>
+        <div
+          className="absolute right-0 top-full z-[25] mt-1.5 flex min-w-[180px] flex-col rounded-md border border-border bg-surface p-1 shadow-ds"
+          {...menu.menuProps}
+        >
           {navItems.length > 0 && (
             <>
               {navItems.map((item) => (
                 <Link
                   key={item.href}
-                  className="usermenu-item"
+                  className={`${USERMENU_ITEM} text-foreground`}
                   role="menuitem"
                   href={item.href}
                   onClick={() => menu.close()}
@@ -60,11 +79,11 @@ export default function UserMenu({
                   {item.label}
                 </Link>
               ))}
-              <div className="usermenu-sep" />
+              <div className="mx-0.5 my-1 h-px bg-border" />
             </>
           )}
           <button
-            className="usermenu-item danger"
+            className={`${USERMENU_ITEM} text-sno`}
             role="menuitem"
             onClick={handleSignOut}
           >

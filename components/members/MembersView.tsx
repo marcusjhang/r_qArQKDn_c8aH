@@ -7,12 +7,12 @@
 // are passed in from the page (the @/app path isn't aliased).
 
 import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import TopBar from '@/components/hiring/TopBar';
 import { ACCOUNT_LINKS } from '@/components/hiring/UserMenu';
 import MembersPanel from './MembersPanel';
 import AllowlistPanel from './AllowlistPanel';
 import type { Member } from '@/lib/members-types';
-import '@/components/hiring/hiring.css';
 
 export default function MembersView({
   members,
@@ -28,17 +28,21 @@ export default function MembersView({
   removeEmail: (id: number) => Promise<void>;
 }) {
   return (
-    <div className="ht-root ht-settings">
+    <div className="flex h-[100dvh] w-full flex-col bg-background text-[14px] leading-[1.4] text-foreground antialiased">
       <TopBar
         subtitle="Members"
         userEmail={userEmail}
         navItems={[ACCOUNT_LINKS.settings]}
       />
 
-      <div className="settings-wrap">
-        <div className="settings-inner">
-          <Link className="linkbtn settings-back" href="/">
-            ← Dashboard
+      <div className="min-h-0 w-full flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-[640px] flex-col gap-4 px-4 py-6">
+          <Link
+            className="-ml-2 mb-2 inline-flex items-center gap-1.5 self-start rounded-md px-2.5 py-[7px] text-[13px] font-medium text-foreground no-underline hover:bg-surface-2"
+            href="/"
+          >
+            <ArrowLeft size={14} />
+            Dashboard
           </Link>
 
           <MembersPanel members={members} />

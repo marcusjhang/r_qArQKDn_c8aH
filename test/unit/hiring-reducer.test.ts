@@ -82,10 +82,12 @@ describe('saveFeedback', () => {
     expect(state.candidates[0].feedback).toHaveLength(0);
   });
 
-  it('updates the existing entry in place when the same user re-saves', () => {
+  it('updates the existing entry in place and re-stamps it to the current stage when the same user re-saves', () => {
     const state = makeState({
       candidates: [
         candidate({
+          // The candidate has since advanced to a later round.
+          stage: 'Offer',
           feedback: [feedback({ id: 5, byUser: 7, note: 'old', stage: 'Screen' })]
         })
       ]
@@ -102,12 +104,14 @@ describe('saveFeedback', () => {
 
     const fb = next.candidates[0].feedback;
     expect(fb).toHaveLength(1);
+    // Keeps its id, takes the new scores/note, and its stage moves to the
+    // candidate's current round (Offer) — the latest round it was scored in.
     expect(fb[0]).toEqual({
       id: 5,
       byUser: 7,
       traitScores: { Ownership: 3 },
       note: 'new',
-      stage: 'Screen'
+      stage: 'Offer'
     });
   });
 

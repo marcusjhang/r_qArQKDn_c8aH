@@ -58,24 +58,31 @@ export default function ThemeToggle() {
     }
   }
 
+  const optClass =
+    'cursor-pointer rounded-full border-none bg-transparent px-3.5 py-1.5 text-[13px] font-semibold text-muted-foreground aria-pressed:bg-primary aria-pressed:text-primary-foreground';
+
   return (
-    <div className="theme-toggle" role="group" aria-label="Theme">
+    <div
+      className="inline-flex gap-1.5 rounded-full border border-border-strong p-[3px]"
+      role="group"
+      aria-label="Theme"
+    >
       <button
-        className="theme-opt"
+        className={optClass}
         aria-pressed={theme === 'light'}
         onClick={() => apply('light')}
       >
         Light
       </button>
       <button
-        className="theme-opt"
+        className={optClass}
         aria-pressed={theme === 'dark'}
         onClick={() => apply('dark')}
       >
         Dark
       </button>
       <button
-        className="theme-opt"
+        className={optClass}
         aria-pressed={theme === 'system'}
         onClick={() => apply('system')}
       >
