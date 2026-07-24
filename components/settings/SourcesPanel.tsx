@@ -1,11 +1,7 @@
 'use client';
 
 // Manage the candidate-source picklist (the `sources` table) from /settings —
-// add, rename, and remove. Mirrors the allowlist panel's styling and its
-// useTransition write flow. Server actions return a result object so failures
-// (duplicate name, source in use) surface inline instead of throwing. The
-// add/edit/remove state machine and shell come from useEditableList /
-// EditableList.
+// add, rename, remove. Failures (duplicate name, source in use) surface inline.
 
 import EditableList from './EditableList';
 import { useEditableList } from './useEditableList';

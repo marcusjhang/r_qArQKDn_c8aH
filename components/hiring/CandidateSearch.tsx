@@ -1,13 +1,6 @@
 'use client';
 
-// Global candidate search for the board toolbar: one text box plus an ⓘ help
-// button. Type to match candidates across every job by name, role, owner,
-// source, stage, seniority or status; type a number to match years of
-// experience. Matches feed a single dropdown, and selecting one hands
-// (candidateId, jobId) back to HiringApp, which switches to that candidate's
-// job and opens their detail drawer. Purely client-side over the board state
-// already in the store; the match rule lives in the pure `searchCandidates`
-// helper so it stays testable.
+// Global candidate search for the board toolbar. Selecting a match hands (candidateId, jobId) back to HiringApp; the match rule lives in the pure searchCandidates helper.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -166,8 +159,7 @@ export default function CandidateSearch({
                   className={`flex cursor-pointer flex-col gap-[3px] rounded-[6px] border-0 px-2.5 py-2 text-left text-foreground hover:bg-surface-2 ${
                     i === activeIndex ? 'bg-surface-2' : 'bg-transparent'
                   }`}
-                  // onMouseDown (not onClick) so the pick fires before the input's
-                  // blur closes the menu.
+                  // onMouseDown (not onClick) so the pick fires before blur closes the menu.
                   onMouseDown={(e) => {
                     e.preventDefault();
                     choose(r.candidate.id, r.candidate.jobId);

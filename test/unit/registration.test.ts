@@ -1,11 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// registerUser reaches out to the allowlist, the db, and bcrypt directly (it is
-// the auth/user domain, not an injected reader), so we mock those boundaries.
-// The point of these tests is the enumeration-safety contract: only genuine
-// input-validation failures are reported distinctly (400); allowlist-miss,
-// duplicate, and fresh-signup all resolve to the same uniform { ok: true }
-// shape so the response can't be used to enumerate the allowlist or users.
+// registerUser reaches the allowlist, db, and bcrypt directly, so we mock those
+// boundaries. The point is the enumeration-safety contract: only input-validation
+// failures report distinctly (400); allowlist-miss, duplicate, and fresh signup
+// all resolve to the same uniform { ok: true } shape, so nothing can be enumerated.
 
 const isEmailAllowed = vi.fn<(email: string) => Promise<boolean>>();
 const insertValues = vi.fn();
@@ -94,10 +92,8 @@ describe('registerUser enumeration safety (uniform outcome)', () => {
   });
 
   it('still hashes the password on the non-allowlisted path (uniform timing)', async () => {
-    // The enumeration-timing fix hashes up front on EVERY validated request, so
-    // the allowlist-miss path pays the same bcrypt cost as a real signup and
-    // cannot be distinguished by response time. Assert the hash ran even though
-    // no account is created.
+    // The allowlist-miss path hashes up front too, so it pays the same bcrypt
+    // cost as a real signup and can't be timed apart. Assert the hash ran.
     isEmailAllowed.mockResolvedValue(false);
 
     await registerUser({
@@ -145,8 +141,8 @@ describe('registerUser enumeration safety (uniform outcome)', () => {
   });
 
   it('presents the allowlist-miss, duplicate, and success cases with the same client-visible shape', async () => {
-    // The `created` flag is server-side only; the *shape* the handler sees must
-    // be identical across the three cases so no enumeration oracle exists.
+    // `created` is server-side only; the shape the handler sees must be identical
+    // across the three cases so no enumeration oracle exists.
     isEmailAllowed.mockResolvedValue(false);
     const miss = await registerUser({
       email: 'miss@example.com',

@@ -1,13 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { login, loginToBoard } from './helpers';
 
-// Happy path: two settings edits.
-//   1. Add a candidate source from /settings (SourcesPanel -> addSource server
-//      action). The new source appears in the sources list.
-//   2. Add a pipeline stage on the board (AddStageForm -> store.addStage), then
-//      rename an existing stage inline (StageColumn contentEditable ->
-//      store.renameStage). These are the board-side "settings"-style edits that
-//      reshape a job's pipeline.
+// Happy path: two settings edits — add a candidate source from /settings, and
+// add + inline-rename a pipeline stage on the board.
 test.describe('settings edits', () => {
   test('add a candidate source from /settings', async ({ page }) => {
     await login(page);

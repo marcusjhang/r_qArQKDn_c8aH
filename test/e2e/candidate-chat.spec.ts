@@ -1,12 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { loginToBoard, openCandidate } from './helpers';
 
-// Happy path: the per-applicant discussion thread (ChatPanel) inside the detail
-// drawer. Messages load when a candidate opens, and sending appends the message
-// optimistically (store + chat/actions.postMessage) and persists it against the
-// candidate so the thread "follows the applicant". We also exercise the
-// @-mention autocomplete, which tags a teammate.
-//
+// Happy path: the per-applicant discussion thread in the detail drawer —
+// sending appends optimistically and persists, plus @-mention autocomplete.
 // Uses seeded candidate "Ava Chen" (Founding Engineer). See lib/hiring/seed.ts.
 const CANDIDATE = 'Ava Chen';
 
@@ -18,12 +14,9 @@ test.describe('candidate discussion chat', () => {
   test('sending a message appends it to the thread', async ({ page }) => {
     await openCandidate(page, CANDIDATE);
     const chat = page.locator('aside[role="dialog"]:not([inert]) [data-testid="chat"]');
-    // Match the static section header exactly — a bare getByText('Discussion')
-    // also matches the "Loading discussion…" placeholder (case-insensitive
-    // substring), a strict-mode violation. `exact` pins it to the header, which
-    // renders immediately. Then wait for that placeholder to clear so the
-    // optimistic post below isn't clobbered when the initial thread load
-    // resolves.
+    // `exact` pins to the header (a bare 'Discussion' also matches the
+    // "Loading discussion…" placeholder — a strict-mode violation). Then wait
+    // for that placeholder to clear so the optimistic post isn't clobbered.
     await expect(chat.getByText('Discussion', { exact: true })).toBeVisible();
     await expect(
       chat.locator('[data-testid="chat-empty"]', { hasText: 'Loading' })
@@ -78,10 +71,9 @@ test.describe('candidate discussion chat', () => {
 
     const message = `Persisted chat ${Date.now()}`;
     await chat.locator('textarea').fill(message);
-    // The post is optimistic; wait for the write itself to commit before
-    // reloading, or the reload aborts the in-flight server action and the
-    // reopened thread races the commit. Match the write by its unique body (the
-    // board/notification refetches are also POSTs), mirroring the feedback spec.
+    // Optimistic post: wait for the write to commit before reloading (else the
+    // reload aborts the in-flight action). Match by unique body since the
+    // board/notification refetches are also POSTs.
     const persisted = page.waitForResponse(
       (r) =>
         r.request().method() === 'POST' &&

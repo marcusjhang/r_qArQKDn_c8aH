@@ -1,5 +1,4 @@
-// The Hiring Pipeline Tracker is board-first and full-bleed: it renders its
-// own top bar, so the dashboard layout is just a pass-through wrapper.
+// Board-first, full-bleed: the tracker renders its own top bar, so this layout is a pass-through.
 export default function DashboardLayout({
   children
 }: {

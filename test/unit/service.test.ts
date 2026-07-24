@@ -8,9 +8,8 @@ import type {
   SeniorityBand
 } from '@/lib/hiring/types';
 
-// Because getBoard reads through an injected BoardReader (rather than the db
-// singleton), it can be exercised with in-memory rows — no database, no
-// mocking of Drizzle's query builder.
+// getBoard reads through an injected BoardReader, so it runs against in-memory
+// rows — no database, no mocking of Drizzle's query builder.
 describe('getBoard', () => {
   const jobs: Job[] = [
     {

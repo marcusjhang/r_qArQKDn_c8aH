@@ -1,11 +1,7 @@
 import 'server-only';
 
-// Password-change domain service. Owns the validation and business rules for an
-// existing account replacing its password (length check → bcrypt hash → store
-// and clear the mustChangePassword flag) so the /change-password server action
-// stays a thin adapter. Lives in the auth/user domain alongside registration.ts
-// and is free of any next/server dependency so the rules can be unit-tested
-// without the HTTP/action layer.
+// Password-change domain service — validation and rules for an account replacing
+// its password, kept free of next/server so the rules stay unit-testable.
 
 import { eq } from 'drizzle-orm';
 import { db, users } from '@/lib/db';
@@ -18,25 +14,15 @@ export interface ChangePasswordInput {
   confirmPassword: unknown;
 }
 
-/**
- * Result of a password-change attempt. `ok: false` carries a caller-facing
- * message the /change-password UI renders inline.
- */
+/** Result of a password-change attempt; `ok: false` carries a caller-facing message. */
 export type ChangePasswordResult =
   | { ok: true }
   | { ok: false; error: string };
 
 /**
- * Set a new password for an existing account and clear its mustChangePassword
- * flag (the seeded-account first-login gate — see lib/auth.ts + db/seed.ts).
- *
- * Validation order: confirmation match → minimum length → not a reuse of the
- * current password. The caller has already authenticated (the page is auth-gated
- * and the action confirms the session), so this deliberately does not re-check
- * the current password for auth — but it DOES reject re-setting the same value,
- * because the whole point of the forced change is to leave the shared seeded
- * default behind; without this a confined account could "change" `password` back
- * to `password`, clear the flag, and keep the well-known credential.
+ * Set a new password and clear the mustChangePassword flag (the first-login gate).
+ * Validation: confirm match → min length → not a reuse of the current password —
+ * the reuse check stops a confined account keeping the shared seeded default.
  */
 export async function changePassword(
   input: ChangePasswordInput
@@ -85,19 +71,10 @@ export interface UpdatePasswordInput {
 }
 
 /**
- * Change an already-authenticated account's password from /settings.
- *
- * This is the *voluntary* counterpart to `changePassword` above. Because it is
- * not the minimal-friction first-login flow, it verifies the current password
- * first: a signed-in-but-unattended session, or a stolen session token, must
- * not be able to silently take the account over by setting a new password
- * without knowing the old one.
- *
- * Validation order: confirmation match → minimum length → current password
- * correct → new password differs from the current one. Any failure returns a
- * caller-facing message and writes nothing. A generic "current password is
- * incorrect" is used for both a wrong password and the (defensive) missing-row
- * case, so nothing distinguishes them.
+ * Change an already-authenticated account's password from /settings. Unlike the
+ * first-login flow it verifies the current password first, so a stolen/unattended
+ * session can't take the account over. Validation: confirm match → min length →
+ * current correct → new differs; a wrong password and a missing row are indistinguishable.
  */
 export async function updatePassword(
   input: UpdatePasswordInput
@@ -124,8 +101,7 @@ export async function updatePassword(
     .from(users)
     .where(eq(users.id, input.userId))
     .limit(1);
-  // The caller is authenticated, so the row should exist; treat a miss like a
-  // failed check rather than leaking a distinct "no such account" outcome.
+  // Treat a missing row like a failed check, not a distinct "no such account" outcome.
   const currentValid =
     !!row && (await compare(currentPassword, row.passwordHash));
   if (!currentValid) {

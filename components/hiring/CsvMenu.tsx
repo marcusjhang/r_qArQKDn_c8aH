@@ -1,16 +1,6 @@
 'use client';
 
-// Toolbar "CSV ▾" menu with three actions:
-//   • Export candidates — the live board as a spreadsheet (reactive to whatever
-//     jobs/candidates exist right now).
-//   • Import candidates — opens the import dialog (owned by HiringApp).
-//   • Download template — an example import file with the column layout and
-//     example rows drawn from the user's own config.
-//
-// Presentational only: CSV *content* is built by the pure helpers in
-// lib/hiring/csv.ts; this component resolves state → string and hands the
-// browser a download (or delegates opening the import dialog to the parent).
-// Closes on outside-click / Escape like the other menus.
+// Toolbar "CSV ▾" menu: export / import / download-template. CSV content is built by the pure helpers in lib/hiring/csv.ts.
 
 import { useEffect, useRef, useState } from 'react';
 import {

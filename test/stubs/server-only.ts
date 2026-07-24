@@ -1,7 +1,3 @@
-// Test stub for the `server-only` package.
-//
-// The real `server-only` module throws when imported outside a React Server
-// Component, which would break unit tests that import server modules (e.g.
-// `lib/hiring/service.ts`). Vitest aliases `server-only` to this empty module
-// so those imports are inert under test. See `vitest.config.ts`.
+// Test stub for the `server-only` package: the real module throws outside a
+// React Server Component, so vitest aliases it to this inert module under test.
 export {};

@@ -1,7 +1,6 @@
 'use client';
 
-// Drawer header: favourite star, candidate name + job/source subline, and the
-// close control.
+// Drawer header: star, candidate name + job/source subline, close control.
 
 import { Star } from 'lucide-react';
 import { sourceName, type Candidate, type Job, type Source } from '@/lib/hiring';

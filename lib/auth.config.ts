@@ -1,24 +1,13 @@
 import type { NextAuthConfig } from 'next-auth';
-// Empty type-only import: anchors `next-auth/jwt` in this module's import graph
-// so the `declare module 'next-auth/jwt'` augmentation below resolves (TS only
-// augments an imported module). No named binding, so no unused-vars warning.
+// Empty type-only import anchors `next-auth/jwt` so the augmentation below resolves.
 import type {} from 'next-auth/jwt';
 import { NextResponse } from 'next/server';
 import { evaluateAccess } from '@/lib/auth-policy';
 
-// Edge-safe half of the auth config. It holds everything the middleware needs to
-// gate a request — the `authorized` page gate and the JWT session shaping — but
-// deliberately imports NOTHING Node-only (no `lib/db.ts`/postgres, no bcryptjs).
-//
-// `middleware.ts` runs on the Edge runtime and instantiates NextAuth from THIS
-// config alone, so the postgres client never enters the Edge bundle (which would
-// otherwise warn: "A Node.js module is loaded ('stream') … not supported in the
-// Edge Runtime"). `lib/auth.ts` spreads this config and adds the DB-backed
-// credentials provider for the Node runtime (the API route + server-side
-// `auth()`), where importing the database is fine.
-//
-// Session strategy is `jwt`, so the middleware can decode and shape the session
-// from the signed cookie without any provider or database lookup.
+// Edge-safe half of the auth config (the `authorized` gate + JWT session shaping),
+// importing nothing Node-only so `middleware.ts` builds the gate without pulling
+// postgres into the Edge bundle. The `jwt` strategy lets it decode the session
+// from the signed cookie without a DB lookup. `lib/auth.ts` adds the DB provider.
 
 declare module 'next-auth' {
   interface Session {
@@ -26,8 +15,7 @@ declare module 'next-auth' {
       id?: string;
       name?: string | null;
       email?: string | null;
-      // True while the account still has a seeded/default password it must
-      // replace before using the app (see the `authorized` gate below).
+      // True while the account still has a seeded/default password to replace.
       mustChangePassword?: boolean;
     };
   }
@@ -49,18 +37,12 @@ export const authConfig = {
   pages: {
     signIn: '/login'
   },
-  // No providers here: the credentials provider's `authorize` reads the DB and
-  // hashes with bcrypt, both Node-only. It is added in `lib/auth.ts`. The
-  // middleware doesn't need a provider — it only verifies the existing JWT.
+  // No providers here — the DB/bcrypt credentials provider is Node-only, added in `lib/auth.ts`.
   providers: [],
   session: { strategy: 'jwt' },
   callbacks: {
-    // Runs in middleware for every matched route (see middleware.ts). Thin
-    // adapter over the framework-free `evaluateAccess` policy (lib/auth-policy):
-    // it gates the whole app behind login (only the sign-in page is public) and
-    // confines a seeded default-password account (mustChangePassword) to
-    // /change-password until it picks a new one. Here we only translate the
-    // decision into what NextAuth expects — the decision itself is unit-tested.
+    // Runs in middleware for every matched route: translates the framework-free
+    // `evaluateAccess` policy decision into what NextAuth expects.
     authorized({ auth, request }) {
       const decision = evaluateAccess({
         pathname: request.nextUrl.pathname,

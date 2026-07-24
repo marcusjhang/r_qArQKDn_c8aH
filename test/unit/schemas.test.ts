@@ -214,9 +214,8 @@ describe('zJobDescription', () => {
   });
 });
 
-// zTraitName is not exported on its own, so its per-element rules (length and
-// the 1-2 word refine) are exercised through the exported zTraitList, which
-// wraps zTraitName for every entry.
+// zTraitName isn't exported, so its per-element rules are exercised through the
+// exported zTraitList, which wraps it for every entry.
 describe('zTraitList', () => {
   it('accepts a list of valid 1-2 word traits', () => {
     expect(zTraitList.safeParse(['Ownership', 'Systems design']).success).toBe(
@@ -342,9 +341,8 @@ describe('feedbackInsertSchema', () => {
   });
 });
 
-// zTraitScores (z.record(zTraitName, zRating)) is not exported on its own, so
-// its key- and value-validation is exercised through feedbackInsertSchema,
-// whose `traitScores` field is a zTraitScores.
+// zTraitScores isn't exported, so its key/value validation is exercised through
+// feedbackInsertSchema, whose `traitScores` field is a zTraitScores.
 describe('zTraitScores (via feedbackInsertSchema.traitScores)', () => {
   const parse = (traitScores: unknown) =>
     feedbackInsertSchema.safeParse({ byUser: 1, note: '', traitScores });

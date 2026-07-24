@@ -1,14 +1,6 @@
 'use server';
 
-// Manage the signup allowlist from /members. The allowlist governs who can
-// create an account and become a member, so it lives with the members directory
-// (moved here from /settings).
-//
-// The middleware only gates *page* routes; a Server Action can be POSTed to the
-// public /login route by action id and bypass that gate, so these actions guard
-// themselves with requireUser(). This is the security boundary on the allowlist:
-// without it an unauthenticated caller could allowlist their own email and then
-// self-register — a full auth bypass.
+// Signup-allowlist actions for /members; each self-guards with requireUser() because Server Actions bypass the middleware page gate (else an anonymous caller could self-allowlist + self-register).
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';

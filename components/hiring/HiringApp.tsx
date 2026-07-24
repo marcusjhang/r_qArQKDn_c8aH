@@ -1,15 +1,6 @@
 'use client';
 
-// App shell for the Hiring Pipeline Tracker: brand + job tabs, the toolbar
-// (job title, terminal-state toggle, quick-add), the board, and the detail
-// slide-over. Board-first: the board is the home screen and the drawer opens
-// over it so pipeline context stays on screen.
-//
-// Domain state (jobs/candidates/feedback) lives in the TanStack-backed
-// useHiringStore; the transient view state (active job, terminal-cards toggle,
-// and which single overlay is open) lives in useBoardView, which wraps the pure
-// overlay state machine (lib/hiring/overlay.ts). The per-overlay render props
-// below are derived from that one union rather than kept in sync by hand.
+// App shell for the Hiring Pipeline Tracker. Domain state lives in useHiringStore; transient view state (active job, overlay) in useBoardView.
 
 import { useState } from 'react';
 import { Flag, Plus } from 'lucide-react';
@@ -56,8 +47,7 @@ export default function HiringApp({
   const { activeJob, showRejected, overlay, actions: view } = useBoardView(
     state.jobs
   );
-  // The per-job Traits/JD editor is a small self-contained modal, kept as local
-  // state rather than folded into the board overlay machine.
+  // The Traits/JD editor is kept as local state, not folded into the overlay machine.
   const [editingTraits, setEditingTraits] = useState(false);
   // Shared clock for time-in-stage / overdue UI (null until mounted — see hook).
   const now = useNow();
@@ -72,16 +62,13 @@ export default function HiringApp({
 
   const job = jobById(state.jobs, activeJob) ?? state.jobs[0];
 
-  // The logged-in user's id (matched by email) — used to default the feedback
-  // author to whoever is actually leaving the review.
+  // The logged-in user's id (matched by email) — defaults the feedback author.
   const currentUserId = findUserIdByEmail(state.users, userEmail);
 
   // Thin adapter so JobTabs keeps its (jobId) => number prop contract.
   const jobLiveCount = (jobId: number) => liveCount(state.candidates, jobId);
 
-  // The signed-in owner's overdue candidates, surfaced in the notification bell.
-  // Derived from the live clock (null until mounted) so it tracks the same
-  // overdue state as the card/drawer warnings and clears when a candidate moves.
+  // The signed-in owner's overdue candidates, surfaced in the notification bell (derived from the live clock).
   const stageAlerts =
     now == null || currentUserId == null
       ? []

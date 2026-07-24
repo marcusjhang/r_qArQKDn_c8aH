@@ -33,9 +33,8 @@ const SEED_ALLOWED_EMAILS = [
 // Login accounts created on seed. Override the shared password via SEED_PASSWORD.
 // One account per allowlisted user; all share the same seeded password.
 const SEED_PASSWORD = process.env.SEED_PASSWORD ?? 'password';
-// Names are stored as discrete first/last parts (editable from /settings); the
-// display name and avatar initials (first word + last word) are derived from
-// them — e.g. "Ben Ong" → BO, "Heng Hong Lee" → HL.
+// Names are stored as discrete first/last parts; display name and initials are
+// derived from them (e.g. "Ben Ong" → BO, "Heng Hong Lee" → HL).
 const SEED_ACCOUNTS = [
   { email: 'marcusajh0802@gmail.com', firstName: 'Marcus', lastName: 'Ang' },
   { email: 'benong@lightsprint.ai', firstName: 'Ben', lastName: 'Ong' },
@@ -51,13 +50,10 @@ async function main() {
   const client = postgres(process.env.DATABASE_URL);
   const db = drizzle(client);
 
-  // Seed login accounts idempotently. A BRAND-NEW account is created with the
-  // shared default password and mustChangePassword=true, so its first login is
-  // confined to /change-password until the user sets their own (see lib/auth.ts
-  // + SECURITY.md). An EXISTING account is left alone — re-seeding (which runs
-  // on every boot) must NOT reset the password or re-raise mustChangePassword,
-  // or a user's own password would be silently reverted on every redeploy. Only
-  // the display name is kept in sync. To force a reset, delete the row first.
+  // Seed login accounts idempotently. New accounts get the shared default
+  // password and mustChangePassword=true; existing accounts keep their own
+  // password/flag (only the display name is synced) so a redeploy never reverts
+  // a user's password. To force a reset, delete the row first.
   const passwordHash = await hash(SEED_PASSWORD, 12);
   for (const acc of SEED_ACCOUNTS) {
     const [existing] = await db
@@ -66,8 +62,7 @@ async function main() {
       .where(eq(users.email, acc.email))
       .limit(1);
     if (existing) {
-      // Keep the display name current, but preserve the account's own password
-      // and mustChangePassword state across re-seeds.
+      // Sync the display name only; preserve the account's password + flag.
       await db
         .update(users)
         .set({ firstName: acc.firstName, lastName: acc.lastName })
@@ -92,16 +87,15 @@ async function main() {
   console.log(`Ensured ${SEED_ALLOWED_EMAILS.length} allowlisted emails.`);
 
   // Seed the candidate sources (idempotent via the unique name constraint).
-  // Always ensured — the source picklist is read from this table, so it must
-  // hold the canonical options even when the hiring pipeline seed is skipped.
+  // Always ensured — the source picklist reads this table even when the
+  // pipeline seed below is skipped.
   for (const name of SEED_SOURCES) {
     await db.insert(sources).values({ name }).onConflictDoNothing();
   }
   console.log(`Ensured ${SEED_SOURCES.length} candidate sources.`);
 
   // Seed the seniority bands (idempotent via the unique min_years constraint).
-  // The board reads this table for the years-of-experience → label mapping, so
-  // ensure the defaults exist even when the pipeline seed below is skipped.
+  // The board reads this table for the years → label mapping.
   for (const band of SEED_SENIORITY_BANDS) {
     await db
       .insert(seniorityBands)
@@ -110,9 +104,8 @@ async function main() {
   }
   console.log(`Ensured ${SEED_SENIORITY_BANDS.length} seniority bands.`);
 
-  // Ensure the single pipeline_settings row exists (the universal stage-warn
-  // threshold). Idempotent: insert the default-bearing row only when the table
-  // is empty; the column default supplies the starting value.
+  // Ensure the single pipeline_settings row (the universal stage-warn threshold)
+  // exists — inserted only when the table is empty; the column default seeds it.
   const [{ value: settingsCount }] = await db
     .select({ value: count() })
     .from(pipelineSettings);
@@ -217,11 +210,8 @@ async function main() {
       }
     }
 
-    // Seed the discussion threads and their @-mention notifications. Each
-    // message resolves its candidate by name and author by email; each mention
-    // inserts a mentions row (unread unless `read`) so the notification inbox
-    // demonstrates on a fresh boot. Backdated per `daysAgo` so threads read in
-    // chronological order.
+    // Seed the discussion threads and their @-mention notifications, resolving
+    // candidate by name and author by email, backdated per `daysAgo`.
     let messageCount = 0;
     let mentionCount = 0;
     for (const msg of SEED_MESSAGES) {

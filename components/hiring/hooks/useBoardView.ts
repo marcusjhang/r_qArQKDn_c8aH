@@ -1,15 +1,6 @@
 'use client';
 
-// The board shell's view state, extracted from HiringApp so the component stays
-// presentational. Owns the three pieces of transient, non-persisted board state
-// — the active job, the terminal-cards toggle, and which single overlay is open
-// — and the one rule that ties the first to the domain data (fall back to
-// another job when the active one is deleted).
-//
-// The overlay itself is the pure discriminated-union state machine in
-// lib/hiring/overlay.ts (overlayReducer); this hook is the imperative shell that
-// pairs it with the active-job/showRejected state and exposes memoized actions,
-// mirroring useHiringStore's `{ state, actions }` shape for the domain data.
+// The board shell's transient view state (active job, terminal-cards toggle, open overlay). The overlay is the pure state machine in lib/hiring/overlay.ts; this hook is its imperative shell.
 
 import { useEffect, useMemo, useReducer, useState } from 'react';
 import {
@@ -29,15 +20,13 @@ export interface BoardViewActions {
   openImport: () => void;
   /** Open a candidate's detail from the board — no message to focus. */
   openFromBoard: (candidateId: number) => void;
-  /** Open a candidate's detail from a notification: switch to their job (when
-   *  it still exists) and remember the message to scroll to. */
+  /** Open a candidate's detail from a notification, remembering the message to scroll to. */
   openFromNotification: (
     candidateId: number,
     jobId: number,
     messageId: number
   ) => void;
-  /** Open a candidate picked from global search: switch to their job (when it
-   *  still exists) and open the detail drawer with no message to focus. */
+  /** Open a candidate picked from global search, switching to their job. */
   openInJob: (candidateId: number, jobId: number) => void;
   close: () => void;
 }

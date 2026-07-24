@@ -1,13 +1,6 @@
 import 'server-only';
 
-// AI trait recommender. Given a job title and (optionally) a pasted job
-// description, asks Claude for a focused few important traits a hiring team should
-// score candidates on. Kept intentionally small: one structured-output call,
-// no streaming, no conversation state.
-//
-// Credentials come from the environment (ANTHROPIC_API_KEY, optional
-// ANTHROPIC_BASE_URL for a gateway). The model is overridable via
-// TRAIT_AI_MODEL and defaults to Claude Opus 4.8.
+// AI trait recommender: one structured-output Claude call (no streaming/state) for a role's important traits. Config via env — ANTHROPIC_API_KEY, optional ANTHROPIC_BASE_URL, model overridable via TRAIT_AI_MODEL.
 
 import Anthropic from '@anthropic-ai/sdk';
 import {
@@ -18,11 +11,7 @@ import {
 
 const MODEL = process.env.TRAIT_AI_MODEL || 'claude-opus-4-8';
 
-/**
- * Whether the AI recommender is configured (an API key is present). Read
- * server-side and passed to the client as a plain boolean so the UI can hide
- * the "Suggest from JD" affordance entirely when there is no key to call.
- */
+/** Whether the AI recommender is configured (an API key is present), so the UI can hide the "Suggest from JD" affordance when there's no key. */
 export function traitAiEnabled(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY);
 }
@@ -40,11 +29,7 @@ const TRAIT_SCHEMA = {
   additionalProperties: false
 } as const;
 
-/**
- * Recommend a few important traits for a role, ordered most-important-first.
- * Returns a de-duplicated, length-bounded list (≤ MAX_TRAIT_SUGGESTIONS).
- * Throws if the AI backend is not configured or the call fails.
- */
+/** Recommend a few important traits for a role, most-important-first (deduped, ≤ MAX_TRAIT_SUGGESTIONS). Throws if the AI backend is unconfigured or the call fails. */
 export async function suggestTraits(
   title: string,
   description: string
@@ -88,7 +73,6 @@ export async function suggestTraits(
   } catch {
     return [];
   }
-  // The trim/length/word-count/dedupe/cap rule lives in one tested place; this
-  // wrapper stays a thin I/O shell over the model call.
+  // The trim/length/dedupe/cap rule lives in one tested place; this stays a thin I/O shell.
   return normalizeTraitSuggestions((parsed as { traits?: unknown })?.traits);
 }

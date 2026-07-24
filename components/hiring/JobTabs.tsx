@@ -1,8 +1,6 @@
 'use client';
 
-// Job switcher. Shows a capped set of inline tabs — starred jobs first, then the
-// oldest — and puts everything else in a dropdown that also lets you star/unstar
-// (pin as a tab) and delete jobs. The active job is always kept visible.
+// Job switcher: a capped set of inline tabs (starred first) plus a dropdown for the rest; the active job is always kept visible.
 
 import { useId, useRef, useState } from 'react';
 import { partitionJobTabs, MAX_FAVORITES, type Job } from '@/lib/hiring';
@@ -30,9 +28,7 @@ export default function JobTabs({
   const [confirmId, setConfirmId] = useState<number | null>(null);
   const menu = useDismissableMenu({ onDismiss: () => setConfirmId(null) });
   const confirmBaseId = useId();
-  // The ✕ that opened the confirm, so focus can return to it on Cancel — the
-  // confirm's Cancel autoFocuses on open (moving focus into the dialog), and
-  // this restores it, giving the `role="dialog"` the focus round-trip it implies.
+  // The ✕ that opened the confirm, so focus returns to it on Cancel.
   const confirmTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   function closeConfirm() {
@@ -41,8 +37,7 @@ export default function JobTabs({
     confirmTriggerRef.current = null;
   }
 
-  // Starred first (stable — jobs already come oldest-first), cap the inline set,
-  // then guarantee the active job is shown even if it would otherwise overflow.
+  // Starred first, cap the inline set, then guarantee the active job is shown.
   const { sorted, inline, overflow, favCount } = partitionJobTabs(
     jobs,
     activeJob,
@@ -206,9 +201,7 @@ export default function JobTabs({
                     </button>
                     <button
                       type="button"
-                      // autoFocus moves focus into the confirmation on open so a
-                      // keyboard / screen-reader user lands on the safe (Cancel)
-                      // choice and the dialog is announced.
+                      // autoFocus lands keyboard / screen-reader users on the safe (Cancel) choice and announces the dialog.
                       autoFocus
                       className="rounded-sm border-0 bg-transparent px-1.5 py-1 text-xs text-muted-foreground hover:bg-surface-2"
                       onClick={closeConfirm}

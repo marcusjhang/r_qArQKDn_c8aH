@@ -1,15 +1,6 @@
 import 'server-only';
 
-// The data dependency the chat actions/queries read and write through — the
-// injectable seam that mirrors `service.ts`'s `BoardReader`. The chat logic is
-// expressed against this `ChatStore` interface rather than the `db` singleton,
-// so it can be unit-tested with an in-memory fake — no live database and no
-// `DATABASE_URL`. Production passes the Drizzle-backed implementation (the
-// default `drizzleChatStore`); tests pass a fake.
-//
-// `db` is imported lazily inside each method (never at module load), so merely
-// importing this module — or the ./actions / ./queries adapters that default to
-// it — does not construct the postgres client or require `DATABASE_URL`.
+// The injectable `ChatStore` seam the chat logic reads/writes through (mirrors service.ts's `BoardReader`), so it's unit-testable with an in-memory fake. `db` is imported lazily per method, so importing this module doesn't construct the postgres client.
 
 import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 import type { Notification } from '../types';
@@ -36,12 +27,7 @@ export interface MessageRow {
   }[];
 }
 
-/**
- * The reads and writes the chat entry points depend on. Every method that acts
- * on a caller's notifications takes the resolved `userId` and scopes the write
- * to it — the authorization guard lives in the query itself, not in a check the
- * caller could forget. A fake implementation can assert that scoping directly.
- */
+/** The reads/writes the chat entry points depend on. Notification methods take the resolved `userId` and scope the write to it, so the authorization guard lives in the query itself. */
 export interface ChatStore {
   /** Resolve the numeric id of the account with `email`, or null if unknown. */
   userIdByEmail(email: string): Promise<number | null>;
@@ -51,39 +37,26 @@ export interface ChatStore {
   messageById(id: number): Promise<MessageRow | null>;
   /** Return the subset of `ids` that are real accounts. */
   existingUserIds(ids: number[]): Promise<number[]>;
-  /**
-   * Insert a message and its (already validated/deduped) mention targets in one
-   * transaction; return the new message id.
-   */
+  /** Insert a message and its (already validated/deduped) mention targets in one transaction; return the new message id. */
   insertMessage(input: {
     candidateId: number;
     authorId: number;
     body: string;
     mentionUserIds: number[];
   }): Promise<number>;
-  /**
-   * Mark one mention read — ONLY when it belongs to `userId`. A mention that
-   * targets another account must not be affected. Returns nothing (idempotent).
-   */
+  /** Mark one mention read — ONLY when it belongs to `userId` (idempotent). */
   markMentionRead(mentionId: number, userId: number): Promise<void>;
   /** Mark every unread mention owned by `userId` as read. */
   markAllMentionsRead(userId: number): Promise<void>;
-  /**
-   * Dismiss (clear from the inbox) one mention — ONLY when it belongs to
-   * `userId`. Same per-user guard as `markMentionRead`; idempotent.
-   */
+  /** Dismiss one mention from the inbox — ONLY when it belongs to `userId` (idempotent). */
   dismissMention(mentionId: number, userId: number): Promise<void>;
   /** Dismiss every not-yet-dismissed mention owned by `userId`. */
   dismissAllMentions(userId: number): Promise<void>;
-  /**
-   * The not-dismissed mentions targeting `userId`, newest first — the
-   * notification inbox.
-   */
+  /** The not-dismissed mentions targeting `userId`, newest first — the notification inbox. */
   notificationsFor(userId: number, limit: number): Promise<Notification[]>;
 }
 
-// Drizzle-backed store. `db` (and its tables) are imported lazily inside each
-// method so this module can be imported in a Node unit test without a database.
+// Drizzle-backed store; `db` is imported lazily per method so this module imports without a database.
 export const drizzleChatStore: ChatStore = {
   async userIdByEmail(email) {
     const { db, users } = await import('@/lib/db');
@@ -175,8 +148,7 @@ export const drizzleChatStore: ChatStore = {
     await db
       .update(mentions)
       .set({ readAt: new Date() })
-      // The userId predicate IS the authorization guard: a caller can only
-      // clear a mention that targets their own account.
+      // The userId predicate IS the authorization guard: only the target's own mention.
       .where(and(eq(mentions.id, mentionId), eq(mentions.userId, userId)));
   },
 
@@ -193,8 +165,7 @@ export const drizzleChatStore: ChatStore = {
     await db
       .update(mentions)
       .set({ dismissedAt: new Date() })
-      // The userId predicate IS the authorization guard: a caller can only
-      // clear a mention that targets their own account.
+      // The userId predicate IS the authorization guard: only the target's own mention.
       .where(and(eq(mentions.id, mentionId), eq(mentions.userId, userId)));
   },
 

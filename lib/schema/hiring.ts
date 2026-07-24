@@ -1,7 +1,5 @@
-// Hiring Pipeline Tracker domain schema: the jobs → candidates → feedback
-// tables plus the relational wiring for the db.query API. Reads go through
-// lib/hiring/service.ts; writes through the zod-validated server actions in
-// lib/hiring/actions.ts.
+// Hiring Pipeline Tracker domain schema: the jobs → candidates → feedback tables
+// plus the relational wiring for the db.query API.
 
 import {
   pgTable,
@@ -27,12 +25,11 @@ import {
 } from '../hiring/primitives';
 import { users } from './auth';
 
-// Orthogonal candidate status (Decision 3), built from the single-sourced
-// STATUSES tuple so the DB enum and the TS Status type can never diverge.
+// Candidate status, built from the single-sourced STATUSES tuple so the DB enum
+// and the TS Status type can never diverge.
 export const candidateStatusEnum = pgEnum('candidate_status', STATUSES);
 
-// Candidate sources (where a candidate came from) — a seeded lookup table, not
-// a hardcoded list, so the options are DB-driven like the users picklist.
+// Candidate sources — a seeded, DB-driven lookup table, not a hardcoded list.
 export const sources = pgTable(
   'sources',
   {
@@ -41,18 +38,15 @@ export const sources = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull()
   },
   (t) => ({
-    // Case-insensitive uniqueness — "LinkedIn" and "linkedin" are the same
-    // source. Backs the client's case-insensitive dedup at the DB level.
+    // Case-insensitive uniqueness — "LinkedIn" and "linkedin" are the same source.
     nameLowerUnique: uniqueIndex('sources_name_lower_unique').on(
       sql`lower(${t.name})`
     )
   })
 );
 
-// Seniority bands — the configurable years-of-experience → label mapping,
-// managed from /settings and seeded in db/seed.ts. A candidate's band is
-// derived (never stored) by finding the highest `minYears` threshold its
-// yearsExperience meets (see seniorityFor). DB-driven like sources/users.
+// Seniority bands — the configurable years-of-experience → label mapping. A
+// candidate's band is derived (never stored) from the highest `minYears` it meets.
 export const seniorityBands = pgTable('seniority_bands', {
   id: serial('id').primaryKey(),
   label: text('label').notNull(),
@@ -61,12 +55,9 @@ export const seniorityBands = pgTable('seniority_bands', {
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
-// Pipeline settings — a single row holding the one universal "warn after N days
-// in a stage" threshold, managed from /settings and seeded in db/seed.ts. The
-// board flags a candidate as overdue once they have sat in their CURRENT stage
-// for at least `stageWarnDays` whole days, applied uniformly to every stage (no
-// per-stage config). Singleton: the seed ensures exactly one row and the update
-// action edits it in place.
+// Pipeline settings — a singleton row holding the universal "warn after N days in
+// a stage" threshold; the board flags a candidate overdue once they've sat in
+// their current stage that many whole days, applied uniformly to every stage.
 export const pipelineSettings = pgTable(
   'pipeline_settings',
   {
@@ -78,8 +69,7 @@ export const pipelineSettings = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull()
   },
   (t) => ({
-    // At least a day, at most MAX_STAGE_WARN_DAYS — DB-level teeth so a bad
-    // write can't slip past the zod validator.
+    // DB-level teeth (1..MAX_STAGE_WARN_DAYS) so a bad write can't slip past the zod validator.
     warnRange: check(
       'pipeline_settings_warn_range',
       sql`${t.stageWarnDays} between 1 and ${sql.raw(String(MAX_STAGE_WARN_DAYS))}`
@@ -87,17 +77,14 @@ export const pipelineSettings = pgTable(
   })
 );
 
-// A job owns its own ordered, per-job stage list (Decision 1), stored as an
-// ordered JSON array of stage names so candidates can key off the stage name.
+// A job owns its own ordered, per-job stage list so candidates key off the stage name.
 export const jobs = pgTable('jobs', {
   id: serial('id').primaryKey(),
   title: text('title').notNull(),
-  // Native text[] (not jsonb) — a real array, so it round-trips cleanly and
-  // stays inspectable/queryable in SQL.
+  // Native text[] (not jsonb) so it round-trips cleanly and stays queryable in SQL.
   stages: text('stages').array().notNull(),
-  // Ordered per-job trait list — the qualities candidates are scored on. Array
-  // order IS the ranking (index 0 = rank #1 = most important), driving the
-  // weighted overall score. Empty by default; seeded/AI-suggested per job.
+  // Ordered per-job trait list; array order IS the ranking (index 0 = most
+  // important), driving the weighted overall score.
   traits: text('traits').array().notNull().default(sql`'{}'::text[]`),
   // Pasteable job description (JD); the AI trait suggester reads it.
   description: text('description'),
@@ -116,11 +103,8 @@ export const candidates = pgTable(
       .references(() => jobs.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     stage: text('stage').notNull(),
-    // When the candidate entered its CURRENT stage. Set on insert and reset on
-    // every stage change (see moveStage / setStatus in actions.ts), so it
-    // always measures time-in-current-stage — the basis for the overdue
-    // warning (see stageOverdue in helpers.ts). Renaming/reordering a stage
-    // does NOT move the candidate, so it leaves this untouched.
+    // When the candidate entered its CURRENT stage; reset on every stage change,
+    // so it always measures time-in-current-stage (the basis for the overdue warning).
     stageEnteredAt: timestamp('stage_entered_at').defaultNow().notNull(),
     // The accountable owner — a user account (see lib/schema/auth.ts).
     owner: integer('owner')
@@ -133,13 +117,10 @@ export const candidates = pgTable(
     // Optional profile links (nullable — empty input stays NULL).
     linkedinUrl: text('linkedin_url'),
     githubUrl: text('github_url'),
-    // Seniority proxy: whole years of experience. Nullable — null means
-    // "unspecified" (the seniority band is derived from this in the UI). The
-    // CHECK below backs the 0–MAX bound at the DB level.
+    // Whole years of experience; nullable ("unspecified"). The CHECK below backs the 0–MAX bound.
     yearsExperience: integer('years_experience'),
     status: candidateStatusEnum('status').notNull().default('active'),
-    // Starred candidates float to the top of their column as highlighted
-    // standouts (unbounded — unlike starred jobs, they don't pin as tabs).
+    // Starred candidates float to the top of their column (unbounded, unlike starred jobs).
     starred: boolean('starred').notNull().default(false),
     createdAt: timestamp('created_at').defaultNow().notNull()
   },
@@ -150,13 +131,12 @@ export const candidates = pgTable(
         String(MAX_YEARS_EXPERIENCE)
       )}`
     ),
-    // Postgres doesn't auto-index FKs; the board's per-job reads and the
-    // job-delete cascade filter candidates by job_id, so index it.
+    // FKs aren't auto-indexed; per-job reads and the delete cascade filter by job_id.
     jobIdIdx: index('candidates_job_id_idx').on(t.jobId)
   })
 );
 
-// One entry per interviewer (Decision 7).
+// One entry per interviewer per candidate.
 export const feedback = pgTable(
   'feedback',
   {
@@ -168,33 +148,27 @@ export const feedback = pgTable(
     byUser: integer('by_user')
       .notNull()
       .references(() => users.id),
-    // Per-trait scores (1–4) keyed by the job's trait name. The candidate's
-    // headline score is the rank-weighted average of these across entries; the
-    // old single verdict rating was dropped in favour of this.
+    // Per-trait scores (1–4) keyed by the job's trait name; the candidate's
+    // headline score is the rank-weighted average of these across entries.
     traitScores: jsonb('trait_scores')
       .$type<TraitScores>()
       .notNull()
       .default({}),
-    // The candidate's stage when this entry was left ("given at"), so feedback
-    // stays anchored to the round it was gathered in even after the candidate
-    // advances.
+    // The candidate's stage when this entry was left, so feedback stays anchored
+    // to the round it was gathered in even after the candidate advances.
     stage: text('stage').notNull().default(''),
     note: text('note').notNull().default(''),
     createdAt: timestamp('created_at').defaultNow().notNull()
   },
   (t) => ({
-    // One entry per interviewer per candidate (Decision 7) — enforced, not just
-    // documented. Re-scoring requires editing the existing entry, not a 2nd row.
+    // One entry per interviewer per candidate — re-scoring edits the existing row.
     oneByUserPerCandidate: unique('feedback_candidate_by_user_unique').on(
       t.candidateId,
       t.byUser
     ),
-    // DB-level teeth for the trait-score value-set: every value in the jsonb map
-    // must be an integer 1..4 (the RATING_VALUES scale that $type<TraitScores>()
-    // pins at the type level). Backs the zod validator so a write that bypasses
-    // it (raw SQL, a future path) still can't persist an out-of-range score.
-    // Empty `{}` (the default) trivially passes. Postgres CHECKs can't use a
-    // subquery, so this asserts "no value fails the scale" via jsonb_path_exists.
+    // DB-level teeth for the trait-score value-set: every jsonb value must be an
+    // integer 1..4, so a write bypassing the zod validator still can't persist an
+    // out-of-range score. Asserts "no value fails the scale" via jsonb_path_exists.
     traitScoresValues: check(
       'feedback_trait_scores_values',
       sql`not jsonb_path_exists(${t.traitScores}, '$.* ? (@.type() != "number" || @ < 1 || @ > 4 || @.floor() != @)')`
@@ -202,10 +176,8 @@ export const feedback = pgTable(
   })
 );
 
-// Per-candidate discussion thread (the "chat" that follows the applicant).
-// One row per message; authored by a login account and pinned to a candidate,
-// so it survives stage moves and cascades away only when the candidate is
-// deleted.
+// Per-candidate discussion thread. One row per message, pinned to a candidate so
+// it survives stage moves and cascades away only when the candidate is deleted.
 export const messages = pgTable(
   'messages',
   {
@@ -221,18 +193,14 @@ export const messages = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull()
   },
   (t) => ({
-    // Every thread read (threadFor) filters by candidate_id; FKs aren't
-    // auto-indexed, so a thread open would otherwise scan the whole table.
+    // Thread reads filter by candidate_id; FKs aren't auto-indexed.
     candidateIdIdx: index('messages_candidate_id_idx').on(t.candidateId)
   })
 );
 
-// One row per (message, tagged account). Drives the notification inbox:
-// `readAt` is null until the tagged user opens the notification, and
-// `dismissedAt` is null until they clear it from the inbox. Both are soft flags
-// (never a delete) so the row still records who was tagged, which drives the
-// @-mention highlighting on the message itself. Cascades with its message (and
-// therefore with the candidate).
+// One row per (message, tagged account), driving the notification inbox. `readAt`
+// and `dismissedAt` are soft flags (never a delete) so the row still records who
+// was tagged, which drives the @-mention highlighting. Cascades with its message.
 export const mentions = pgTable(
   'mentions',
   {
@@ -245,16 +213,14 @@ export const mentions = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     readAt: timestamp('read_at'),
-    // Set when the tagged user clears the notification from their inbox; dismissed
-    // mentions drop out of `notificationsFor` but the row (and its highlight)
-    // stays.
+    // Set when the tagged user clears the notification; dismissed mentions drop
+    // out of `notificationsFor` but the row (and its highlight) stays.
     dismissedAt: timestamp('dismissed_at'),
     createdAt: timestamp('created_at').defaultNow().notNull()
   },
   (t) => ({
-    // The notification inbox (notificationsFor) filters mentions by user_id, and
-    // the message-delete cascade deletes them by message_id — index both (FKs
-    // aren't auto-indexed) so neither degrades to a full scan.
+    // The inbox filters by user_id and the delete cascade by message_id — index
+    // both (FKs aren't auto-indexed) so neither degrades to a full scan.
     userIdIdx: index('mentions_user_id_idx').on(t.userId),
     messageIdIdx: index('mentions_message_id_idx').on(t.messageId)
   })

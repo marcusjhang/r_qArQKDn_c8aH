@@ -1,14 +1,6 @@
 'use client';
 
-// Per-applicant discussion thread, shown inside the candidate DetailDrawer.
-// Messages persist against the candidate (so the chat "follows the applicant"),
-// load when a candidate opens, and are appended optimistically on send. The
-// composer supports @-mention autocomplete over the board's users (the same
-// canonical account list used for owners/interviewers); picking someone tags
-// them, which fans out a notification server-side.
-//
-// The thread's state + behaviour (load/optimistic-send/mention autocomplete)
-// lives in useChatThread; this component renders it.
+// Per-applicant discussion thread inside the candidate DetailDrawer. @-mentions fan out a notification server-side; state + behaviour live in useChatThread.
 
 import { Avatar } from '@/components/ui/avatar';
 import {
@@ -23,9 +15,7 @@ import { useChatThread } from './hooks/useChatThread';
 
 /** Render a body, highlighting the `@name` tokens for accounts that were tagged. */
 function renderBody(body: string, mentionNames: string[]) {
-  // The token-matching rule (longest-name-first, boundary-aware) is a pure
-  // domain concern owned by helpers; this component only walks the matches to
-  // build the highlighted nodes.
+  // Token-matching rule lives in helpers; this only walks the matches to build nodes.
   const re = mentionHighlightPattern(mentionNames);
   if (!re) return body;
   const out: React.ReactNode[] = [];

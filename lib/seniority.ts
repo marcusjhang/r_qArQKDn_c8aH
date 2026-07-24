@@ -1,10 +1,7 @@
 import 'server-only';
 
-// Seniority bands read. The `seniority_bands` table is the source of truth for
-// the years-of-experience → label mapping (managed from /settings, seeded in
-// db/seed.ts); the board reads it through service.ts `loadBands`, and the
-// settings page reads it here to render the management panel. Ordered high-to-
-// low so the panel lists Senior → Junior.
+// Seniority bands read — the years-of-experience → label mapping, ordered
+// high-to-low so the settings panel lists Senior → Junior.
 
 import { desc } from 'drizzle-orm';
 import { db } from '@/lib/db';

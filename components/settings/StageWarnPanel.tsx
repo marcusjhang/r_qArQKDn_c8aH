@@ -1,9 +1,7 @@
 'use client';
 
 // Manage the one universal "warn after N days in a stage" threshold from
-// /settings. A single number that applies to every stage: the board flags a
-// candidate as overdue once they have sat in their current stage for at least
-// this many days. Persisted via the updateStageWarnDays server action.
+// /settings; a single number applied to every stage.
 
 import { useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';

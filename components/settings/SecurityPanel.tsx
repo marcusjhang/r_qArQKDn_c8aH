@@ -1,10 +1,7 @@
 'use client';
 
-// Change the signed-in account's password from /settings. Mirrors ProfilePanel's
-// useTransition write flow. Unlike the forced first-login /change-password form,
-// this is voluntary, so it collects the *current* password and the server action
-// verifies it (see lib/password.ts `updatePassword`). No re-auth on success: the
-// password isn't part of the session token, so the user simply stays signed in.
+// Voluntary password change from /settings: collects the *current* password for
+// the server action to verify. No re-auth on success (password isn't in the session token).
 
 import { useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
@@ -34,8 +31,7 @@ export default function SecurityPanel({
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  // Any edit clears the transient result banners so stale success/error text
-  // never lingers over a fresh attempt.
+  // Clear transient result banners on any edit so stale text doesn't linger.
   function edited(set: (v: string) => void) {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       set(e.target.value);
@@ -46,8 +42,7 @@ export default function SecurityPanel({
 
   function save(e: React.FormEvent) {
     e.preventDefault();
-    // Mirror the server's cheap checks for instant feedback; the action re-runs
-    // them (and verifies the current password) as the source of truth.
+    // Mirror the server's cheap checks for instant feedback; the action is the source of truth.
     if (newPassword !== confirmPassword) {
       setError('Passwords do not match.');
       return;

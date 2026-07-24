@@ -1,11 +1,4 @@
-// Reusable configuration for the Hiring Pipeline Tracker.
-//
-// This is the single place a new business adapts the tool: relabel the rating
-// scale, the statuses, or the default pipeline — no rendering code needs to
-// change. Two things are deliberately NOT configured here, because they are
-// DB-driven (read from seeded tables, so seed data and sign-ups flow through
-// automatically): owners/interviewers (the user accounts, see service.ts
-// `loadUsers`) and candidate sources (the `sources` table, see `loadSources`).
+// Reusable config for the Hiring Pipeline Tracker (rating scale, statuses, default pipeline). Owners/interviewers and sources are deliberately NOT here — they're DB-driven (see service.ts `loadUsers`/`loadSources`).
 
 import type { RatingValue, Status } from './types';
 
@@ -28,11 +21,7 @@ export const STATUS: Record<Status, string> = {
   hired: 'Hired'
 };
 
-/**
- * Seniority bands derived from a candidate's years of experience. The helper
- * seniorityFor() sorts these high-to-low, so authoring order here doesn't
- * matter — relabeling tiers or shifting thresholds needs no rendering change.
- */
+/** Seed seniority bands (years → label); seniorityFor() sorts high-to-low, so authoring order here doesn't matter. */
 export const SENIORITY_BANDS: { label: string; minYears: number }[] = [
   { label: 'Senior', minYears: 5 },
   { label: 'Mid', minYears: 2 },
@@ -48,10 +37,7 @@ export const DEFAULT_STAGES: string[] = [
   'Hired'
 ];
 
-/**
- * Default important traits a new job starts with. Teams tailor this per job
- * (via the Traits modal); each is scored on the same 4-point scale in feedback.
- */
+/** Default important traits a new job starts with (tailored per job via the Traits modal). */
 export const DEFAULT_TRAITS: string[] = [
   'Technical depth',
   'Communication',

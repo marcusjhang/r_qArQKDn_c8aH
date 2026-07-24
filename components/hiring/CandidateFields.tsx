@@ -1,11 +1,6 @@
 'use client';
 
-// The candidate field set — Name, Source + Owner, Years of experience (with its
-// seniority tag), and the optional LinkedIn / GitHub links. Rendered identically
-// by the add-candidate modal and the edit/detail form so the fields, their
-// placeholders, and their bounds are defined exactly once. Purely presentational:
-// it reads a `CandidateDraft` and reports edits via `onField`. The `disabled`
-// flag drives the detail form's read-only state; the add modal leaves it false.
+// The candidate field set, shared by the add modal and detail form so fields/bounds are defined once. Presentational: reads a CandidateDraft, reports edits via onField.
 
 import { useId } from 'react';
 import { ChevronDown } from 'lucide-react';
@@ -49,8 +44,7 @@ export default function CandidateFields({
   yearsPlaceholder: string;
 }) {
   const seniority = seniorityFor(bands, parseYearsInput(draft.years).value);
-  // Unique per instance so the ids don't collide when the add modal and the
-  // detail form render this field set at the same time.
+  // Unique per instance so ids don't collide when both forms render this field set at once.
   const uid = useId();
 
   return (
@@ -179,9 +173,7 @@ const LABEL =
   'text-[11px] font-bold uppercase tracking-[0.03em] text-muted-foreground';
 const CONTROL =
   'w-full rounded-md border border-border-strong bg-surface px-2.5 py-2 text-[13px] text-foreground focus:border-primary focus:outline-none focus:shadow-[0_0_0_3px_var(--primary-weak)] disabled:cursor-default disabled:bg-surface-2 disabled:text-foreground';
-// Selects reuse the input styling but drop the native OS arrow (`appearance-none`)
-// and reserve room on the right for the app's own chevron, so Source/Owner match
-// the Status select instead of showing a far-right platform arrow.
+// Selects drop the native OS arrow and reserve room for the app's own chevron.
 const SELECT = `${CONTROL} cursor-pointer appearance-none pr-[34px]`;
 
 function SelectChevron() {

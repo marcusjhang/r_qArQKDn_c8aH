@@ -1,10 +1,4 @@
-// Time-in-stage: how long a candidate has sat in its current stage, whether
-// that has exceeded the one universal "warn after N days" threshold, and the
-// per-owner "your candidate is stalling" alerts derived from it. Every function
-// takes an explicit `now` (ms since epoch) rather than reading the clock itself,
-// so the rules stay pure and unit-testable — the caller supplies the clock (the
-// board uses the useNow hook, which is null-until-mounted to avoid hydration
-// drift).
+// Time-in-stage: how long a candidate has sat in its current stage, whether it exceeds the universal warn threshold, and the per-owner stalling alerts. Every function takes an explicit `now` (ms) rather than reading the clock, so the rules stay pure.
 
 import { isTerminal } from './candidate-status';
 import type { Candidate } from '../types';
@@ -12,13 +6,7 @@ import type { Candidate } from '../types';
 /** Whole milliseconds in a day — the unit the warn threshold is expressed in. */
 export const MS_PER_DAY = 86_400_000;
 
-/**
- * Milliseconds a candidate has been in its current stage, given `now`. Accepts
- * a Date (the DTO field), an ISO string, or an epoch-ms number so callers on
- * either side of the RSC boundary can use it. Clamped at 0 so a stageEnteredAt
- * slightly in the future (clock skew) never reads as negative. Internal — the
- * exported day/label/overdue helpers below are the public surface.
- */
+/** Milliseconds in the current stage given `now` (accepts Date/ISO/epoch-ms). Clamped at 0 so future-dated clock skew never reads negative. */
 function msInStage(
   stageEnteredAt: Date | string | number,
   now: number
@@ -34,14 +22,7 @@ export function daysInStage(
   return Math.floor(msInStage(stageEnteredAt, now) / MS_PER_DAY);
 }
 
-/**
- * Whether a candidate has overstayed the universal stage-warn threshold — the
- * single rule the warning UI keys off. One threshold applies to every stage.
- * True only when BOTH hold:
- *   - the candidate is still moving through the pipeline (not terminal — a
- *     hired/rejected candidate parked in a column is done, not stalled);
- *   - the whole days in stage have reached `warnDays` ("warn after N days").
- */
+/** Whether a candidate has overstayed the universal warn threshold: true only when it's non-terminal AND its whole days in stage have reached `warnDays`. */
 export function stageOverdue(
   candidate: Candidate,
   warnDays: number,
@@ -51,11 +32,7 @@ export function stageOverdue(
   return daysInStage(candidate.stageEnteredAt, now) >= warnDays;
 }
 
-/**
- * Compact human label for how long a candidate has been in its stage — "3d",
- * "5h", "12m", or "just now". Days once it's been at least a day, else hours,
- * else minutes. Shared by the card badge and the drawer footer.
- */
+/** Compact label for time-in-stage — "3d", "5h", "12m", or "just now" (days, else hours, else minutes). */
 export function stageAgeLabel(
   stageEnteredAt: Date | string | number,
   now: number
@@ -70,13 +47,7 @@ export function stageAgeLabel(
   return 'just now';
 }
 
-/**
- * One overdue-candidate alert for its owner — the shape the notification bell
- * renders. Derived on the client (not stored): it exists only while the
- * candidate is overdue and vanishes the moment the owner advances it (which
- * resets the stage clock). `days` is carried so the row can state how long the
- * candidate has been sitting without recomputing.
- */
+/** One overdue-candidate alert for its owner (the notification-bell shape). Derived on the client, not stored — it vanishes once the owner advances the candidate (resetting the stage clock). */
 export interface StageAlert {
   candidateId: number;
   candidateName: string;
@@ -85,13 +56,7 @@ export interface StageAlert {
   days: number;
 }
 
-/**
- * The overdue candidates OWNED by `ownerId` — the owner's "your candidate is
- * stalling" alerts. Reuses `stageOverdue` (so terminal candidates are already
- * excluded), then sorts longest-in-stage first so the most-stalled candidate
- * surfaces at the top of the inbox. Pure: the caller supplies `now` (the board's
- * useNow clock).
- */
+/** The overdue candidates OWNED by `ownerId`, longest-in-stage first (reuses `stageOverdue`, so terminal candidates are already excluded). */
 export function overdueForOwner(
   candidates: Candidate[],
   warnDays: number,

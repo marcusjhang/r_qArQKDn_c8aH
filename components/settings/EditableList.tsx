@@ -1,11 +1,7 @@
 'use client';
 
-// Presentational shell for the settings/members editable-list panels (Sources,
-// Seniority bands, Allowlist): the section header, the add form, an inline
-// error, and the list of rows. The shared markup and its accessibility live
-// here; each panel supplies only the bits that differ via render props — the
-// add-form fields and each row's contents — and drives the state machine with
-// `useEditableList`. Item rows key on `item.id`.
+// Presentational shell for the settings/members editable-list panels; each panel
+// supplies the differing bits (add fields, row contents) via render props.
 
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';

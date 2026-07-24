@@ -1,25 +1,14 @@
 import { expect, type Page } from '@playwright/test';
 
-// Shared e2e helpers. The whole app is behind the auth gate (see lib/auth.ts /
-// middleware.ts). Rather than sign in through the login form in every spec —
-// which would hammer the per-IP login rate limiter (lib/rate-limit.ts: 10
-// attempts / 5 min) and flake a parallel run — authentication happens ONCE in
-// the `setup` project (test/e2e/global.setup.ts), which signs in, clears the
-// seeded account's forced first-login password change, and saves the cookies.
-// The authenticated `chromium` project loads them via `storageState`, so specs
-// start already signed in and these helpers just confirm the session.
+// Shared e2e helpers. Authentication happens ONCE in the `setup` project, whose
+// cookies the `chromium` project loads via `storageState`, so specs start signed
+// in and these helpers just confirm the session (avoiding the login rate limit).
 
 /**
- * Confirm/establish an authenticated session.
- *
- * With no credentials, rely on the shared pre-authenticated session (loaded from
- * storageState): visiting a gated route must not bounce us to /login.
- *
- * With an `email`/`password`, sign in as that specific seeded user instead — for
- * specs that need a particular account (e.g. the owner of overdue candidates).
- * The shared session is dropped first, then we sign in through the form and
- * clear the seeded account's forced first-login password change the same way
- * `global.setup.ts` does, so we land on the board rather than /change-password.
+ * Confirm/establish an authenticated session. With no credentials, rely on the
+ * shared pre-authenticated session. With an `email`/`password`, sign in as that
+ * specific seeded user (dropping the shared session first) and clear its forced
+ * first-login password change the way `global.setup.ts` does.
  */
 export async function login(
   page: Page,
@@ -33,9 +22,8 @@ export async function login(
   }
 
   // The forced-change service rejects re-setting the same password, so migrate
-  // to a distinct value (derived from the seed default) rather than re-entering
-  // it. Stays idempotent: on a re-run the seed default fails, so retry with the
-  // migrated one.
+  // to a distinct value. Idempotent: on a re-run the seed default fails, so
+  // retry with the migrated one.
   const changed = `${password}-e2e-changed`;
   await page.context().clearCookies();
   await page.goto('/login');
@@ -73,11 +61,7 @@ export async function loginToBoard(page: Page): Promise<void> {
   ).toBeVisible();
 }
 
-/**
- * Open the detail drawer for the named candidate by clicking its board card.
- * Cards carry data-testid="candidate-card" and an aria-label "Open <name>";
- * the drawer header renders the same name in an <h2> (see DetailHeader).
- */
+/** Open the detail drawer for the named candidate by clicking its board card. */
 export async function openCandidate(page: Page, name: string): Promise<void> {
   await page.locator('[data-testid="candidate-card"]', { hasText: name }).first().click();
   const drawer = page.locator('aside[role="dialog"]:not([inert])');

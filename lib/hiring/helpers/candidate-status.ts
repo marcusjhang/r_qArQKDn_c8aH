@@ -1,5 +1,4 @@
-// Candidate status predicates and the review-eligibility rule — the small pure
-// rules the board and detail views read to decide visibility and reviewing.
+// Candidate status predicates and the review-eligibility rule — the pure rules the board and detail views read for visibility and reviewing.
 
 import type { Candidate } from '../types';
 
@@ -8,21 +7,12 @@ export function isTerminal(c: Candidate): boolean {
   return c.status === 'rejected' || c.status === 'hired';
 }
 
-/**
- * Only rejected candidates are hidden from the board by default. Hired
- * candidates stay visible in the Hired column (that's what it's for).
- */
+/** Only rejected candidates are hidden by default; hired ones stay visible in the Hired column. */
 export function isHiddenByDefault(c: Candidate): boolean {
   return c.status === 'rejected';
 }
 
-/**
- * Whether the signed-in user may leave feedback on a candidate. Feedback is one
- * entry per interviewer (a DB unique constraint) and is always authored by the
- * signed-in user, so they can review only when signed in and have not already
- * reviewed this candidate. Centralized so the detail drawer stays presentational
- * and the rule is unit-testable rather than inlined in the render.
- */
+/** Whether the signed-in user may leave feedback: only when signed in and they haven't already reviewed this candidate (one entry per interviewer). */
 export function canReviewCandidate(
   candidate: Candidate | null | undefined,
   currentUserId: number | null

@@ -1,16 +1,6 @@
 'use client';
 
-// Open/close state for a trigger-button dropdown, plus the dismissal wiring
-// every menu in the app repeated by hand: close on outside pointer-down and on
-// Escape (both listeners attached only while open). It also owns the ARIA
-// contract so the trigger/menu pairing stays consistent — the trigger gets
-// aria-haspopup + aria-expanded + aria-controls, the menu gets a matching id +
-// role="menu" — instead of each call site wiring (and drifting on) it.
-//
-// The caller attaches `wrapRef` to the element that contains both the trigger
-// and the menu (outside-click is measured against it), spreads `triggerProps`
-// onto the trigger button and `menuProps` onto the open menu, and reads `open`
-// to decide whether to render the menu.
+// Open/close state + dismissal wiring (outside pointer-down, Escape) and the trigger/menu ARIA contract for a dropdown, shared so call sites don't hand-roll it.
 
 import { useEffect, useId, useRef, useState } from 'react';
 

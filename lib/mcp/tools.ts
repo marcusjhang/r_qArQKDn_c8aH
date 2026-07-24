@@ -1,20 +1,10 @@
 import 'server-only';
 
-// MCP tool surface for the hiring board (groups A + B + C from the plan):
-//   A — read:  get_board, search_candidates
-//   B — write: add_candidate, edit_candidate, move_candidate, set_status,
-//              set_candidate_starred
-//   C — write: add_feedback (attributed to the token's user)
-// Structural job/stage ops (group D) are intentionally not exposed.
-//
-// Every write maps 1:1 to an actor-scoped core function (lib/hiring/core.ts) —
-// the same code the web server actions call — and persists straight to Postgres.
-// The board's reads are uncached (TanStack Query is the client's only cache), so
-// an open dashboard reflects an MCP change on its next board fetch; neither front
-// door revalidates a server cache. All input flows through the shared zod
-// schemas, and guard/validation failures come back as structured tool errors
-// (isError:true) with a human-readable reason the model can act on, rather than
-// opaque protocol errors.
+// MCP tool surface for the hiring board: reads (get_board, search_candidates)
+// and writes (add/edit/move/set_status/set_candidate_starred/add_feedback);
+// structural job/stage ops are intentionally not exposed. Every write maps 1:1
+// to an actor-scoped core function (lib/hiring/core.ts) — the same code the web
+// actions call — and surfaces guard/validation failures as structured tool errors.
 
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -36,10 +26,8 @@ import { actorUserIdFrom } from './auth';
 /** MCP tool-call extra: carries the validated AuthInfo for the request. */
 type ToolExtra = { authInfo?: AuthInfo };
 
-// A loosely-typed view of `server.registerTool`. Registering through this avoids
-// instantiating the SDK's very deep per-tool generic (which otherwise makes
-// `tsc` OOM across eight tools); the SDK still validates `inputSchema` at
-// runtime, and each handler annotates its own argument shape for local safety.
+// A loosely-typed view of `server.registerTool`, avoiding the SDK's deep per-tool
+// generic that otherwise makes `tsc` OOM; the SDK still validates inputSchema at runtime.
 type ToolRegistrar = (
   name: string,
   config: {
@@ -58,11 +46,9 @@ function fail(text: string): CallToolResult {
   return { isError: true, content: [{ type: 'text', text }] };
 }
 
-// Translate a Postgres constraint violation into a clean, caller-safe sentence.
-// Drizzle wraps the driver error (its `.message` is the raw "Failed query: …"
-// SQL), so walk the `.cause` chain for the postgres.js error, which carries the
-// SQLSTATE `code` and `constraint_name`. Returning a friendly string here also
-// stops the raw SQL / table names from leaking back to the MCP caller.
+// Translate a Postgres constraint violation into a clean, caller-safe sentence,
+// walking the `.cause` chain for the postgres.js SQLSTATE `code`/`constraint_name`
+// so the raw SQL and table names never leak back to the MCP caller.
 function pgViolation(error: unknown): string | null {
   let e: unknown = error;
   while (e instanceof Error) {
@@ -94,10 +80,7 @@ function reason(error: unknown): string {
   }
   const friendly = pgViolation(error);
   if (friendly) return friendly;
-  // Any other throw (an unexpected DB/driver error) can carry the raw
-  // "Failed query: …" SQL with table/column names in its `.message`; never
-  // surface that to the MCP caller. Log the real error server-side for
-  // diagnosis and return an opaque sentence.
+  // Any other throw can carry raw SQL in its `.message`; log server-side and return an opaque sentence.
   console.error('[mcp] unexpected tool error:', error);
   return 'The operation failed. Please try again.';
 }
@@ -299,9 +282,7 @@ export function registerHiringTools(server: McpServer): void {
     ): Promise<CallToolResult> => {
       try {
         const actor = requireActor(extra);
-        // Pass omitted fields through as `undefined` (not null) so the core
-        // keeps their current values — a partial edit must not wipe links/years
-        // or reassign the owner.
+        // Omitted fields pass through as `undefined` so a partial edit keeps current values.
         const found = await editCandidateCore(actor, args.id, {
           name: args.name,
           source: args.source,
@@ -342,9 +323,7 @@ export function registerHiringTools(server: McpServer): void {
         const placement = await moveStageCore(actor, args.id, args.stage);
         if (!placement) {
           // moveStageCore returns null for both "no such candidate" and "stage
-          // isn't on the candidate's job" — disambiguate so a mis-cased or
-          // unknown stage gets an actionable message instead of the model
-          // wrongly concluding the candidate is gone.
+          // isn't on the job" — disambiguate so a bad stage gets an actionable message.
           const board = await getBoard();
           const candidate = board.candidates.find((c) => c.id === args.id);
           if (!candidate) return fail(`No candidate found with id ${args.id}.`);
@@ -473,8 +452,7 @@ export function registerHiringTools(server: McpServer): void {
         }
         return ok(`Recorded feedback on candidate ${args.id}.`);
       } catch (error) {
-        // reason() maps the one-entry-per-person unique violation (and other
-        // Postgres constraint errors) to a clean, caller-safe message.
+        // reason() maps the one-entry-per-person unique violation to a caller-safe message.
         return fail(reason(error));
       }
     }

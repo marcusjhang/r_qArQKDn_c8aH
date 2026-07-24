@@ -1,9 +1,4 @@
-// Board view derivations.
-//
-// Pure functions that turn the raw board state into the numbers, labels and
-// orderings the UI renders — column contents, per-job tallies, the rating chip,
-// drawer navigation, and the job-tab layout. Kept here (rather than inline in
-// the components) so the derivations are unit-testable on their own.
+// Pure board-view derivations (column contents, per-job tallies, rating chip, drawer navigation, job-tab layout), kept out of the components so they're unit-testable.
 
 import { isHiddenByDefault, isTerminal } from './candidate-status';
 import type { Candidate, Job, RatingValue } from '../types';
@@ -26,13 +21,7 @@ export function jobById(jobs: Job[], id: number | null): Job | undefined {
   return jobs.find((j) => j.id === id);
 }
 
-/**
- * The candidates rendered in one column: this stage's candidates, hiding
- * rejected ones (see `isHiddenByDefault`) unless `showRejected`, with starred
- * candidates floated to the top. The sort is stable, so creation order is
- * preserved within each group. Extracted from the board so the filter+sort
- * rule is pure and unit-testable rather than inlined in the render.
- */
+/** The candidates rendered in one column: this stage's, hiding rejected unless `showRejected`, starred floated to the top (stable sort keeps creation order within each group). */
 export function selectStageCards(
   candidates: Candidate[],
   stage: string,
@@ -67,11 +56,7 @@ export function jobStats(candidates: Candidate[], jobId: number): JobStats {
   };
 }
 
-/**
- * The toolbar summary line under the job title, e.g.
- * "3 active candidates · 1 hired · 2 rejected hidden". The rejected tally only
- * appears while the terminal-state filter is hiding those cards.
- */
+/** The toolbar summary line under the job title (e.g. "3 active candidates · 1 hired · 2 rejected hidden"); the rejected tally shows only while those cards are hidden. */
 export function formatJobMeta(stats: JobStats, showRejected: boolean): string {
   const { live, hired, rejected } = stats;
   return (
@@ -91,10 +76,7 @@ export interface StageNavigation {
   canAdvance: boolean;
 }
 
-/**
- * Resolve the drawer's Advance/Back affordances from stage position, so the UI
- * never renders a dead-end button at either end of the pipeline.
- */
+/** Resolve the drawer's Advance/Back affordances from stage position, so the UI never renders a dead-end button. */
 export function stageNavigation(
   job: Job | undefined,
   candidate: Candidate | null | undefined
@@ -107,11 +89,7 @@ export function stageNavigation(
   };
 }
 
-/**
- * Round a 1–4 mean (a trait average or overall score) to the nearest whole
- * value for a colour chip, or null when there is nothing to round. Clamped into
- * the 1–4 scale defensively.
- */
+/** Round a 1–4 mean to the nearest whole value for a colour chip (clamped to 1–4), or null when there's nothing to round. */
 export function roundedRating(average: number | null): RatingValue | null {
   if (average == null) return null;
   return Math.min(4, Math.max(1, Math.round(average))) as RatingValue;
@@ -129,11 +107,7 @@ export interface JobTabLayout {
   favCount: number;
 }
 
-/**
- * Split jobs into inline tabs and an overflow list: starred jobs first (stable,
- * since jobs already arrive oldest-first), cap the inline set to `cap`, then
- * guarantee the active job stays visible even if it would otherwise overflow.
- */
+/** Split jobs into inline tabs and an overflow list: starred first, capped at `cap`, then force the active job to stay visible even if it would overflow. */
 export function partitionJobTabs(
   jobs: Job[],
   activeJob: number,

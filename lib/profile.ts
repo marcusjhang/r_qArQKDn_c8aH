@@ -1,8 +1,6 @@
 import 'server-only';
 
-// Current-account profile read. The signed-in user edits their first/last name
-// from /settings (see the `updateProfile` action there). The settings page reads
-// the current values here to prefill the form.
+// Current-account profile read — the signed-in user's first/last name, to prefill the /settings form.
 
 import { eq } from 'drizzle-orm';
 import { db, users } from '@/lib/db';
@@ -14,11 +12,7 @@ export interface Profile {
   lastName: string;
 }
 
-/**
- * The signed-in user's first/last name for the settings form. Returns blanks
- * when a field is unset or there is no session (the page is auth-gated, so the
- * no-session case is defensive).
- */
+/** The signed-in user's first/last name for the settings form; blanks when unset or no session. */
 export async function getProfile(): Promise<Profile> {
   const session = await auth();
   const id = Number(session?.user?.id);

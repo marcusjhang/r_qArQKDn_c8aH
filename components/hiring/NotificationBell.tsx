@@ -1,14 +1,6 @@
 'use client';
 
-// Notification inbox in the top bar: a bell with an unread badge and a dropdown
-// carrying two streams. Mentions targeting the current account are
-// server-rendered (seeded via `initialData`) and refreshed by query
-// invalidation after a read/clear; opening one jumps to that applicant's chat
-// and marks it read, and each row can be cleared with its ✕. Stalled-candidate
-// alerts are derived on the client for candidates the signed-in user owns that
-// have sat in a stage past the warn threshold; opening one jumps to the
-// candidate. They
-// have no read/clear state — they clear when the candidate advances.
+// Notification inbox in the top bar: server-rendered mentions (refreshed by query invalidation) plus client-derived stalled-candidate alerts.
 
 import { Bell, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -25,8 +17,7 @@ import type { Notification } from '@/lib/hiring/types';
 import { Button } from '@/components/ui/button';
 import { useDismissableMenu } from './hooks/useDismissableMenu';
 
-// Row shell shared by every notification (mention + stalled-candidate alert).
-// `group/notif` drives the reveal of the per-row dismiss button on hover.
+// Row shell shared by every notification; `group/notif` reveals the per-row dismiss button on hover.
 const NOTIF_ITEM =
   'group/notif relative flex items-stretch rounded-[6px] text-foreground';
 // The button that fills the row and opens the mention/candidate.
@@ -48,8 +39,7 @@ export default function NotificationBell({
   const menu = useDismissableMenu();
   const queryClient = useQueryClient();
 
-  // Server-rendered inbox as the seed; refreshed by invalidation after a
-  // read/clear rather than by refreshing the whole route.
+  // Server-rendered inbox as the seed; refreshed by invalidation after a read/clear.
   const { data: items = notifications } = useQuery({
     queryKey: hiringKeys.notifications,
     queryFn: fetchNotifications,
@@ -76,8 +66,7 @@ export default function NotificationBell({
     onSuccess: invalidate
   });
 
-  // Mentions carry a persisted read state; stage alerts are derived and clear
-  // when the candidate advances, so they always count toward the badge.
+  // Stage alerts are derived (no read state), so they always count toward the badge.
   const unread = items.filter((n) => !n.read).length;
   const badgeCount = unread + stageAlerts.length;
 

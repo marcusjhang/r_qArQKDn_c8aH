@@ -2,28 +2,15 @@ import { test as setup, expect } from '@playwright/test';
 import path from 'node:path';
 
 // One-time e2e authentication: sign in once, clear the forced first-login
-// password change, and save the signed-in cookies for the specs to reuse.
-//
-// Two seeded-account facts make this necessary:
-//   1. Seeded accounts share a default password and are flagged
-//      `must_change_password` (db/seed.ts), so the auth gate
-//      (lib/auth-policy.ts `evaluateAccess`) confines them to /change-password
-//      until they set their own. We complete that change here (the DB flag is
-//      then cleared for the account) before any spec runs.
-//   2. The login endpoint is rate-limited per IP (lib/rate-limit.ts: 10
-//      attempts / 5 min). Signing in once here and reusing `storageState` keeps
-//      a parallel spec run from tripping that limit.
-//
-// Credentials mirror the seeded accounts. The target password defaults to the
-// seed default ('password'); the change-password service allows setting the
-// same value (lib/password.ts) and only clears the flag, so re-running against
-// an already-cleared account is a no-op.
+// password change, and save the cookies for the specs to reuse. Necessary
+// because seeded accounts are flagged `must_change_password` (confined to
+// /change-password until cleared), and the login endpoint is per-IP
+// rate-limited — so reusing one session keeps a parallel run under the limit.
 const E2E_EMAIL = process.env.E2E_EMAIL ?? 'marcusajh0802@gmail.com';
 // The seeded default the account starts on...
 const E2E_PASSWORD = process.env.E2E_PASSWORD ?? 'password';
-// ...and the distinct value we migrate it to. The forced-change service rejects
-// re-setting the same password (lib/password.ts), so the new one must differ
-// from E2E_PASSWORD. Kept in sync with the `login` helper.
+// ...and the distinct value we migrate it to (the forced-change service rejects
+// re-setting the same password). Kept in sync with the `login` helper.
 const E2E_NEW_PASSWORD = process.env.E2E_NEW_PASSWORD ?? 'e2e-changed-pw-9f3a';
 
 // Must match STORAGE_STATE in playwright.config.ts. (Playwright loads test
@@ -36,10 +23,9 @@ setup('authenticate and clear forced password change', async ({ page }) => {
   await page.getByPlaceholder('Password').fill(E2E_PASSWORD);
   await page.getByRole('button', { name: 'Sign In' }).click();
 
-  // useLoginForm redirects off /login on success; the gate then sends a
-  // still-flagged account to /change-password. On a re-run where this account
-  // was already migrated, the seed default no longer works and we stay on
-  // /login — retry with the new password so the setup is idempotent.
+  // On success we leave /login; the gate then sends a flagged account to
+  // /change-password. On a re-run the seed default fails, so retry with the new
+  // password to stay idempotent.
   await page
     .waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 8000 })
     .catch(() => {});
@@ -50,10 +36,8 @@ setup('authenticate and clear forced password change', async ({ page }) => {
   }
 
   if (new URL(page.url()).pathname === '/change-password') {
-    // Exact match: getByPlaceholder is a case-insensitive substring match, so a
-    // bare 'New password' would also match the 'Confirm new password' field.
-    // Must differ from the current password (the forced-change service rejects
-    // re-setting the same value).
+    // Exact match: getByPlaceholder is a substring match, so a bare 'New
+    // password' would also hit the 'Confirm new password' field.
     await page
       .getByPlaceholder('New password', { exact: true })
       .fill(E2E_NEW_PASSWORD);

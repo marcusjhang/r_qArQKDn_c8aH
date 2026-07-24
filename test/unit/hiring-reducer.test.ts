@@ -1,9 +1,6 @@
-// Direct coverage of the board's optimistic state machine (the pure reducer).
-// The store's orchestration around it — dispatch timing, server-action wiring,
-// temp-id reconciliation flow — is covered in hiring-store.test.tsx; here we
-// pin the (state, event) -> state transitions themselves, focusing on the
-// feedback optimistic-append + id reconciliation the store now depends on and
-// the pre-existing job / candidate reconciliations.
+// Direct coverage of the board's optimistic reducer: the (state, event) -> state
+// transitions themselves (the store's orchestration is in hiring-store.test.tsx),
+// focusing on feedback optimistic-append + id reconciliation.
 
 import { describe, it, expect } from 'vitest';
 import { hiringReducer, type HiringEvent } from '@/lib/hiring/reducer';

@@ -1,11 +1,6 @@
 'use client';
 
-// The per-job traits editor, shared by the New Job and Traits modals so both
-// surfaces are identical: the "Traits" label with the ranking (ⓘ) and formula
-// (calculator) hints, the optional AI "Suggest from JD" action, the ranked
-// reorderable/renamable list (TraitRow), and the add-a-trait input. The owner
-// passes the current traits plus the callbacks that persist them — a store
-// action for an existing job, or local state for a job being created.
+// The per-job traits editor, shared by the New Job and Traits modals: label + hints, optional AI suggest, the ranked TraitRow list, and the add-a-trait input.
 
 import { useRef, useState } from 'react';
 import { validateTraitName, MAX_TRAIT_NAME } from '@/lib/hiring';
@@ -41,8 +36,7 @@ export default function TraitsEditor({
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // The add row is a plain handler (not a <form>) because this editor renders
-  // inside the New Job modal's create-job form, and forms cannot nest.
+  // Plain handler, not a <form>: this renders inside the New Job modal's form, and forms cannot nest.
   function addTrait() {
     const check = validateTraitName(traits, name);
     if (!check.ok) {

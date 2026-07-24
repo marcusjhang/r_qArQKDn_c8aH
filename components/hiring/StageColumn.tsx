@@ -1,9 +1,6 @@
 'use client';
 
-// A single board column: an inline-editable stage title, an options dropdown
-// (rename / reorder / delete), and the drop zone holding the stage's cards.
-// Drag-and-drop wiring comes from useBoardDnd; the contentEditable rename
-// lifecycle from useInlineEdit — this file is left with layout + menu state.
+// A single board column: inline-editable stage title, options dropdown, and the drop zone of cards.
 
 import {
   validateStageName,

@@ -1,7 +1,4 @@
-// Shared top navigation for both the board and the settings page: a white nav
-// bar (brand left, account dropdown top-right) plus a grey sub-nav strip below
-// it that each page fills (job tabs + actions on the board, a back link on
-// settings). Keeping this in one component keeps the two pages consistent.
+// Shared top navigation for the board and settings pages: a nav bar (brand + account menu) plus a sub-nav strip each page fills.
 
 import Brand from './Brand';
 import UserMenu from './UserMenu';
@@ -16,8 +13,7 @@ export default function TopBar({
   subtitle: string;
   userEmail?: string | null;
   navItems?: { href: string; label: string }[];
-  // Optional controls rendered in the top nav, left of the account menu
-  // (e.g. the notification bell on the board).
+  // Optional controls in the top nav, left of the account menu (e.g. the notification bell).
   topRight?: React.ReactNode;
   children?: React.ReactNode;
 }) {

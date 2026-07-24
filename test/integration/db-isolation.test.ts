@@ -9,10 +9,8 @@ import {
   resetTables
 } from './helpers/db';
 
-// Proves the isolation harness itself: writes made inside `withRollback` are
-// never committed, so tests can touch a real database (even the shared dev one)
-// without leaving state behind or polluting each other. Skips entirely when no
-// database is configured (see test/env.ts).
+// Proves the isolation harness itself: writes inside `withRollback` are never
+// committed, so tests can touch a real DB without leaving state behind.
 
 const PROBE_EMAIL = '__iso_probe__@example.test';
 
@@ -65,10 +63,8 @@ describe.skipIf(!hasTestDatabase)('allowed_emails uniqueness (schema constraint)
 
 describe.skipIf(!hasTestDatabase)('resetTables safety gate', () => {
   it('refuses destructive TRUNCATE without a dedicated TEST_DATABASE_URL', async () => {
-    // When only DATABASE_URL is set the harness falls back to it for rollback
-    // work, but must never TRUNCATE a database it merely borrowed. (When a real
-    // TEST_DATABASE_URL is configured this test does not assert — resetTables is
-    // then allowed to run.)
+    // A borrowed DATABASE_URL is fine for rollback work but must never be
+    // TRUNCATEd. (With a real TEST_DATABASE_URL this test does not assert.)
     const { hasDedicatedTestDatabase } = (await import('../env')).testEnv;
     if (hasDedicatedTestDatabase) return;
     await expect(resetTables(['allowed_emails'])).rejects.toThrow(

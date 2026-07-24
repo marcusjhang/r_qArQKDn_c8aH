@@ -12,9 +12,8 @@ import {
 } from '@/lib/hiring/helpers';
 import type { TraitScores } from '@/lib/hiring/types';
 
-// Pure trait rules shared by the Traits modal, the optimistic reducer, and the
-// server actions. Each function is framework-free, so it is exercised here with
-// plain inputs — no DB, network, or React.
+// Pure trait rules shared by the Traits modal, the reducer, and the server
+// actions — framework-free, exercised here with plain inputs.
 
 describe('normalizeTraitSuggestions', () => {
   it('returns [] when the raw value is not an array', () => {
@@ -195,10 +194,9 @@ describe('renameTraitScoreKey', () => {
   });
 });
 
-// The security / data-integrity rule behind a feedback write (addFeedbackCore):
-// submitted scores are scoped to the job's CURRENT traits so a stale/renamed key
-// can never persist, and `hasAnyScore` drives the "empty-after-scoping is a
-// no-op when the job tracks traits" guard. Exercised purely here — no DB.
+// The data-integrity rule behind a feedback write: scores are scoped to the
+// job's CURRENT traits so a stale/renamed key can't persist, and `hasAnyScore`
+// drives the "empty-after-scoping is a no-op when the job tracks traits" guard.
 describe('scopeTraitScores', () => {
   it('keeps only the traits the job currently tracks', () => {
     const result = scopeTraitScores(['Ownership', 'Craft'], {

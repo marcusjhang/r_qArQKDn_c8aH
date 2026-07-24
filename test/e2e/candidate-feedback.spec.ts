@@ -1,18 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { loginToBoard, openCandidate } from './helpers';
 
-// Happy path: leave interview feedback on a candidate. The add-feedback form
-// (AddFeedbackForm) lives in the detail drawer: score one or more of the job's
-// traits on the 1-4 picker, write a note, and submit. Feedback is always
-// authored by the signed-in user (derived server-side), so there is no
-// interviewer picker; the signed-in user has one entry per candidate, edited in
-// place (upsert). Submitting adds/updates the entry in the feedback list
-// (FeedbackList) optimistically and persists it (store.saveFeedback). Entries
-// are collapsed by default — expand one to read its note.
-//
-// Uses seeded candidate "Tom Alvarez" (Founding Engineer) who has NO feedback
-// yet. The Founding Engineer job tracks traits, so the trait score pickers are
-// shown. See lib/hiring/seed.ts.
+// Happy path: leave interview feedback in the detail drawer — score the job's
+// traits on the 1-4 picker, add a note, submit. Feedback is authored by the
+// signed-in user (one upsert entry per candidate) and persisted optimistically.
+// Uses seeded "Tom Alvarez" (Founding Engineer, tracks traits, no feedback yet).
 const CANDIDATE = 'Tom Alvarez';
 
 test.describe('add feedback to a candidate', () => {
@@ -57,11 +49,9 @@ test.describe('add feedback to a candidate', () => {
       .getByRole('button', { name: '3', exact: true })
       .click();
     await form.locator('textarea').fill(note);
-    // Persistence is optimistic; wait for the *feedback write itself* to commit
-    // before reloading, or the reload cancels the in-flight write and the entry
-    // is lost. The board/notification query refetches are also POSTs, so match
-    // the write specifically by the unique note text it carries in its body —
-    // waiting on any POST races and picks up an unrelated refetch (flaky).
+    // Optimistic write: wait for the feedback write to commit before reloading
+    // (else it's cancelled). Match by the unique note text, since the
+    // board/notification refetches are also POSTs (waiting on any POST is flaky).
     const persisted = page.waitForResponse(
       (r) =>
         r.request().method() === 'POST' &&

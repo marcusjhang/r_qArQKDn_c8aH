@@ -8,12 +8,7 @@ export interface FormErrorProps {
   className?: string;
 }
 
-/**
- * Inline form-error text shared by every add/edit form across hiring and
- * settings. Renders nothing when there is no message, so
- * call sites can drop their own `error && …` guard and just render
- * `<FormError message={error} />`.
- */
+/** Inline form-error text; renders nothing when there is no message. */
 export function FormError({ message, className }: FormErrorProps) {
   if (!message) return null;
   return (

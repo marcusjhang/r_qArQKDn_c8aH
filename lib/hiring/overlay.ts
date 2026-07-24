@@ -1,26 +1,9 @@
-// The board shell's overlay state machine.
-//
-// At most one overlay is ever open over the board: the candidate detail drawer,
-// the add-candidate modal, or the new-job modal. The shell (`HiringApp`) used
-// to model that modality as four independent pieces of `useState` — `openId`,
-// `focusMessageId`, `addingCandidate`, `creatingJob` — whose 2^n combinations
-// admitted impossible states (both modals "open" at once, a `focusMessageId`
-// lingering with no drawer, …) and forced several `setState` calls to be kept
-// in sync by hand on every open/close.
-//
-// Collapsing that cluster into one discriminated union makes the illegal
-// combinations unrepresentable and turns every open/close into a single
-// dispatch. Each transition is a pure `(state, event) => state` function,
-// mirroring the board's *data* reducer (`./reducer`); the shell derives the
-// per-overlay props it renders from the union. Framework-free and unit-tested
-// (see test/unit/hiring-overlay.test.ts), like the other pure rules in this
-// domain.
+// The board shell's overlay state machine: one discriminated union for the at-most-one open overlay (detail drawer / add-candidate / new-job / import), so illegal combinations are unrepresentable and every open/close is a single pure dispatch.
 
 /** The single overlay currently open over the board, if any. */
 export type Overlay =
   | { kind: 'none' }
-  // The candidate detail drawer. `focusMessageId` is the chat message to scroll
-  // to when the drawer was opened from a notification (null otherwise).
+  // The candidate detail drawer; `focusMessageId` is the message to scroll to when opened from a notification (null otherwise).
   | { kind: 'detail'; candidateId: number; focusMessageId: number | null }
   // The add-candidate modal (for the active job).
   | { kind: 'addCandidate' }

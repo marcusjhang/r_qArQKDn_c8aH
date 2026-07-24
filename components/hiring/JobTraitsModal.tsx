@@ -1,10 +1,6 @@
 'use client';
 
-// Manage a job's description (JD) and the important traits it's scored on. The
-// traits UI itself (label, ranking/formula hints, AI suggest, ranked list, add
-// row) is the shared TraitsEditor — identical to the one in the New Job modal;
-// this wrapper adds the editable JD and wires the editor to the store
-// (setJobTraits / setJobDescription / reorderTrait per edit).
+// Manage a job's description (JD) and scored traits. Traits UI is the shared TraitsEditor; this wrapper adds the editable JD and wires edits to the store.
 
 import { useState } from 'react';
 import { mergeTraitSuggestions, MAX_JOB_DESCRIPTION } from '@/lib/hiring';
@@ -42,9 +38,7 @@ export default function JobTraitsModal({
     if (jd.trim() !== description.trim()) onDescriptionChange(jd.trim());
   }
 
-  // Commit the JD before closing on ANY path. The textarea saves on blur, but
-  // closing with Escape unmounts the modal without firing blur (React doesn't
-  // blur on unmount), so a typed-but-unblurred JD would be silently dropped.
+  // Commit the JD before closing on ANY path: Escape unmounts without firing blur, so a typed-but-unblurred JD would be dropped.
   function handleClose() {
     commitJd();
     onClose();

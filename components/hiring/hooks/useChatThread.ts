@@ -1,19 +1,6 @@
 'use client';
 
-// The per-applicant discussion thread's state + behaviour, extracted from
-// ChatPanel so the component stays presentational.
-//
-// The message list is a TanStack Query cache keyed by candidate id: switching
-// candidates switches the key, so a slow fetch resolving after the user moved
-// on is ignored automatically (no manual request token), and the loading flag
-// is the query's own. Sending a message is a `useMutation` with the standard
-// optimistic lifecycle — append a temp row in `onMutate`, swap it for the
-// server row in `onSuccess`, roll back and restore the draft in `onError` (a
-// null result, meaning the server rejected the post, is treated as a failure).
-//
-// The compose draft (`body`), the picked @-mention set (`tagged`), the
-// autocomplete menu, and caret restoration are pure local UI state and stay in
-// component state.
+// The per-applicant discussion thread's state + behaviour, extracted from ChatPanel. Message list is a TanStack Query cache keyed by candidate id; send is an optimistic useMutation.
 
 import {
   useCallback,
@@ -69,13 +56,10 @@ export function useChatThread({
   const tempId = useRef(-1);
   // Caret to restore after we programmatically rewrite the textarea value.
   const pendingCaret = useRef<number | null>(null);
-  // The focus request we've already scrolled to, so we don't keep hijacking
-  // the scroll position on later renders (e.g. after sending a new message).
+  // The focus request we've already scrolled to, so later renders don't re-hijack scroll.
   const handledFocus = useRef<number | null>(null);
 
-  // The thread for the open candidate. Keyed by candidate id, so switching
-  // candidates switches the cache slice — a fetch that resolves after the user
-  // moved on lands on a key nobody is reading, and cannot clobber the new view.
+  // The thread for the open candidate, keyed by candidate id so a stale fetch can't clobber the new view.
   const { data: messages = [], isLoading } = useQuery({
     queryKey: hiringKeys.chat(candidateId ?? 0),
     queryFn: () => loadThread(candidateId as number),
@@ -84,23 +68,19 @@ export function useChatThread({
   });
   const loading = candidateId != null && isLoading;
 
-  // Reset the compose draft when a different candidate opens (the message list
-  // itself is per-candidate via the query key).
+  // Reset the compose draft when a different candidate opens.
   useEffect(() => {
     setBody('');
     setMenu(null);
     handledFocus.current = null;
   }, [candidateId]);
 
-  // Reset the highlighted autocomplete row whenever the mention query changes
-  // (a new `@…` token), so keyboard nav always starts at the top of the list.
+  // Reset the highlighted autocomplete row when the mention query changes.
   useEffect(() => {
     setActive(0);
   }, [menu?.start, menu?.query]);
 
-  // Scroll behaviour: when opened from a notification, scroll the tagged
-  // message into view and flash it once; otherwise keep the transcript pinned
-  // to the latest message. Runs after messages load so the target exists.
+  // Scroll: focus + flash the tagged message when opened from a notification, else pin to the latest.
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
@@ -158,10 +138,7 @@ export function useChatThread({
     ? mentionSuggestions(users, menu.query, currentUserId)
     : [];
 
-  // Optimistic send. onMutate appends the temp row; onSuccess swaps in the saved
-  // row (or rolls back + restores the draft if the server rejected the post);
-  // onError rolls back + restores the draft. Failure keeps the transcript
-  // truthful and never silently loses the author's text.
+  // Optimistic send: append a temp row, swap in the saved row on success, roll back + restore the draft on failure.
   const { mutate: sendMessage, isPending: sending } = useMutation({
     mutationFn: ({ candidateId, text, mentionIds }: SendVars) =>
       postMessage(candidateId, text, mentionIds),
@@ -198,11 +175,7 @@ export function useChatThread({
   const send = useCallback(() => {
     const text = body.trim();
     if (!text || candidateId == null || currentUser == null || sending) return;
-    // Tag every user whose `@name` token appears in the final text, matched at a
-    // token boundary so a shorter name can't ride along inside a longer one's
-    // token. Deriving the tag set from the text (rather than from what the mouse
-    // picked) means a mention typed by keyboard is tagged too — the autocomplete
-    // is a convenience, not the only way to mention someone.
+    // Tag every user whose @name token appears in the final text, so a mention typed by keyboard is tagged too (not just autocomplete picks).
     const tagList = users.filter((u) => mentionPresent(text, displayName(u)));
     const mentionIds = tagList.map((u) => u.id);
     const mentionNames = tagList.map((u) => ({
@@ -227,9 +200,7 @@ export function useChatThread({
   }, [body, candidateId, currentUser, sending, users, sendMessage]);
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    // When the @-autocomplete is open, the arrow keys drive it and Enter/Tab
-    // accept the highlighted row (Escape dismisses) — so a keyboard user can
-    // complete a mention without a mouse.
+    // While the @-autocomplete is open, arrows drive it and Enter/Tab accept the row (Escape dismisses).
     if (menu && suggestions.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();

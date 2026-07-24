@@ -3,12 +3,7 @@ import { X } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
-/**
- * The "✕" close control shared by the modal header and the candidate detail
- * drawer header (a round 30px button). Defaults `type="button"` (so it never
- * submits a surrounding form) and `aria-label="Close"`; both are overridable
- * via props.
- */
+/** Shared "✕" close control. Defaults type="button" (never submits a form) and aria-label="Close". */
 export const CloseButton = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement>

@@ -1,8 +1,6 @@
 'use client';
 
-// Candidate score badge for a board card: the rank-weighted overall trait
-// score (coloured by its rounded value) plus the feedback count, or a muted
-// "No scores" when nothing has been scored yet.
+// Candidate score badge: the rank-weighted overall score (coloured by rounded value) + feedback count, or a muted "No scores".
 
 import {
   RATINGS,

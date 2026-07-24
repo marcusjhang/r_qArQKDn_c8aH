@@ -1,23 +1,13 @@
 import 'server-only';
 
-// The per-candidate chat thread read/write, expressed against the injectable
-// `ChatStore` seam (see ./store) rather than the `db` singleton — so it is
-// unit-testable in a plain Node environment with an in-memory fake, and
-// importing it never constructs the postgres client. The thin `'use server'`
-// adapters in ./actions call these with the Drizzle-backed store.
+// The per-candidate chat thread read/write, expressed against the injectable `ChatStore` seam so it's unit-testable without a DB.
 
 import { zId } from '../schemas';
 import type { ChatStore } from './store';
 import type { ChatMessage } from '../types';
 import { currentUserId, toChatMessage, zBody, zMentionIds } from './shaping';
 
-/**
- * The full discussion thread for one candidate, oldest first. Returns an empty
- * thread when the caller can't be resolved to a signed-in account — the thread
- * is private team data, and this is a directly POST-able `'use server'` read
- * (its `queryFn` id ships in the client bundle), so it must gate on the session
- * exactly like the write path does, rather than trusting the page middleware.
- */
+/** The full thread for one candidate, oldest first. Returns empty when the caller isn't signed in — this is a directly POST-able `'use server'` read, so it gates on the session itself rather than trusting the page middleware. */
 export async function loadThreadWith(
   store: ChatStore,
   email: string | null | undefined,
@@ -30,12 +20,7 @@ export async function loadThreadWith(
   return rows.map(toChatMessage);
 }
 
-/**
- * Post a message to a candidate's thread and fan out mentions to the tagged
- * accounts (deduped; the author never notifies themselves). Returns the
- * persisted message so the client can reconcile its optimistic row, or null
- * when the caller is not signed in.
- */
+/** Post a message and fan out mentions (deduped, never self). Returns the persisted message, or null when the caller isn't signed in. */
 export async function postMessageWith(
   store: ChatStore,
   email: string | null | undefined,

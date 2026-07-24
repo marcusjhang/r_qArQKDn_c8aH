@@ -1,9 +1,6 @@
 import 'server-only';
 
-// Shared shaping / identity primitives for the chat logic (see ./messages
-// and ./notifications). All framework-free: the current-user identity is
-// resolved through the injectable `ChatStore` seam by email, so these never
-// import `@/lib/auth` and stay unit-testable with an in-memory fake.
+// Shared shaping / identity primitives for the chat logic. Framework-free: identity is resolved by email through the `ChatStore` seam, so these never import `@/lib/auth`.
 
 import { z } from 'zod';
 import { displayName, initials } from '../helpers';
@@ -31,15 +28,7 @@ export function toChatMessage(m: MessageRow): ChatMessage {
   };
 }
 
-/**
- * Resolve the signed-in user's numeric id from their email, or null when not
- * signed in / unknown.
- *
- * Resolves by email (the stable login identity) against the live users table
- * rather than trusting a JWT-captured id: that id goes stale if the users table
- * is ever rebuilt (e.g. a reseed renumbers the rows), which would otherwise
- * insert a dangling author_id and trip the messages_author_id FK.
- */
+/** Resolve the user's numeric id from their email (not a JWT-captured id, which goes stale if a reseed renumbers the rows and would trip the author_id FK). */
 export async function currentUserId(
   store: ChatStore,
   email: string | null | undefined

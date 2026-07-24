@@ -1,16 +1,4 @@
-// Pure, client-safe resolver that turns an uploaded CSV into validated
-// candidate-import payloads. It's the bridge between the raw parser (parseCsv,
-// ./csv) and the server action (importCandidates, ./actions): it maps the
-// header row to fields, resolves human labels back to the ids the board uses
-// (job title → job id, owner name → user id, source name → source id, status
-// label → status key), and validates each cell with the same helpers the
-// add/edit forms use. Framework-free so the import dialog can preview results
-// (valid rows + per-row errors) before anything is written, and so it's
-// unit-testable without a DB.
-//
-// Server authority is preserved: the resolved rows are re-parsed by zod in the
-// action, and owner/source ids are backed by foreign keys. This resolver exists
-// for UX (an accurate preview) — it is not the security boundary.
+// Pure, client-safe resolver turning an uploaded CSV into validated candidate-import payloads: maps headers to fields, resolves human labels back to board ids, validates each cell with the form helpers. For an accurate preview — NOT the security boundary (the action re-parses server-side).
 
 import { parseCsv } from './csv';
 import { STATUS, DEFAULT_STAGES } from './config';
@@ -18,12 +6,7 @@ import { displayName, normalizeProfileUrl, parseYearsInput } from './helpers';
 import { STATUSES, MAX_IMPORT_ROWS } from './primitives';
 import type { HiringState, Status } from './types';
 
-/**
- * A validated, id-resolved candidate ready to send to the import action. When
- * `jobId` is null the job must be created from `jobTitle`; when `source` is null
- * the source must be created from `sourceName`. `stage` is optional — the server
- * defaults it to the job's first stage.
- */
+/** A validated, id-resolved candidate ready for the import action. `jobId`/`source` null → create from `jobTitle`/`sourceName`; `stage` optional (server defaults to first stage). */
 export interface ImportRow {
   name: string;
   jobId: number | null;
@@ -38,9 +21,7 @@ export interface ImportRow {
   githubUrl: string | null;
 }
 
-/** A human-readable problem with one CSV line (1-based; the header is line 1).
- * Not exported: it's consumed structurally through `ResolveResult.errors`, so
- * keeping it internal avoids an unused-export (the dead-code audit is enforced). */
+/** A human-readable problem with one CSV line (1-based; the header is line 1). Internal — consumed structurally via `ResolveResult.errors`. */
 interface RowError {
   line: number;
   message: string;
@@ -56,10 +37,7 @@ export interface ResolveOptions {
   currentUserId: number | null;
 }
 
-// Canonical fields the importer understands, and the header spellings that map
-// to each (all matched lower-cased + trimmed). Export-only headers (Seniority,
-// Average rating, Feedback count, Starred) are intentionally absent, so they're
-// ignored — that's what lets an exported file round-trip through import.
+// Canonical fields → header spellings (matched lower-cased + trimmed). Export-only headers are absent, so they're ignored — which lets an exported file round-trip.
 const HEADER_ALIASES: Record<string, string[]> = {
   job: ['job'],
   name: ['candidate', 'name'],
@@ -79,8 +57,7 @@ const HEADER_LOOKUP: Record<string, string> = Object.fromEntries(
   )
 );
 
-// Status resolution accepts both the stored key ("onhold") and the UI label
-// ("On hold"), case-insensitively.
+// Status resolution accepts the stored key ("onhold") or the UI label ("On hold"), case-insensitively.
 const STATUS_LOOKUP: Record<string, Status> = (() => {
   const m: Record<string, Status> = {};
   for (const key of STATUSES) {
@@ -102,12 +79,7 @@ function mapHeader(header: string[]): Record<string, number> {
   return map;
 }
 
-/**
- * Parse and resolve a CSV document against the current board state. Returns the
- * importable rows and a list of per-line errors — a caller can import the valid
- * rows and surface the errors. A structural problem (empty file, missing
- * required column) is reported as a single error on the header line with no rows.
- */
+/** Parse and resolve a CSV against board state into importable rows plus per-line errors. A structural problem (empty file, missing required column) is a single header-line error with no rows. */
 export function resolveImportRows(
   text: string,
   state: HiringState,
@@ -155,8 +127,7 @@ export function resolveImportRows(
     if (!jobId && jobRaw.length > 80) {
       return fail('New job title is too long (max 80).');
     }
-    // Pipeline the row will land in — the real job's stages, or the defaults a
-    // to-be-created job will get.
+    // Pipeline the row lands in — the real job's stages, or the defaults for a to-be-created job.
     const pipeline = job?.stages ?? DEFAULT_STAGES;
 
     // Stage — optional; when given it must exist in the target pipeline.
@@ -189,8 +160,7 @@ export function resolveImportRows(
       status = resolved;
     }
 
-    // Owner — match by display name or email; blank falls back to the current
-    // user. Owners must be existing accounts (imports can't mint logins).
+    // Owner — match by display name or email (blank → current user); must be an existing account (imports can't mint logins).
     const ownerRaw = get('owner');
     let owner: number;
     if (!ownerRaw) {
@@ -243,8 +213,7 @@ export function resolveImportRows(
     });
   });
 
-  // Mirror the server's per-call cap (importCandidatesSchema). Block the whole
-  // upload rather than importing a silent subset — the caller can split it.
+  // Mirror the server's per-call cap: block the whole upload rather than importing a silent subset.
   if (rows.length > MAX_IMPORT_ROWS) {
     return {
       rows: [],

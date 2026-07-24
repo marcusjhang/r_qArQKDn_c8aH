@@ -1,12 +1,6 @@
 'use client';
 
-// Add-candidate form (Decision 6): name + source + owner in one step, with
-// valid-by-construction selects instead of free-text prompts. LinkedIn and
-// GitHub URLs are optional; blank inputs are stored as NULL. Years of
-// experience is optional too and drives the seniority band shown on the card.
-//
-// The fields + validation are shared with the edit/detail form via
-// <CandidateFields> and useCandidateDraft, so the two forms can't drift.
+// Add-candidate form; shares fields + validation with the detail form via <CandidateFields>/useCandidateDraft so the two can't drift.
 
 import {
   emptyCandidateDraft,

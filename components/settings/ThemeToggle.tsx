@@ -1,10 +1,7 @@
 'use client';
 
-// Light/Dark/System theme switch. Applies by toggling `class="dark"` on <html>
-// and persists the chosen preference to localStorage (read back before paint by
-// the script in app/layout.tsx, so there's no flash on reload). When "System"
-// is chosen the applied theme follows the OS `prefers-color-scheme` and tracks
-// it live.
+// Light/Dark/System theme switch. Toggles `class="dark"` on <html> and persists
+// to localStorage (read back before paint by app/layout.tsx, so no flash on reload).
 
 import { useEffect, useState } from 'react';
 
@@ -34,11 +31,8 @@ export default function ThemeToggle() {
     setTheme(stored);
   }, []);
 
-  // While following the system, track OS light/dark changes live. The class is
-  // already correct on load (no-flash script) and on selection (apply), so we
-  // only need to react to *subsequent* OS changes here — applying on mount
-  // would clobber an explicit light/dark choice, since `theme` is still the
-  // placeholder default until the effect above resolves it.
+  // Only react to *subsequent* OS changes; applying on mount would clobber an
+  // explicit choice before the effect above resolves the stored theme.
   useEffect(() => {
     if (theme !== 'system') return;
     const mq = window.matchMedia('(prefers-color-scheme: dark)');

@@ -1,12 +1,6 @@
 import 'server-only';
 
-// The mention notification inbox read/writes, expressed against the injectable
-// `ChatStore` seam (see ./store) rather than the `db` singleton — so they
-// are unit-testable with an in-memory fake and importing them never constructs
-// the postgres client. Every mutation resolves the caller's numeric id and the
-// store scopes the write to it, so a caller can only ever clear a mention that
-// targets their own account. The `'use server'` adapters in ./actions and
-// the server read in ./queries call these with the Drizzle-backed store.
+// The mention inbox read/writes, expressed against the injectable `ChatStore` seam so they're unit-testable without a DB. Every mutation scopes the write to the caller's id, so a caller can only clear mentions targeting their own account.
 
 import { zId } from '../schemas';
 import type { ChatStore } from './store';
@@ -22,8 +16,7 @@ export async function markNotificationReadWith(
   const userId = await currentUserId(store, email);
   if (userId == null) return;
   const mentionId = zId.parse(mentionIdRaw);
-  // The store scopes the update to (mentionId, userId): a caller can only clear
-  // a mention that targets their own account, never someone else's.
+  // Scoped to (mentionId, userId): a caller can only clear a mention targeting their own account.
   await store.markMentionRead(mentionId, userId);
 }
 
@@ -46,8 +39,7 @@ export async function dismissNotificationWith(
   const userId = await currentUserId(store, email);
   if (userId == null) return;
   const mentionId = zId.parse(mentionIdRaw);
-  // The store scopes the update to (mentionId, userId): a caller can only clear
-  // a mention that targets their own account, never someone else's.
+  // Scoped to (mentionId, userId): a caller can only clear a mention targeting their own account.
   await store.dismissMention(mentionId, userId);
 }
 
@@ -61,10 +53,7 @@ export async function dismissAllNotificationsWith(
   await store.dismissAllMentions(userId);
 }
 
-/**
- * The mentions targeting one user, newest first — the notification inbox.
- * Scoped to `userId` by the store's query.
- */
+/** The mentions targeting one user, newest first — the notification inbox. */
 export async function getNotificationsWith(
   store: ChatStore,
   userId: number,

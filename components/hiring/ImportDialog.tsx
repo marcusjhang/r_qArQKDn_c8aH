@@ -1,14 +1,6 @@
 'use client';
 
-// Import candidates from a CSV. The user picks (or pastes) a file; we resolve it
-// against the live board with the pure resolver (resolveImportRows) and show a
-// preview — how many rows are ready, which jobs/sources will be created, and any
-// per-row errors — before anything is written. Committing calls the store's
-// importCandidates action (→ the server action), then the board resyncs.
-//
-// The "allowed values" reference (statuses, sources, owners, seniority bands,
-// per-job stages) lives here rather than inside the CSV, so the template file
-// stays a clean, re-importable spreadsheet.
+// Import candidates from a CSV: resolve against the live board with resolveImportRows, preview, then commit via the store's importCandidates action.
 
 import { useMemo, useState } from 'react';
 import {
@@ -80,8 +72,7 @@ export default function ImportDialog({
         setFileName(null);
       },
       () => {
-        // The write failed (network, server rejection, …); leave the busy
-        // state so the user can fix and retry rather than seeing it hang.
+        // The write failed; clear busy and surface an error so the user can retry.
         setBusy(false);
         setError('Import failed. Nothing was saved; please try again.');
       }

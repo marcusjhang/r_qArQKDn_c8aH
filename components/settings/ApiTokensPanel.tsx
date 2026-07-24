@@ -1,10 +1,7 @@
 'use client';
 
-// Manage per-user MCP API tokens from /settings (Decision 2). Mirrors the other
-// settings panels' styling and useTransition write flow. Minting returns the
-// full secret exactly once — it appears in a reveal-once box with a pre-filled
-// `claude mcp add` command and is never shown again; only a name, prefix, last-
-// used, and optional expiry are listed afterwards. Revoking deletes the token.
+// Per-user MCP API tokens on /settings. The full secret is revealed exactly once
+// on mint (reveal-once box + pre-filled `claude mcp add`); only metadata after.
 
 import { useState, useTransition } from 'react';
 import { Check } from 'lucide-react';
@@ -64,8 +61,7 @@ export default function ApiTokensPanel({
   const [name, setName] = useState('');
   const [expiryDays, setExpiryDays] = useState(0);
   const [error, setError] = useState('');
-  // The just-minted secret + connect command, shown once until dismissed /
-  // re-minted. The plaintext token is only ever held here in memory.
+  // The just-minted secret + command; the plaintext token is only ever held here in memory.
   const [minted, setMinted] = useState<{
     token: string;
     command: string;

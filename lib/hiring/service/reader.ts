@@ -1,18 +1,6 @@
 import 'server-only';
 
-// The Drizzle-backed `BoardReader`: the production read implementation behind
-// the service facade. No ORM types cross out of this module — each method
-// returns a UI-shaped DTO. `db` is imported lazily so that merely importing this
-// module (or the facade) does not construct the postgres client or require
-// DATABASE_URL — a unit test that injects a fake reader never touches Postgres.
-//
-// These reads are intentionally uncached: TanStack Query is the single caching
-// layer for the board. The board page is `force-dynamic`, so each server render
-// reads fresh rows straight from Postgres and seeds the client's query cache via
-// `initialData`; the client then serves every subsequent read from that
-// TanStack Query cache and only re-reads (through the `fetchBoard` server action)
-// when it explicitly invalidates on a failed optimistic write. There is no
-// hand-rolled server Data Cache or tag-invalidation to keep in sync.
+// The Drizzle-backed `BoardReader` (production default). Each method returns a UI-shaped DTO; `db` is imported lazily so merely importing this module doesn't construct the postgres client or require DATABASE_URL. Reads are intentionally uncached — TanStack Query is the board's single caching layer.
 
 import { DEFAULT_STAGE_WARN_DAYS } from '../primitives';
 import type {
@@ -87,8 +75,7 @@ export const drizzleReader: BoardReader = {
       orderBy: (s, { asc }) => [asc(s.name)]
     });
   },
-  // The seniority bands, ordered high-to-low so seniorityFor's first-match scan
-  // is correct without a client-side re-sort.
+  // Ordered high-to-low so seniorityFor's first-match scan is correct without a client-side re-sort.
   async loadBands(): Promise<SeniorityBand[]> {
     const { db } = await import('@/lib/db');
     return db.query.seniorityBands.findMany({
@@ -96,10 +83,7 @@ export const drizzleReader: BoardReader = {
       orderBy: (b, { desc }) => [desc(b.minYears)]
     });
   },
-  // The stage time-limits, ordered by stage name for a stable, predictable list.
-  // The one universal stage-warn-days threshold. Reads the single
-  // pipeline_settings row; falls back to the default if the row is somehow
-  // missing (the seed always ensures one).
+  // The one universal stage-warn-days threshold; falls back to the default if the pipeline_settings row is somehow missing.
   async loadStageWarnDays(): Promise<number> {
     const { db } = await import('@/lib/db');
     const row = await db.query.pipelineSettings.findFirst({

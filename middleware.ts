@@ -1,13 +1,8 @@
 import NextAuth from 'next-auth';
 import { authConfig } from '@/lib/auth.config';
 
-// Build the gate from the EDGE-SAFE `authConfig` (lib/auth.config.ts) instead of
-// the full `lib/auth.ts`. Middleware runs on the Edge runtime, and the full
-// config imports the DB-backed credentials provider (lib/db.ts → postgres,
-// Node-only) — pulling it in here bundles postgres into the Edge middleware and
-// warns "A Node.js module is loaded ('stream') … not supported in the Edge
-// Runtime". The edge config has no provider (session strategy is `jwt`, so the
-// gate verifies the cookie without a DB lookup), keeping the middleware clean.
+// Build the gate from the EDGE-SAFE `authConfig`: middleware runs on the Edge
+// runtime, so it must not pull in the DB-backed provider from the full lib/auth.ts.
 export const { auth: middleware } = NextAuth(authConfig);
 
 // The `authorized` callback in lib/auth.config.ts gates every matched request

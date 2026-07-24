@@ -1,12 +1,7 @@
-// Unit coverage for the lazy `db` singleton in lib/db.ts.
-//
-// The app-wide client is built on first property access (a Proxy over a
-// lazily-resolved Drizzle client) rather than at import time, so importing the
-// module — for its re-exported table objects, or from a DB-less test — never
-// reads DATABASE_URL or opens a connection. These tests pin that contract:
-// import is side-effect-free, the missing-URL error is deferred to first use of
-// the singleton, and once a URL is present the Proxy forwards to a real Drizzle
-// client (methods bound so `this` resolves) without needing a live connection.
+// Unit coverage for the lazy `db` singleton in lib/db.ts: a Proxy built on first
+// property access, so importing the module never reads DATABASE_URL or connects.
+// Pins that contract — import is side-effect-free, the missing-URL error defers
+// to first use, and once a URL is set the Proxy forwards to a real Drizzle client.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 

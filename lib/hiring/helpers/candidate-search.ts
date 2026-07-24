@@ -1,10 +1,4 @@
-// Candidate search.
-//
-// A global, cross-job lookup over every candidate on the board: type a query,
-// get the matching candidates, jump straight to one. Kept pure and here (not
-// inline in the search component) so the match rule is unit-testable and can't
-// drift from what the UI renders. One input: text terms match the candidate's
-// text fields, and a bare number term is a minimum years-of-experience filter.
+// Global cross-job candidate search. Pure so the match rule stays unit-testable: text terms match the candidate's text fields, a bare number term is a minimum years-of-experience filter.
 
 import { STATUS } from '../config';
 import type { Candidate, Job, SeniorityBand, Source, User } from '../types';
@@ -19,10 +13,7 @@ export interface CandidateSearchContext {
   bands: SeniorityBand[];
 }
 
-/**
- * One search hit: the candidate plus the human-readable context the dropdown
- * shows (and searches over), resolved once so the component stays presentational.
- */
+/** One search hit: the candidate plus the human-readable context the dropdown shows and searches over. */
 export interface CandidateMatch {
   candidate: Candidate;
   jobTitle: string;
@@ -62,17 +53,7 @@ function haystack(m: CandidateMatch): string {
     .toLowerCase();
 }
 
-/**
- * Search every candidate on the board. The query is whitespace-split into
- * terms and every term must match (AND):
- *  - a bare non-negative integer term is a minimum years-of-experience filter:
- *    it matches candidates with that many years or more (a candidate with
- *    unspecified experience never matches a number term), and
- *  - any other term must appear in the candidate's searchable text (name,
- *    role, owner, source, seniority, stage, status).
- * An empty query returns `[]` (no dropdown). Results are starred-first, then
- * name A→Z, capped at `limit`.
- */
+/** Search every candidate: whitespace-split terms, all must match (AND) — a bare integer is a minimum-years filter (unspecified never matches), any other term must appear in the searchable text. Empty query → []; starred-first then name A→Z, capped at `limit`. */
 export function searchCandidates(
   candidates: Candidate[],
   query: string,

@@ -1,13 +1,5 @@
 // Seed / sample data (Decision 8), consumed by the DB seeder (`db/seed.ts`).
-//
-// Three realistic roles with ~12 candidates spread across stages, mixed
-// trait scores, statuses, sources, and owners — including one rejected and one
-// hired candidate to demonstrate the terminal-state filter.
-//
-// Jobs are keyed by a temporary `slug`; the seeder inserts jobs first and
-// resolves each candidate's `job` slug to the generated serial id. Owners and
-// feedback authors are referenced by the user's EMAIL (a stable, readable key);
-// the seeder resolves each email to the seeded account's serial id.
+// Jobs are keyed by a temporary `slug`, and owners/authors by EMAIL; the seeder resolves both to the generated serial ids.
 
 import { DEFAULT_STAGES, DEFAULT_TRAITS, SENIORITY_BANDS } from './config';
 import type { Status, TraitScores } from './types';
@@ -15,8 +7,7 @@ import type { Status, TraitScores } from './types';
 /** Default seniority bands seeded into the (editable) seniority_bands table. */
 export const SEED_SENIORITY_BANDS = SENIORITY_BANDS;
 
-// The seeded users, referenced by email so the demo assignments read clearly
-// and stay in lockstep with the accounts created in db/seed.ts.
+// The seeded users, referenced by email to stay in lockstep with the accounts in db/seed.ts.
 const SEED_USER_EMAILS = {
   marcus: 'marcusajh0802@gmail.com',
   benOng: 'benong@lightsprint.ai',
@@ -26,8 +17,7 @@ const SEED_USER_EMAILS = {
 
 const { marcus, benOng, benChan, hengHongLee } = SEED_USER_EMAILS;
 
-// Canonical candidate sources, seeded into the `sources` table. The dropdown
-// options are read from that table (not this list), so this is only the seed.
+// Canonical candidate sources, seeded into the `sources` table (the dropdown reads that table, not this list).
 export const SEED_SOURCES: string[] = [
   'LinkedIn',
   'Referral',
@@ -64,14 +54,10 @@ export interface SeedCandidate {
   yearsExperience: number | null;
   status: Status;
   starred?: boolean;
-  // Optional profile links, so the drawer's profile section demos on a fresh
-  // seed (omitted = NULL).
+  // Optional profile links so the drawer's profile section demos (omitted = NULL).
   linkedinUrl?: string;
   githubUrl?: string;
-  // Optional: how many days ago the candidate entered its current stage. The
-  // seeder backdates stage_entered_at by this much so the demo shows a mix of
-  // fresh and stalled applicants (some past the universal warn threshold).
-  // Omitted = entered "now" (the column default).
+  // Optional: days ago the candidate entered its stage; the seeder backdates stage_entered_at so the demo mixes fresh and stalled applicants (omitted = now).
   daysInStage?: number;
   feedback: SeedFeedback[];
 }
@@ -81,11 +67,7 @@ interface SeedMessage {
   candidate: string;
   /** Author's email (resolved to a user id by the seeder). */
   by: string;
-  /**
-   * Message body. To seed an @-mention notification, include the tagged user's
-   * display name as an `@Display Name` token here AND list their email in
-   * `mentions` — the seeder inserts the mention row that drives the inbox.
-   */
+  /** Message body. To seed a mention, put an `@Display Name` token here AND the email in `mentions`. */
   body: string;
   /** Emails to @-mention (a mention row is inserted per user). */
   mentions?: string[];
@@ -163,8 +145,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     source: 'Referral',
     yearsExperience: 3,
     status: 'active',
-    // 20 days in Applied, well past the universal 5-day warn threshold, so the
-    // board flags him as stalled.
+    // 20 days in Applied, past the 5-day warn threshold, so the board flags him as stalled.
     daysInStage: 20,
     feedback: []
   },
@@ -206,8 +187,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
     status: 'active',
     linkedinUrl: 'https://www.linkedin.com/in/sofia-kim',
     githubUrl: 'https://github.com/sofiakim',
-    // 9 days sitting on the Offer, past the universal 5-day warn threshold;
-    // nudge to close.
+    // 9 days sitting on the Offer, past the 5-day warn threshold; nudge to close.
     daysInStage: 9,
     feedback: [
       {
@@ -319,12 +299,7 @@ export const SEED_CANDIDATES: SeedCandidate[] = [
   }
 ];
 
-// Seed discussion threads so the per-candidate chat, @-mention highlighting, and
-// the notification inbox all demonstrate on a fresh boot (the messages/mentions
-// tables would otherwise ship empty). Every `@Display Name` token in a body has
-// the matching email in `mentions`, so the seeder inserts a mention row that
-// drives that user's inbox. Together these tag all four accounts, so each seeded
-// login has at least one notification. Backdated so threads read in order.
+// Seed discussion threads so chat, @-mention highlighting, and the inbox all demo on a fresh boot. Every `@Display Name` token has its email in `mentions`; together they tag all four accounts so each login has a notification.
 export const SEED_MESSAGES: SeedMessage[] = [
   // Ava Chen (Screen) — a two-message thread tagging Marcus, then Ben.
   {

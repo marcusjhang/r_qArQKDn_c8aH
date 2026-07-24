@@ -1,15 +1,8 @@
-// Unit coverage for `withStageClock` (lib/hiring/actions/support.ts) — the
-// server-side half of the "restart the stage clock only on a REAL stage change"
-// rule. It is the DB-write mirror of the reducer's optimistic `stageEnteredAt`
-// logic: reset `stage_entered_at` to now ONLY when the placement moves the
-// candidate to a different stage, and OMIT the column from the update set (so it
-// is left untouched) on a same-stage no-op.
-//
-// `support.ts` is `server-only` (aliased to an inert stub by vitest.config.ts)
-// but also imports `@/lib/auth`, which calls `NextAuth()` at module load and
-// can't be evaluated outside a Next runtime — so we mock that module away.
-// `withStageClock` itself is a pure function of (placement, prevStage); the only
-// impurity is the `new Date()` it stamps, which we pin with fake timers.
+// Unit coverage for `withStageClock` — the server-side half of "restart the
+// stage clock only on a REAL stage change": stamp `stage_entered_at` to now only
+// when the stage actually changes, else omit the column so it's left untouched.
+// A pure function of (placement, prevStage); we mock away its `@/lib/auth` import
+// (NextAuth boots at module load) and pin its `new Date()` with fake timers.
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
